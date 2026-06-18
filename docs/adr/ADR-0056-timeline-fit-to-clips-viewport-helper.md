@@ -52,6 +52,6 @@ global shortcuts.
 
 ## Follow-Ups
 
-- Design package-local media quarantine and restore commands.
+- Add package media quarantine restore-manifest model tests.
 - Keep global shortcuts and command palette work behind the command registry
   focus policy.

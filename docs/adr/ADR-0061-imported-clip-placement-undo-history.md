@@ -55,6 +55,6 @@ drag/drop.
 
 ## Follow-Ups
 
-- Design package-local media quarantine and restore commands.
+- Add package media quarantine restore-manifest model tests.
 - Add visible undo/redo commands only after focus ownership and text-entry
   behavior are covered by tests.

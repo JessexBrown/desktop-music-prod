@@ -86,5 +86,5 @@ drag/drop clip operations, or permanent package retention rules.
 
 ## Follow-Ups
 
-- Design package-local media quarantine and restore commands.
+- Add package media quarantine restore-manifest model tests.
 - Define backup-manifest retention before any permanent media deletion task.

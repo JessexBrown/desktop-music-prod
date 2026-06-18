@@ -148,6 +148,9 @@ Third-party dependencies remain under their own licenses as recorded in
   previous-backup, and session-protected references, unreferenced candidates,
   missing or unsafe references, and stale staging directories without deleting
   files.
+- ADR-0073 defines the package-local media quarantine and restore command
+  contract, including restore-manifest contents, rollback rules, active-work
+  exclusions, and no permanent deletion.
 - A plain C++ track voice scheduler turns timeline clip plans, render windows,
   and track gain/pan/mute/solo snapshots into mixer-ready voice descriptors.
 - Project track volume, pan, mute, and solo state is persisted and fed into
@@ -419,4 +422,6 @@ or use `ctest --preset dev --output-on-failure`.
   records the non-destructive cleanup inventory and restoration policy.
 - `docs/adr/ADR-0072-imported-media-package-inventory-model.md` records the
   read-only imported media package inventory model.
+- `docs/adr/ADR-0073-package-local-media-quarantine-and-restore-commands.md`
+  records package-local media quarantine and restore command design.
 - `docs/issues/NEXT-ISSUES.md` lists the next five small tasks.

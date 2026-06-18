@@ -65,4 +65,4 @@ audio-thread work into command handlers.
 
 - Add command palette and shortcut editor UI only after text-entry/focus
   ownership is covered by tests.
-- Design package-local media quarantine and restore commands.
+- Add package media quarantine restore-manifest model tests.

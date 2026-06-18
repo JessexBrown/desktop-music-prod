@@ -42,6 +42,6 @@ selected clip.
 
 ## Follow-Ups
 
-- Design package-local media quarantine and restore commands.
+- Add package media quarantine restore-manifest model tests.
 - Add clip movement and resizing only after explicit edit previews and undo are
   defined.

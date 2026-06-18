@@ -55,6 +55,6 @@ operations, or automated GUI interaction tests.
 
 ## Follow-Ups
 
-- Design package-local media quarantine and restore commands.
+- Add package media quarantine restore-manifest model tests.
 - Add automated GUI interaction coverage when a stable JUCE UI test approach is
   available.

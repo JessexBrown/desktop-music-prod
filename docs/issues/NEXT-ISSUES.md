@@ -34,14 +34,15 @@ Acceptance:
 - Add a non-modal path back to the Audio/MIDI setup dialog.
 - Keep the first implementation separate from plugin scanning.
 
-## 5. Design Package-Local Media Quarantine and Restore Commands
+## 5. Add Package Media Quarantine Restore-Manifest Model Tests
 
 Acceptance:
-- Create an ADR for a package-local quarantine folder and restore manifest
-  format that can support undoable media cleanup later.
-- Define move-to-quarantine transaction, rollback, and restore expectations for
-  inventory candidates without adding permanent deletion.
-- Specify how restoration should interact with current manifests, previous
-  manifest backups, missing-media placeholders, and active package work.
-- Keep actual deletion/restoration implementation, command-palette entries, and
-  drag/drop clip operations out of this task.
+- Add a plain C++ restore-manifest model for package-local media quarantine
+  metadata, including schema version, cleanup id, moved entries, skipped
+  entries, and conflict/error state.
+- Serialize and load the restore manifest as human-readable JSON with safe
+  package-relative path validation.
+- Cover round-trip, unsafe path rejection, duplicate destination conflicts, and
+  partial-transaction error-state fixtures with tests.
+- Keep file-moving implementation, permanent deletion, command-palette entries,
+  and drag/drop clip operations out of this task.

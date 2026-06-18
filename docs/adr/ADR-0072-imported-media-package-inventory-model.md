@@ -53,7 +53,7 @@ state.
 
 ## Follow-Ups
 
-- Design package-local media quarantine and restore commands.
+- Add package media quarantine restore-manifest model tests.
 - Define backup-manifest retention before any permanent media deletion task.
 - Expose inventory results in a future package maintenance UI after quarantine
   behavior is designed.

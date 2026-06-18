@@ -87,4 +87,4 @@ shortcut editor UI.
 
 ## Follow-Ups
 
-- Design package-local media quarantine and restore commands.
+- Add package media quarantine restore-manifest model tests.
