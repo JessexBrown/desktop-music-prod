@@ -158,6 +158,11 @@ Third-party dependencies remain under their own licenses as recorded in
   candidates into restore-manifest drafts and rejects active package work,
   unsafe or missing references, protected requested assets, empty plans, and
   duplicate destinations without moving files.
+- A plain C++ package media quarantine command moves preflight-approved audio
+  files, analysis files, and stale staging directories into
+  `backups/media-trash/<cleanup-id>/`, commits `restore-manifest.json`, and
+  rolls back already-moved items on failure when their original paths remain
+  empty.
 - A plain C++ track voice scheduler turns timeline clip plans, render windows,
   and track gain/pan/mute/solo snapshots into mixer-ready voice descriptors.
 - Project track volume, pan, mute, and solo state is persisted and fed into
@@ -192,7 +197,8 @@ Third-party dependencies remain under their own licenses as recorded in
   commands, imported clip inspector edit draft validation and cancel behavior,
   imported clip media relink preparation and cleanup behavior, background media
   relink preparation jobs, imported media package inventory classification,
-  package media quarantine restore-manifest validation and preflight planning,
+  package media quarantine restore-manifest validation, preflight planning, and
+  file-moving rollback behavior,
   workspace command routing, app command registry metadata, enablement, and
   dispatch results, timeline lane
   layout/hit-testing/placement/loop-range scaling, track voice scheduling
@@ -438,4 +444,6 @@ or use `ctest --preset dev --output-on-failure`.
   records the package media quarantine preflight plan model.
 - `docs/adr/ADR-0076-product-name-rabbington-studio.md` records the public
   product-name decision and internal rename boundary.
+- `docs/adr/ADR-0077-package-media-quarantine-command.md` records the
+  package media quarantine file-moving command.
 - `docs/issues/NEXT-ISSUES.md` lists the next five small tasks.
