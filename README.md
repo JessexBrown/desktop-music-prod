@@ -111,6 +111,8 @@ Third-party dependencies remain under their own licenses as recorded in
   and can be cancelled from the top bar before it schedules audio.
 - Imported clip media replacement invalidates the matching prepared playback
   cache entry so stale audio is not reused.
+- ADR-0060 defines the first undo/redo boundary for imported clip placement and
+  media replacement before editable inspector or drag/drop UI is added.
 - A plain C++ track voice scheduler turns timeline clip plans, render windows,
   and track gain/pan/mute/solo snapshots into mixer-ready voice descriptors.
 - Project track volume, pan, mute, and solo state is persisted and fed into
@@ -351,4 +353,6 @@ or use `ctest --preset dev --output-on-failure`.
   tested model helper for centering the selected imported timeline clip.
 - `docs/adr/ADR-0059-compact-selected-clip-center-control.md` records the
   visible compact workspace control for centering the selected imported clip.
+- `docs/adr/ADR-0060-imported-clip-edit-undo-boundary.md` records the first
+  undo/redo boundary for imported clip placement and media replacement.
 - `docs/issues/NEXT-ISSUES.md` lists the next five small tasks.

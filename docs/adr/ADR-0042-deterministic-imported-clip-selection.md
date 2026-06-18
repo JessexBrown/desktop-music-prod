@@ -45,4 +45,4 @@ recent import.
 
 ## Follow-Ups
 
-- Add undo boundaries before editable inspector clip operations.
+- Add a plain C++ imported clip placement undo history skeleton.

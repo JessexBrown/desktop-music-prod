@@ -37,4 +37,4 @@ selection shortcuts.
 
 ## Follow-Ups
 
-- Add undo boundaries before editable inspector or timeline clip operations.
+- Add a plain C++ imported clip placement undo history skeleton.

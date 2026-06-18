@@ -42,6 +42,6 @@ entry, plugin action, or audio-thread behavior.
 
 ## Follow-Ups
 
-- Add undo boundaries before editable inspector or timeline clip operations.
+- Add a plain C++ imported clip placement undo history skeleton.
 - Keep global shortcuts and command palette work behind the command registry
   focus policy.

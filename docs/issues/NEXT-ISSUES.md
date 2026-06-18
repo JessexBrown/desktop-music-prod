@@ -34,12 +34,14 @@ Acceptance:
 - Add a non-modal path back to the Audio/MIDI setup dialog.
 - Keep the first implementation separate from plugin scanning.
 
-## 5. Design the Undo Boundary for Imported Clip Edits
+## 5. Add Imported Clip Placement Undo History Skeleton
 
 Acceptance:
-- Add an ADR for the first undo/redo boundary around imported clip edits.
-- Define the model operations that must become undoable first, including clip
-  placement and media replacement.
-- Define focused tests needed before adding editable inspector or drag/drop clip
-  operations.
-- Do not add visible undo/redo buttons or global shortcuts in this task.
+- Add a plain C++ app-session undo history skeleton for imported clip placement
+  edits only.
+- Record successful `setImportedAudioClipStartBeats` edits with old/new start
+  beats, and ignore failed or no-op edits.
+- Add focused tests for undo, redo, redo clearing after a new edit, and stale
+  clip failure leaving project state unchanged.
+- Do not add visible undo/redo buttons, global shortcuts, media replacement
+  undo, editable inspector fields, or drag/drop clip operations in this task.

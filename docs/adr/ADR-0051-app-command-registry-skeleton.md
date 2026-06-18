@@ -60,7 +60,7 @@ shortcut editor.
 
 ## Follow-Ups
 
-- Add undo boundaries before editable inspector or timeline clip operations.
+- Add a plain C++ imported clip placement undo history skeleton.
 - Move toward a longer-lived app command table when global shortcuts or command
   palette UI need it.
 - Add command palette and shortcut editor UI only after focus and text-entry

@@ -42,6 +42,6 @@ selected clip.
 
 ## Follow-Ups
 
-- Add undo boundaries before editable inspector or timeline clip operations.
+- Add a plain C++ imported clip placement undo history skeleton.
 - Add clip movement and resizing only after explicit edit previews and undo are
   defined.

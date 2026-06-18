@@ -45,4 +45,3 @@ replacement already clear the cache wholesale.
 
 - Use this command from future clip media replacement UI.
 - Add cache invalidation for destructive waveform edits once they exist.
-- Add cache invalidation for destructive waveform edits once they exist.

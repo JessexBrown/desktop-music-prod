@@ -65,4 +65,4 @@ audio-thread work into command handlers.
 
 - Add command palette and shortcut editor UI only after text-entry/focus
   ownership is covered by tests.
-- Add undo boundaries before editable inspector or timeline clip operations.
+- Add a plain C++ imported clip placement undo history skeleton.
