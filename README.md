@@ -181,6 +181,9 @@ Third-party dependencies remain under their own licenses as recorded in
 - A plain C++ package media maintenance view model combines inventory status,
   cleanup batch discovery, selected cleanup batch fallback, and restore action
   enablement for the future non-modal Package Maintenance UI.
+- The JUCE browser panel shows the first read-only package media maintenance
+  surface from a background snapshot: inventory status, cleanup batch rows,
+  selected batch state, restore readiness, and discovery issue count.
 - A plain C++ track voice scheduler turns timeline clip plans, render windows,
   and track gain/pan/mute/solo snapshots into mixer-ready voice descriptors.
 - Project track volume, pan, mute, and solo state is persisted and fed into
@@ -477,4 +480,6 @@ or use `ctest --preset dev --output-on-failure`.
   package media cleanup batch discovery contract.
 - `docs/adr/ADR-0082-package-media-maintenance-view-model.md` records the
   package media maintenance view-model contract.
+- `docs/adr/ADR-0083-package-media-maintenance-status-surface.md` records the
+  first visible read-only Package Maintenance status surface.
 - `docs/issues/NEXT-ISSUES.md` lists the next five small tasks.

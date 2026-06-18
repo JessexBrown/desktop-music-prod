@@ -11,12 +11,14 @@
 #include "core/BackgroundTimelinePlaybackPreparationJob.h"
 #include "core/ImportedClipInspector.h"
 #include "core/ImportedClipInspectorEditDraft.h"
+#include "core/PackageMediaMaintenanceViewModel.h"
 #include "core/TimelineClipLane.h"
 #include "core/TimelinePlaybackPreparationCompletion.h"
 
 #include <cstdint>
 #include <filesystem>
 #include <functional>
+#include <future>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -85,6 +87,12 @@ private:
     std::function<void()> timelinePanRightControlRequested_;
 };
 
+struct PackageMediaMaintenanceScanResult
+{
+    int generation = 0;
+    projectname::PackageMediaMaintenanceViewModel viewModel;
+};
+
 class MainComponent final : public juce::Component,
                             private juce::Button::Listener,
                             private juce::Slider::Listener,
@@ -126,6 +134,7 @@ private:
     void pollAudioImportJob();
     void pollMediaRelinkPreparationJob();
     void pollTimelinePlaybackPreparationJob();
+    void pollPackageMediaMaintenanceScan();
     void updateAudioImportProgress(const projectname::BackgroundAudioImportProgress& progress);
     void updateMediaRelinkPreparationProgress(
         const projectname::BackgroundMediaRelinkPreparationProgress& progress);
@@ -134,6 +143,9 @@ private:
     void applyCompletedAudioImport(projectname::BackgroundAudioImportResult result);
     void applyCompletedMediaRelinkPreparation(projectname::BackgroundMediaRelinkPreparationResult result);
     void applyCompletedTimelinePlaybackPreparation(projectname::BackgroundTimelinePlaybackPreparationResult result);
+    void requestPackageMediaMaintenanceRefresh();
+    void applyPackageMediaMaintenanceScanResult(PackageMediaMaintenanceScanResult result);
+    void refreshBrowserPanel();
     void refreshWorkspaceTimelineLane();
     void refreshInspectorPanel();
     void refreshInspectorStartBeatControl(const projectname::ImportedClipInspectorState& inspector);
@@ -187,6 +199,12 @@ private:
     std::unique_ptr<projectname::BackgroundAudioImportJob> audioImportJob_;
     std::unique_ptr<projectname::BackgroundMediaRelinkPreparationJob> mediaRelinkPreparationJob_;
     std::unique_ptr<projectname::BackgroundTimelinePlaybackPreparationJob> timelinePlaybackPreparationJob_;
+    std::future<PackageMediaMaintenanceScanResult> packageMediaMaintenanceScan_;
+    projectname::PackageMediaMaintenanceViewModel packageMediaMaintenanceViewModel_;
+    bool hasPackageMediaMaintenanceSnapshot_ = false;
+    bool packageMediaMaintenanceRefreshPending_ = false;
+    int packageMediaMaintenanceScanGeneration_ = 0;
+    std::string selectedPackageMediaCleanupId_;
     bool canCancelAudioImport_ = false;
     bool canCancelMediaRelinkPreparation_ = false;
     bool canCancelTimelinePlaybackPreparation_ = false;

@@ -1,10 +1,14 @@
 #include "MainComponent.h"
 
 #include "core/AppCommandRegistry.h"
+#include "core/ImportedMediaPackageInventory.h"
+#include "core/PackageMediaCleanupBatchDiscovery.h"
+#include "core/PackageMediaMaintenanceViewModel.h"
 #include "core/ProductIdentity.h"
 #include "core/WorkspaceCommandRouter.h"
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <memory>
@@ -273,6 +277,172 @@ void setButtonEnabledFromCommand(juce::Button& button,
     }
 
     return lines;
+}
+
+[[nodiscard]] juce::String shortenBrowserValue(const std::string& value)
+{
+    juce::String text(value);
+    constexpr auto maxCharacters = 22;
+    if (text.length() <= maxCharacters)
+        return text;
+
+    return text.substring(0, maxCharacters - 3) + "...";
+}
+
+[[nodiscard]] juce::String statusLabel(projectname::PackageMediaCleanupStatusKind kind)
+{
+    switch (kind)
+    {
+        case projectname::PackageMediaCleanupStatusKind::quarantineCompleted:
+            return "ready";
+        case projectname::PackageMediaCleanupStatusKind::restoreCompleted:
+            return "restored";
+        case projectname::PackageMediaCleanupStatusKind::restoreConflict:
+            return "conflict";
+        case projectname::PackageMediaCleanupStatusKind::partialFailure:
+            return "needs review";
+        case projectname::PackageMediaCleanupStatusKind::cleanupFailed:
+            return "failed";
+        case projectname::PackageMediaCleanupStatusKind::reviewAvailable:
+            return "review";
+        case projectname::PackageMediaCleanupStatusKind::missingReferences:
+            return "missing";
+        case projectname::PackageMediaCleanupStatusKind::unsafeReferences:
+            return "unsafe";
+        case projectname::PackageMediaCleanupStatusKind::noCandidates:
+            return "clean";
+        case projectname::PackageMediaCleanupStatusKind::idle:
+        case projectname::PackageMediaCleanupStatusKind::inventoryRunning:
+        case projectname::PackageMediaCleanupStatusKind::preflightRunning:
+        case projectname::PackageMediaCleanupStatusKind::quarantineRunning:
+        case projectname::PackageMediaCleanupStatusKind::restoreRunning:
+        case projectname::PackageMediaCleanupStatusKind::operationCompleted:
+        case projectname::PackageMediaCleanupStatusKind::preflightReady:
+        case projectname::PackageMediaCleanupStatusKind::activePackageWork:
+        case projectname::PackageMediaCleanupStatusKind::cancelled:
+            return "status";
+    }
+
+    return "status";
+}
+
+[[nodiscard]] juce::String restoreSummary(
+    const projectname::PackageMediaMaintenanceViewModel& model)
+{
+    if (model.restoreActionEnabled)
+        return "Restore: available";
+
+    if (!model.hasSelectedBatch)
+        return "Restore: select batch";
+
+    const auto& row = model.batches[static_cast<std::size_t>(model.selectedBatchIndex)];
+    if (row.conflictCount > 0)
+        return "Restore: conflict review";
+
+    if (row.errorCount > 0)
+        return "Restore: failure review";
+
+    if (row.movedEntryCount > 0 && row.restoredEntryCount == row.movedEntryCount)
+        return "Restore: already restored";
+
+    return "Restore: unavailable";
+}
+
+[[nodiscard]] juce::String makeBatchLine(
+    const projectname::PackageMediaMaintenanceBatchRow& row,
+    int displayIndex)
+{
+    auto line = juce::String("Batch ")
+        + juce::String(displayIndex)
+        + ": "
+        + shortenBrowserValue(row.cleanupId)
+        + " | "
+        + statusLabel(row.status.kind);
+
+    if (row.selected)
+        line += " | selected";
+
+    return line;
+}
+
+[[nodiscard]] juce::StringArray makePackageMediaMaintenanceLines(
+    const projectname::PackageMediaMaintenanceViewModel& model,
+    bool hasSnapshot,
+    bool scanRunning)
+{
+    juce::StringArray lines;
+    lines.add("Library: Samples / Plugins / Presets");
+
+    if (scanRunning)
+        lines.add("Media: scanning package");
+
+    if (!hasSnapshot)
+    {
+        lines.add("Batches: waiting for scan");
+        lines.add("Restore: unavailable");
+        return lines;
+    }
+
+    lines.add("Media: " + juce::String(model.inventoryStatus.statusText));
+    lines.add("Candidates: "
+              + juce::String(static_cast<int>(model.cleanupCandidateCount))
+              + " media / "
+              + juce::String(static_cast<int>(model.staleStagingCandidateCount))
+              + " staging");
+    lines.add("Batches: " + juce::String(static_cast<int>(model.batches.size())));
+
+    if (model.hasSelectedBatch)
+    {
+        const auto& selected = model.batches[static_cast<std::size_t>(model.selectedBatchIndex)];
+        lines.add("Selected: "
+                  + shortenBrowserValue(selected.cleanupId)
+                  + " | "
+                  + statusLabel(selected.status.kind));
+    }
+    else
+    {
+        lines.add("Selected: none");
+    }
+
+    lines.add(restoreSummary(model));
+
+    auto displayedRows = 0;
+    for (const auto& row : model.batches)
+    {
+        if (displayedRows >= 2)
+            break;
+
+        lines.add(makeBatchLine(row, displayedRows + 1));
+        ++displayedRows;
+    }
+
+    const auto issueCount = !model.discoveryIssues.empty()
+        ? model.discoveryIssues.size()
+        : (model.discoveryError.empty() ? std::size_t { 0 } : std::size_t { 1 });
+    lines.add(model.hasDiscoveryIssues
+                  ? "Issues: " + juce::String(static_cast<int>(issueCount)) + " discovery"
+                  : "Issues: none");
+    return lines;
+}
+
+[[nodiscard]] PackageMediaMaintenanceScanResult runPackageMediaMaintenanceScan(
+    std::filesystem::path packageDirectory,
+    std::string selectedCleanupId,
+    bool packageWorkInProgress,
+    int generation)
+{
+    projectname::ImportedMediaPackageInventoryOptions inventoryOptions;
+    inventoryOptions.packageWorkInProgress = packageWorkInProgress;
+
+    projectname::PackageMediaMaintenanceViewModelRequest request;
+    request.inventory = projectname::buildImportedMediaPackageInventory(packageDirectory, inventoryOptions);
+    request.discovery = projectname::discoverPackageMediaCleanupBatches(packageDirectory);
+    request.selectedCleanupId = std::move(selectedCleanupId);
+
+    PackageMediaMaintenanceScanResult result;
+    result.generation = generation;
+    result.viewModel = projectname::buildPackageMediaMaintenanceViewModel(std::move(request));
+    return result;
 }
 } // namespace
 
@@ -812,9 +982,11 @@ MainComponent::MainComponent()
         });
     refreshWorkspaceTimelineLane();
     refreshMixerControls();
+    refreshBrowserPanel();
 
     const auto error = audioService_.initialiseDefaultDevice();
     refreshInspectorPanel();
+    requestPackageMediaMaintenanceRefresh();
     setStatus(error.isEmpty() ? "Ready - press Play for a generated test tone"
                               : "Audio setup needs attention: " + error);
 
@@ -836,6 +1008,8 @@ MainComponent::~MainComponent()
     audioImportJob_.reset();
     mediaRelinkPreparationJob_.reset();
     timelinePlaybackPreparationJob_.reset();
+    if (packageMediaMaintenanceScan_.valid())
+        packageMediaMaintenanceScan_.wait();
     audioService_.shutdown();
 }
 
@@ -1000,6 +1174,7 @@ void MainComponent::timerCallback()
     pollAudioImportJob();
     pollMediaRelinkPreparationJob();
     pollTimelinePlaybackPreparationJob();
+    pollPackageMediaMaintenanceScan();
     session_.advanceSeconds(1.0 / 30.0);
     updateTransportLabels();
 
@@ -1402,6 +1577,7 @@ void MainComponent::saveProject()
 
     refreshInspectorPanel();
     refreshMixerControls();
+    requestPackageMediaMaintenanceRefresh();
     updateTransportLabels();
 }
 
@@ -1417,6 +1593,7 @@ void MainComponent::openProject()
         refreshWorkspaceTimelineLane();
         refreshInspectorPanel();
         refreshMixerControls();
+        requestPackageMediaMaintenanceRefresh();
         setStatus("Opened project package: " + juce::String(packagePath.string()));
     }
     else
@@ -1438,6 +1615,7 @@ projectname::AppCommandResult MainComponent::undoImportedClipEdit()
 
     refreshWorkspaceTimelineLane();
     refreshInspectorPanel();
+    requestPackageMediaMaintenanceRefresh();
     refreshAppCommandEnabledState();
     return projectname::AppCommandResult::handledWithStatus("Undid imported clip edit");
 }
@@ -1453,6 +1631,7 @@ projectname::AppCommandResult MainComponent::redoImportedClipEdit()
 
     refreshWorkspaceTimelineLane();
     refreshInspectorPanel();
+    requestPackageMediaMaintenanceRefresh();
     refreshAppCommandEnabledState();
     return projectname::AppCommandResult::handledWithStatus("Redid imported clip edit");
 }
@@ -1714,6 +1893,7 @@ void MainComponent::applyCompletedMediaRelinkPreparation(
     {
         setStatus("Media relink cancelled");
         refreshInspectorPanel();
+        requestPackageMediaMaintenanceRefresh();
         return;
     }
 
@@ -1722,6 +1902,7 @@ void MainComponent::applyCompletedMediaRelinkPreparation(
         setStatus("Media relink failed: " + juce::String(result.error));
         refreshInspectorPanel();
         refreshAppCommandEnabledState();
+        requestPackageMediaMaintenanceRefresh();
         return;
     }
 
@@ -1735,6 +1916,7 @@ void MainComponent::applyCompletedMediaRelinkPreparation(
         refreshWorkspaceTimelineLane();
         refreshInspectorPanel();
         refreshAppCommandEnabledState();
+        requestPackageMediaMaintenanceRefresh();
         return;
     }
 
@@ -1749,6 +1931,7 @@ void MainComponent::applyCompletedMediaRelinkPreparation(
     refreshWorkspaceTimelineLane();
     refreshInspectorPanel();
     refreshAppCommandEnabledState();
+    requestPackageMediaMaintenanceRefresh();
     updateTransportLabels();
 
     auto status = "Relinked selected clip to " + juce::String(relinkedPath);
@@ -1918,12 +2101,14 @@ void MainComponent::applyCompletedAudioImport(projectname::BackgroundAudioImport
     if (result.cancelled)
     {
         setStatus("Import cancelled");
+        requestPackageMediaMaintenanceRefresh();
         return;
     }
 
     if (!result.import.has_value())
     {
         setStatus("Import failed: " + juce::String(result.error));
+        requestPackageMediaMaintenanceRefresh();
         return;
     }
 
@@ -1939,6 +2124,7 @@ void MainComponent::applyCompletedAudioImport(projectname::BackgroundAudioImport
     refreshWorkspaceTimelineLane();
     refreshInspectorPanel();
     refreshMixerControls();
+    requestPackageMediaMaintenanceRefresh();
     auto preparedSamples = session_.cacheImportedTimelineClip(imported.clip, std::move(imported.preparedClip));
     if (preparedSamples != nullptr)
         audioService_.playPreparedMonoClip(std::move(preparedSamples));
@@ -1984,6 +2170,81 @@ void MainComponent::applyCompletedTimelinePlaybackPreparation(
 
     audioService_.setTestToneEnabled(session_.shouldPlayGeneratedTone());
     setStatus("Playing generated tone - " + juce::String(completion.message));
+}
+
+void MainComponent::requestPackageMediaMaintenanceRefresh()
+{
+    if (packageMediaMaintenanceScan_.valid())
+    {
+        if (packageMediaMaintenanceScan_.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
+        {
+            applyPackageMediaMaintenanceScanResult(packageMediaMaintenanceScan_.get());
+        }
+        else
+        {
+            packageMediaMaintenanceRefreshPending_ = true;
+            refreshBrowserPanel();
+            return;
+        }
+    }
+
+    packageMediaMaintenanceRefreshPending_ = false;
+    const auto generation = ++packageMediaMaintenanceScanGeneration_;
+    const auto packageDirectory = getDefaultProjectPackagePath();
+    const auto selectedCleanupId = selectedPackageMediaCleanupId_;
+    const auto packageWorkInProgress =
+        audioImportJob_ != nullptr
+        || mediaRelinkPreparationJob_ != nullptr
+        || timelinePlaybackPreparationJob_ != nullptr;
+
+    packageMediaMaintenanceScan_ = std::async(std::launch::async,
+                                              runPackageMediaMaintenanceScan,
+                                              packageDirectory,
+                                              selectedCleanupId,
+                                              packageWorkInProgress,
+                                              generation);
+    refreshBrowserPanel();
+}
+
+void MainComponent::pollPackageMediaMaintenanceScan()
+{
+    if (!packageMediaMaintenanceScan_.valid()
+        || packageMediaMaintenanceScan_.wait_for(std::chrono::seconds(0)) != std::future_status::ready)
+    {
+        return;
+    }
+
+    const auto refreshAgain = packageMediaMaintenanceRefreshPending_;
+    packageMediaMaintenanceRefreshPending_ = false;
+    applyPackageMediaMaintenanceScanResult(packageMediaMaintenanceScan_.get());
+
+    if (refreshAgain)
+        requestPackageMediaMaintenanceRefresh();
+}
+
+void MainComponent::applyPackageMediaMaintenanceScanResult(PackageMediaMaintenanceScanResult result)
+{
+    if (result.generation != packageMediaMaintenanceScanGeneration_)
+        return;
+
+    packageMediaMaintenanceViewModel_ = std::move(result.viewModel);
+    hasPackageMediaMaintenanceSnapshot_ = true;
+    selectedPackageMediaCleanupId_ = packageMediaMaintenanceViewModel_.selectedCleanupId;
+    refreshBrowserPanel();
+}
+
+void MainComponent::refreshBrowserPanel()
+{
+    const auto scanRunning =
+        packageMediaMaintenanceScan_.valid()
+        && packageMediaMaintenanceScan_.wait_for(std::chrono::seconds(0)) != std::future_status::ready;
+
+    browserPanel_.setSubtitle(scanRunning
+                                  ? "Project assets and media scan running"
+                                  : "Project assets and media maintenance");
+    browserPanel_.setLines(makePackageMediaMaintenanceLines(packageMediaMaintenanceViewModel_,
+                                                            hasPackageMediaMaintenanceSnapshot_,
+                                                            scanRunning));
 }
 
 void MainComponent::refreshWorkspaceTimelineLane()

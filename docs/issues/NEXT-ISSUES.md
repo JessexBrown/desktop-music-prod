@@ -34,16 +34,14 @@ Acceptance:
 - Add a non-modal path back to the Audio/MIDI setup dialog.
 - Keep the first implementation separate from plugin scanning.
 
-## 5. Wire Package Media Maintenance Status Surface
+## 5. Add Package Media Maintenance Batch Selection Controls
 
 Acceptance:
-- Add a small non-modal JUCE status/browser surface that can show package media
-  inventory status, cleanup batch rows, discovery issues, selected batch state,
-  and restore enablement from `PackageMediaMaintenanceViewModel`.
-- Keep file-moving cleanup and restore commands behind existing background jobs;
-  do not perform package filesystem work on the UI or audio thread.
-- Cover visible empty, cleanup-candidate, restore-batch, conflict,
-  partial-failure, and invalid-discovery states with smokeable model/UI tests
-  where practical.
+- Add keyboard/mouse-selectable cleanup batch rows to the read-only Package
+  Maintenance browser surface.
+- Preserve selected cleanup batch id across background refreshes and fall back
+  to the newest valid batch when the previous selection disappears.
 - Keep cleanup/restore execution, permanent deletion, and retention policy out
-  of this task; the first surface is read-only.
+  of this task.
+- Cover selected-row rendering, stale-selection fallback, and empty-batch states
+  with smokeable model/UI tests where practical.

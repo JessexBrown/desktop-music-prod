@@ -176,3 +176,8 @@ cleanup batches, discovery issues, selected-batch fallback, and restore action
 enablement for the future non-modal Package Maintenance view. Conflict and
 partial-failure batches stay selectable for review, but repeat restore is kept
 disabled until recovery actions are designed.
+
+The first visible JUCE surface is a read-only browser summary backed by a
+background package scan. It shows media status, candidate counts, cleanup batch
+rows, selected batch status, restore readiness, and discovery issue count
+without exposing cleanup or restore execution.
