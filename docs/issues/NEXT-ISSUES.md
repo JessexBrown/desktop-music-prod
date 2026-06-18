@@ -1,13 +1,6 @@
 # Next Issues
 
-## 1. Reduce SPDX Baseline Exceptions
-
-Acceptance:
-- Add SPDX headers to one small, reviewable group of existing first-party files.
-- Remove those paths from `docs/SPDX_EXCEPTIONS.txt`.
-- Keep `projectname_spdx_check` passing.
-
-## 2. Harden CI Caching and Smoke Coverage
+## 1. Harden CI Caching and Smoke Coverage
 
 Acceptance:
 - Cache JUCE/nlohmann FetchContent downloads where appropriate without committing
@@ -15,7 +8,7 @@ Acceptance:
 - Confirm `projectname_app_smoke` runs reliably on Windows CI with MSVC.
 - Add a core-only CI job for a second host OS before expanding app packaging.
 
-## 3. Replace Deterministic Save/Open With Native Project Choosers
+## 2. Replace Deterministic Save/Open With Native Project Choosers
 
 Acceptance:
 - Add native file chooser actions for New, Save As, and Open.
@@ -26,7 +19,7 @@ Acceptance:
 - Surface missing or invalid manifest errors in the app UI without replacing the
   current project.
 
-## 4. Design the Audio/MIDI First-Run Setup Flow
+## 3. Design the Audio/MIDI First-Run Setup Flow
 
 Acceptance:
 - Create a short UX note for first-run device setup.
@@ -34,7 +27,7 @@ Acceptance:
 - Add a non-modal path back to the Audio/MIDI setup dialog.
 - Keep the first implementation separate from plugin scanning.
 
-## 5. Add Package Media Restore Entry Selection Model
+## 4. Add Package Media Restore Entry Selection Model
 
 Acceptance:
 - Add a plain C++ selection model for restorable entries in the selected cleanup
@@ -45,3 +38,11 @@ Acceptance:
   path set deliberately.
 - Cover restored, conflict, partial-failure, stale-path, and empty-selection
   states with unit tests.
+
+## 5. Continue SPDX Baseline Reduction for App/Core Sources
+
+Acceptance:
+- Add SPDX headers to one small, reviewable group of legacy app or core source
+  files.
+- Remove those paths from `docs/SPDX_EXCEPTIONS.txt`.
+- Keep `projectname_spdx_check` passing.

@@ -17,13 +17,6 @@ docs/MILESTONES.md
 docs/PLUGIN_POLICY.md
 docs/REFERENCES.md
 docs/UX_PRINCIPLES.md
-docs/adr/ADR-0001-technology-stack.md
-docs/adr/ADR-0002-core-manifest-json.md
-docs/adr/ADR-0003-win32-fallback-verification-app.md
-docs/adr/ADR-0004-app-session-boundary.md
-docs/adr/ADR-0005-core-audio-engine-stub.md
-docs/adr/ADR-0006-project-device-chain-placeholders.md
-docs/adr/ADR-0007-project-manifest-backups.md
 docs/issues/NEXT-ISSUES.md
 src/app/Main.cpp
 src/app/MainComponent.cpp
