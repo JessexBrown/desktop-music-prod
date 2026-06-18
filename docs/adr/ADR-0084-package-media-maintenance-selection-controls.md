@@ -46,6 +46,6 @@ plugin scanning, or file I/O on the audio callback.
 
 ## Follow-Ups
 
-- Add a guarded restore action affordance for selected restorable batches.
+- Add a guarded cleanup/quarantine affordance for cleanup candidates.
 - Add a non-mutating preview/details surface for selected cleanup batch entries.
 - Define retention rules before any permanent deletion command.

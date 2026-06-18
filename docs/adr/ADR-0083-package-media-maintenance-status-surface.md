@@ -53,6 +53,5 @@ I/O on the audio callback.
 
 ## Follow-Ups
 
-- Add guarded restore controls for selected cleanup batches.
-- Add restore execution through the existing background cleanup job.
+- Add guarded cleanup controls for package media cleanup candidates.
 - Define retention rules before any permanent deletion command.

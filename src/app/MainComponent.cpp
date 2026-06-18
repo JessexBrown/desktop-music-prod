@@ -1,6 +1,7 @@
 #include "MainComponent.h"
 
 #include "core/AppCommandRegistry.h"
+#include "core/BackgroundPackageMediaCleanupJob.h"
 #include "core/ImportedMediaPackageInventory.h"
 #include "core/PackageMediaCleanupBatchDiscovery.h"
 #include "core/PackageMediaMaintenanceBrowserRows.h"
@@ -205,6 +206,32 @@ void setButtonEnabledFromCommand(juce::Button& button,
     return "Preparing media relink";
 }
 
+[[nodiscard]] juce::String formatPackageMediaCleanupPhase(
+    projectname::BackgroundPackageMediaCleanupPhase phase)
+{
+    switch (phase)
+    {
+        case projectname::BackgroundPackageMediaCleanupPhase::pending:
+            return "Preparing package media restore";
+        case projectname::BackgroundPackageMediaCleanupPhase::inventory:
+            return "Scanning package media";
+        case projectname::BackgroundPackageMediaCleanupPhase::preflight:
+            return "Checking package media cleanup";
+        case projectname::BackgroundPackageMediaCleanupPhase::quarantining:
+            return "Moving unused package media";
+        case projectname::BackgroundPackageMediaCleanupPhase::restoring:
+            return "Restoring package media";
+        case projectname::BackgroundPackageMediaCleanupPhase::completed:
+            return "Package media cleanup completed";
+        case projectname::BackgroundPackageMediaCleanupPhase::failed:
+            return "Package media cleanup failed";
+        case projectname::BackgroundPackageMediaCleanupPhase::cancelled:
+            return "Package media cleanup cancelled";
+    }
+
+    return "Preparing package media restore";
+}
+
 [[nodiscard]] std::int64_t makeTimelineVoiceWindowFrameCount(
     const projectname::AudioDeviceSummary& summary,
     double sampleRateHz) noexcept
@@ -282,14 +309,8 @@ void setButtonEnabledFromCommand(juce::Button& button,
 }
 
 [[nodiscard]] std::vector<WorkspacePanelRow> makePackageMediaMaintenancePanelRows(
-    const projectname::PackageMediaMaintenanceViewModel& model,
-    bool hasSnapshot,
-    bool scanRunning)
+    const projectname::PackageMediaMaintenanceBrowserRows& modelRows)
 {
-    const auto modelRows = projectname::buildPackageMediaMaintenanceBrowserRows(
-        model,
-        { hasSnapshot, scanRunning, 2 });
-
     std::vector<WorkspacePanelRow> panelRows;
     panelRows.reserve(modelRows.rows.size());
     for (const auto& row : modelRows.rows)
@@ -340,6 +361,7 @@ WorkspacePanel::WorkspacePanel(juce::String title, juce::String subtitle, juce::
     configureButton(zoomOutViewportButton_, juce::Colour(0xffc6ccd5));
     configureButton(zoomInViewportButton_, juce::Colour(0xffc6ccd5));
     configureButton(panRightViewportButton_, juce::Colour(0xffc6ccd5));
+    configureButton(actionButton_, accent);
 
     panLeftViewportButton_.setTooltip("Pan timeline view left");
     resetViewportButton_.setTooltip("Reset timeline view to the project start");
@@ -348,6 +370,7 @@ WorkspacePanel::WorkspacePanel(juce::String title, juce::String subtitle, juce::
     zoomOutViewportButton_.setTooltip("Zoom timeline view out");
     zoomInViewportButton_.setTooltip("Zoom timeline view in");
     panRightViewportButton_.setTooltip("Pan timeline view right");
+    actionButton_.setTooltip("Run panel action");
 
     panLeftViewportButton_.onClick = [this]()
     {
@@ -384,6 +407,11 @@ WorkspacePanel::WorkspacePanel(juce::String title, juce::String subtitle, juce::
         if (timelinePanRightControlRequested_)
             timelinePanRightControlRequested_();
     };
+    actionButton_.onClick = [this]()
+    {
+        if (panelActionRequested_)
+            panelActionRequested_();
+    };
 
     addChildComponent(panLeftViewportButton_);
     addChildComponent(resetViewportButton_);
@@ -392,6 +420,8 @@ WorkspacePanel::WorkspacePanel(juce::String title, juce::String subtitle, juce::
     addChildComponent(zoomOutViewportButton_);
     addChildComponent(zoomInViewportButton_);
     addChildComponent(panRightViewportButton_);
+    addChildComponent(actionButton_);
+    actionButton_.setVisible(false);
 }
 
 void WorkspacePanel::paint(juce::Graphics& graphics)
@@ -420,6 +450,8 @@ void WorkspacePanel::paint(juce::Graphics& graphics)
     auto subtitleArea = content.removeFromTop(22);
     if (shouldShowViewportControls())
         subtitleArea.removeFromRight(getViewportControlBounds().getWidth() + 10);
+    if (shouldShowActionButton())
+        subtitleArea.removeFromRight(getActionButtonBounds().getWidth() + 10);
     graphics.drawFittedText(subtitle_, subtitleArea, juce::Justification::centredLeft, 1);
 
     content.removeFromTop(10);
@@ -518,6 +550,17 @@ juce::Rectangle<int> WorkspacePanel::getViewportControlBounds() const
     return subtitleArea.removeFromRight(228).reduced(0, 1);
 }
 
+juce::Rectangle<int> WorkspacePanel::getActionButtonBounds() const
+{
+    auto content = getLocalBounds().reduced(16);
+    content.removeFromTop(24);
+    auto subtitleArea = content.removeFromTop(22);
+    if (shouldShowViewportControls())
+        subtitleArea.removeFromRight(getViewportControlBounds().getWidth() + 10);
+
+    return subtitleArea.removeFromRight(82).reduced(0, 1);
+}
+
 bool WorkspacePanel::shouldShowViewportControls() const
 {
     return timelinePanLeftControlRequested_
@@ -527,6 +570,11 @@ bool WorkspacePanel::shouldShowViewportControls() const
         || timelineZoomOutControlRequested_
         || timelineZoomInControlRequested_
         || timelinePanRightControlRequested_;
+}
+
+bool WorkspacePanel::shouldShowActionButton() const
+{
+    return actionButton_.isVisible();
 }
 
 void WorkspacePanel::resized()
@@ -540,23 +588,26 @@ void WorkspacePanel::resized()
     zoomInViewportButton_.setVisible(visible);
     panRightViewportButton_.setVisible(visible);
 
-    if (!visible)
-        return;
+    if (visible)
+    {
+        auto controls = getViewportControlBounds();
+        panLeftViewportButton_.setBounds(controls.removeFromLeft(28));
+        controls.removeFromLeft(4);
+        resetViewportButton_.setBounds(controls.removeFromLeft(28));
+        controls.removeFromLeft(4);
+        fitClipsViewportButton_.setBounds(controls.removeFromLeft(36));
+        controls.removeFromLeft(4);
+        centerSelectedViewportButton_.setBounds(controls.removeFromLeft(28));
+        controls.removeFromLeft(4);
+        zoomOutViewportButton_.setBounds(controls.removeFromLeft(28));
+        controls.removeFromLeft(4);
+        zoomInViewportButton_.setBounds(controls.removeFromLeft(28));
+        controls.removeFromLeft(4);
+        panRightViewportButton_.setBounds(controls.removeFromLeft(28));
+    }
 
-    auto controls = getViewportControlBounds();
-    panLeftViewportButton_.setBounds(controls.removeFromLeft(28));
-    controls.removeFromLeft(4);
-    resetViewportButton_.setBounds(controls.removeFromLeft(28));
-    controls.removeFromLeft(4);
-    fitClipsViewportButton_.setBounds(controls.removeFromLeft(36));
-    controls.removeFromLeft(4);
-    centerSelectedViewportButton_.setBounds(controls.removeFromLeft(28));
-    controls.removeFromLeft(4);
-    zoomOutViewportButton_.setBounds(controls.removeFromLeft(28));
-    controls.removeFromLeft(4);
-    zoomInViewportButton_.setBounds(controls.removeFromLeft(28));
-    controls.removeFromLeft(4);
-    panRightViewportButton_.setBounds(controls.removeFromLeft(28));
+    if (shouldShowActionButton())
+        actionButton_.setBounds(getActionButtonBounds());
 }
 
 void WorkspacePanel::mouseDown(const juce::MouseEvent& event)
@@ -738,6 +789,26 @@ void WorkspacePanel::setSelectableRowKeyboardSelectionCallbacks(std::function<vo
 {
     previousSelectableRowRequested_ = std::move(previousCallback);
     nextSelectableRowRequested_ = std::move(nextCallback);
+    repaint();
+}
+
+void WorkspacePanel::setPanelAction(juce::String text,
+                                    bool enabled,
+                                    juce::String tooltip,
+                                    std::function<void()> callback)
+{
+    const auto wasVisible = shouldShowActionButton();
+    panelActionRequested_ = std::move(callback);
+    actionButton_.setButtonText(text);
+    actionButton_.setTooltip(tooltip);
+    actionButton_.setEnabled(enabled);
+    actionButton_.setVisible(!text.isEmpty() && static_cast<bool>(panelActionRequested_));
+
+    if (wasVisible != shouldShowActionButton())
+        resized();
+    else if (shouldShowActionButton())
+        actionButton_.setBounds(getActionButtonBounds());
+
     repaint();
 }
 
@@ -996,10 +1067,13 @@ MainComponent::~MainComponent()
         mediaRelinkPreparationJob_->requestCancel();
     if (timelinePlaybackPreparationJob_ != nullptr)
         timelinePlaybackPreparationJob_->requestCancel();
+    if (packageMediaCleanupJob_ != nullptr)
+        packageMediaCleanupJob_->requestCancel();
 
     audioImportJob_.reset();
     mediaRelinkPreparationJob_.reset();
     timelinePlaybackPreparationJob_.reset();
+    packageMediaCleanupJob_.reset();
     if (packageMediaMaintenanceScan_.valid())
         packageMediaMaintenanceScan_.wait();
     audioService_.shutdown();
@@ -1166,6 +1240,7 @@ void MainComponent::timerCallback()
     pollAudioImportJob();
     pollMediaRelinkPreparationJob();
     pollTimelinePlaybackPreparationJob();
+    pollPackageMediaCleanupJob();
     pollPackageMediaMaintenanceScan();
     session_.advanceSeconds(1.0 / 30.0);
     updateTransportLabels();
@@ -1298,7 +1373,8 @@ projectname::AppCommandRegistry MainComponent::buildAppCommandRegistry() const
         audioImportChooser_ == nullptr
         && mediaRelinkChooser_ == nullptr
         && audioImportJob_ == nullptr
-        && mediaRelinkPreparationJob_ == nullptr;
+        && mediaRelinkPreparationJob_ == nullptr
+        && packageMediaCleanupJob_ == nullptr;
     availability.canCancelImport = audioImportJob_ != nullptr && canCancelAudioImport_;
     availability.canCancelTimelinePreparation =
         timelinePlaybackPreparationJob_ != nullptr && canCancelTimelinePlaybackPreparation_;
@@ -2164,6 +2240,86 @@ void MainComponent::applyCompletedTimelinePlaybackPreparation(
     setStatus("Playing generated tone - " + juce::String(completion.message));
 }
 
+bool MainComponent::hasActivePackageFileWork() const
+{
+    return audioImportJob_ != nullptr
+        || mediaRelinkPreparationJob_ != nullptr
+        || timelinePlaybackPreparationJob_ != nullptr
+        || packageMediaCleanupJob_ != nullptr;
+}
+
+void MainComponent::pollPackageMediaCleanupJob()
+{
+    if (packageMediaCleanupJob_ == nullptr)
+        return;
+
+    updatePackageMediaCleanupProgress(packageMediaCleanupJob_->getProgress());
+
+    if (!packageMediaCleanupJob_->isReady())
+        return;
+
+    auto result = packageMediaCleanupJob_->waitForResult();
+    packageMediaCleanupJob_.reset();
+    refreshAppCommandEnabledState();
+    applyCompletedPackageMediaCleanup(std::move(result));
+}
+
+void MainComponent::updatePackageMediaCleanupProgress(
+    const projectname::BackgroundPackageMediaCleanupProgress& progress)
+{
+    auto status = formatPackageMediaCleanupPhase(progress.phase)
+        + " - " + juce::String(progress.percent) + "%";
+
+    if (progress.cancelRequested
+        && progress.phase != projectname::BackgroundPackageMediaCleanupPhase::completed
+        && progress.phase != projectname::BackgroundPackageMediaCleanupPhase::failed)
+    {
+        status = "Cancelling package media restore - " + juce::String(progress.percent) + "%";
+    }
+
+    setStatus(status);
+}
+
+void MainComponent::applyCompletedPackageMediaCleanup(
+    projectname::BackgroundPackageMediaCleanupResult result)
+{
+    requestPackageMediaMaintenanceRefresh();
+    refreshWorkspaceTimelineLane();
+    refreshInspectorPanel();
+    refreshBrowserPanel();
+
+    if (result.cancelled)
+    {
+        setStatus("Package media restore cancelled");
+        return;
+    }
+
+    if (result.operation != projectname::BackgroundPackageMediaCleanupOperation::restore)
+    {
+        if (result.error.empty())
+            setStatus("Package media cleanup completed");
+        else
+            setStatus("Package media cleanup failed: " + juce::String(result.error));
+        return;
+    }
+
+    if (result.restore.status == projectname::PackageMediaQuarantineRestoreCommandStatus::restored)
+    {
+        auto status = "Restored "
+            + juce::String(static_cast<int>(result.restore.restoredCount))
+            + " package media item";
+        if (result.restore.restoredCount != 1)
+            status += "s";
+        setStatus(status);
+        return;
+    }
+
+    auto failure = result.error.empty()
+        ? juce::String("Package media restore failed")
+        : juce::String("Package media restore failed: ") + juce::String(result.error);
+    setStatus(failure);
+}
+
 void MainComponent::requestPackageMediaMaintenanceRefresh()
 {
     if (packageMediaMaintenanceScan_.valid())
@@ -2184,10 +2340,7 @@ void MainComponent::requestPackageMediaMaintenanceRefresh()
     const auto generation = ++packageMediaMaintenanceScanGeneration_;
     const auto packageDirectory = getDefaultProjectPackagePath();
     const auto selectedCleanupId = selectedPackageMediaCleanupId_;
-    const auto packageWorkInProgress =
-        audioImportJob_ != nullptr
-        || mediaRelinkPreparationJob_ != nullptr
-        || timelinePlaybackPreparationJob_ != nullptr;
+    const auto packageWorkInProgress = hasActivePackageFileWork();
 
     packageMediaMaintenanceScan_ = std::async(std::launch::async,
                                               runPackageMediaMaintenanceScan,
@@ -2230,13 +2383,43 @@ void MainComponent::refreshBrowserPanel()
     const auto scanRunning =
         packageMediaMaintenanceScan_.valid()
         && packageMediaMaintenanceScan_.wait_for(std::chrono::seconds(0)) != std::future_status::ready;
+    const auto modelRows = projectname::buildPackageMediaMaintenanceBrowserRows(
+        packageMediaMaintenanceViewModel_,
+        { hasPackageMediaMaintenanceSnapshot_, scanRunning, 2 });
+
+    auto restoreEnabled = modelRows.restoreAction.enabled && !scanRunning && !hasActivePackageFileWork();
+    auto restoreTooltip = juce::String("Restore selected cleanup batch");
+    if (!modelRows.restoreAction.disabledReason.empty())
+        restoreTooltip = juce::String(modelRows.restoreAction.disabledReason);
+    if (scanRunning)
+    {
+        restoreEnabled = false;
+        restoreTooltip = "Waiting for package media scan";
+    }
+    else if (packageMediaCleanupJob_ != nullptr)
+    {
+        restoreEnabled = false;
+        restoreTooltip = "Package media restore is already running";
+    }
+    else if (hasActivePackageFileWork())
+    {
+        restoreEnabled = false;
+        restoreTooltip = "Package files are busy";
+    }
 
     browserPanel_.setSubtitle(scanRunning
                                   ? "Project assets and media scan running"
                                   : "Project assets and media maintenance");
-    browserPanel_.setRows(makePackageMediaMaintenancePanelRows(packageMediaMaintenanceViewModel_,
-                                                               hasPackageMediaMaintenanceSnapshot_,
-                                                               scanRunning));
+    browserPanel_.setRows(makePackageMediaMaintenancePanelRows(modelRows));
+    browserPanel_.setPanelAction(modelRows.restoreAction.visible
+                                     ? juce::String(modelRows.restoreAction.text)
+                                     : juce::String(),
+                                 restoreEnabled,
+                                 restoreTooltip,
+                                 [this]()
+                                 {
+                                     startPackageMediaRestore();
+                                 });
 }
 
 void MainComponent::selectPackageMediaCleanupBatch(std::string cleanupId)
@@ -2284,6 +2467,75 @@ void MainComponent::selectAdjacentPackageMediaCleanupBatch(
     }
 
     selectPackageMediaCleanupBatch(std::move(cleanupId));
+}
+
+void MainComponent::startPackageMediaRestore()
+{
+    if (packageMediaCleanupJob_ != nullptr)
+    {
+        setStatus("Package media restore is already running");
+        return;
+    }
+
+    if (!hasPackageMediaMaintenanceSnapshot_)
+    {
+        setStatus("Package media restore unavailable: waiting for scan");
+        refreshBrowserPanel();
+        return;
+    }
+
+    if (!packageMediaMaintenanceViewModel_.hasSelectedBatch)
+    {
+        setStatus("Package media restore unavailable: select a cleanup batch");
+        refreshBrowserPanel();
+        return;
+    }
+
+    if (!packageMediaMaintenanceViewModel_.restoreActionEnabled)
+    {
+        auto reason = packageMediaMaintenanceViewModel_.restoreUnavailableReason.empty()
+            ? juce::String("selected cleanup batch cannot be restored")
+            : juce::String(packageMediaMaintenanceViewModel_.restoreUnavailableReason);
+        setStatus("Package media restore unavailable: " + reason);
+        refreshBrowserPanel();
+        return;
+    }
+
+    if (hasActivePackageFileWork())
+    {
+        setStatus("Package media restore unavailable: package files are busy");
+        refreshBrowserPanel();
+        return;
+    }
+
+    const auto selectedIndex =
+        static_cast<std::size_t>(packageMediaMaintenanceViewModel_.selectedBatchIndex);
+    if (selectedIndex >= packageMediaMaintenanceViewModel_.batches.size())
+    {
+        setStatus("Package media restore unavailable: selected batch is stale");
+        refreshBrowserPanel();
+        return;
+    }
+
+    const auto selectedBatch = packageMediaMaintenanceViewModel_.batches[selectedIndex];
+    if (selectedBatch.manifestPath.empty())
+    {
+        setStatus("Package media restore unavailable: restore manifest path is missing");
+        refreshBrowserPanel();
+        return;
+    }
+
+    projectname::BackgroundPackageMediaCleanupRequest request;
+    request.operation = projectname::BackgroundPackageMediaCleanupOperation::restore;
+    request.packageDirectory = getDefaultProjectPackagePath();
+    request.restoreManifestPath = selectedBatch.manifestPath;
+
+    packageMediaCleanupJob_ =
+        std::make_unique<projectname::BackgroundPackageMediaCleanupJob>(std::move(request));
+    packageMediaCleanupJob_->start();
+    refreshAppCommandEnabledState();
+    refreshBrowserPanel();
+    setStatus("Restoring cleanup batch: " + juce::String(selectedBatch.cleanupId));
 }
 
 void MainComponent::refreshWorkspaceTimelineLane()
@@ -2348,7 +2600,8 @@ void MainComponent::refreshInspectorRelinkButtonState()
         && mediaRelinkChooser_ == nullptr
         && audioImportJob_ == nullptr
         && mediaRelinkPreparationJob_ == nullptr
-        && timelinePlaybackPreparationJob_ == nullptr;
+        && timelinePlaybackPreparationJob_ == nullptr
+        && packageMediaCleanupJob_ == nullptr;
 
     inspectorStartBeatLabel_.setVisible(showStartBeatEdit);
     inspectorStartBeatEditor_.setVisible(showStartBeatEdit);

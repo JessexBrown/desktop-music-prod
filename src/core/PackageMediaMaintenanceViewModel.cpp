@@ -113,6 +113,8 @@ namespace
     PackageMediaMaintenanceBatchRow row;
     row.cleanupId = batch.cleanupId;
     row.createdAtUtc = batch.createdAtUtc;
+    row.manifestRelativePath = batch.manifestRelativePath;
+    row.manifestPath = batch.manifestPath;
     row.status = batch.status;
     row.movedEntryCount = batch.manifest.movedEntries.size();
     row.restoredEntryCount = countRestoredEntries(batch.manifest);

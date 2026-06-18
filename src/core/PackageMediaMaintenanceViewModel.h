@@ -7,6 +7,7 @@
 #include "PackageMediaCleanupStatus.h"
 
 #include <cstddef>
+#include <filesystem>
 #include <string>
 #include <vector>
 
@@ -16,6 +17,8 @@ struct PackageMediaMaintenanceBatchRow
 {
     std::string cleanupId;
     std::string createdAtUtc;
+    std::filesystem::path manifestRelativePath;
+    std::filesystem::path manifestPath;
     PackageMediaCleanupStatus status;
     std::size_t movedEntryCount = 0;
     std::size_t restoredEntryCount = 0;

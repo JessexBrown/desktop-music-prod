@@ -3486,6 +3486,8 @@ void packageMediaMaintenanceBrowserRowsRenderSelectableBatchState()
                "Maintenance browser rows have no selectable rows before scan snapshot");
         expect(rows.selectedRowIndex < 0,
                "Maintenance browser rows have no selected row before scan snapshot");
+        expect(!rows.restoreAction.visible && !rows.restoreAction.enabled,
+               "Maintenance browser restore action stays hidden before scan snapshot");
     }
 
     {
@@ -3502,6 +3504,10 @@ void packageMediaMaintenanceBrowserRowsRenderSelectableBatchState()
                "Maintenance browser rows render empty batch selection state");
         expect(countSelectableMaintenanceBrowserRows(rows) == 0,
                "Maintenance browser rows expose no selectable rows for empty batches");
+        expect(rows.restoreAction.visible && !rows.restoreAction.enabled,
+               "Maintenance browser restore action is visible but disabled without selection");
+        expect(rows.restoreAction.disabledReason.find("Select") != std::string::npos,
+               "Maintenance browser restore action exposes no-selection disabled reason");
     }
 
     const auto package = makeTemporaryPackagePath("projectname-maintenance-browser-rows-test");
@@ -3547,6 +3553,13 @@ void packageMediaMaintenanceBrowserRowsRenderSelectableBatchState()
            "Maintenance browser rows cap visible selectable batch rows");
     expect(oldestSelectedRows.selectedRowIndex >= 0,
            "Maintenance browser rows expose selected row index for UI focus painting");
+    expect(oldestSelectedModel.batches[static_cast<std::size_t>(oldestSelectedModel.selectedBatchIndex)]
+                   .manifestPath.filename() == "restore-manifest.json",
+           "Maintenance view model carries restore manifest path for selected batch");
+    expect(oldestSelectedRows.restoreAction.visible && oldestSelectedRows.restoreAction.enabled,
+           "Maintenance browser restore action enables for restorable selected batch");
+    expect(oldestSelectedRows.restoreAction.disabledReason.empty(),
+           "Maintenance browser restore action has no disabled reason when enabled");
 
     auto staleSelectionModel =
         projectname::selectPackageMediaMaintenanceBatch(oldestSelectedModel, "missing-selection");
@@ -3558,9 +3571,33 @@ void packageMediaMaintenanceBrowserRowsRenderSelectableBatchState()
     const auto* partialRow = findMaintenanceBrowserBatchRow(staleSelectionRows, partialId);
     expect(partialRow != nullptr && partialRow->selected,
            "Maintenance browser rows render stale-selection fallback as selected");
+    expect(staleSelectionRows.restoreAction.visible && !staleSelectionRows.restoreAction.enabled,
+           "Maintenance browser restore action disables for partial-failure fallback");
+    expect(staleSelectionRows.restoreAction.disabledReason.find("partial restore failures")
+               != std::string::npos,
+           "Maintenance browser restore action carries partial-failure disabled reason");
 
     auto conflictSelectionModel =
         projectname::selectPackageMediaMaintenanceBatch(staleSelectionModel, conflictId);
+    const auto conflictRows = projectname::buildPackageMediaMaintenanceBrowserRows(
+        conflictSelectionModel,
+        { true, false, 2 });
+    expect(conflictRows.restoreAction.visible && !conflictRows.restoreAction.enabled,
+           "Maintenance browser restore action disables for conflict batch");
+    expect(conflictRows.restoreAction.disabledReason.find("conflicts") != std::string::npos,
+           "Maintenance browser restore action carries conflict disabled reason");
+
+    const auto restoredSelectionModel =
+        projectname::selectPackageMediaMaintenanceBatch(conflictSelectionModel, restoredId);
+    const auto restoredRows = projectname::buildPackageMediaMaintenanceBrowserRows(
+        restoredSelectionModel,
+        { true, false, 2 });
+    expect(restoredRows.restoreAction.visible && !restoredRows.restoreAction.enabled,
+           "Maintenance browser restore action disables for already-restored batch");
+    expect(restoredRows.restoreAction.disabledReason.find("already been restored")
+               != std::string::npos,
+           "Maintenance browser restore action carries restored-batch disabled reason");
+
     expect(projectname::selectAdjacentPackageMediaCleanupId(
                conflictSelectionModel,
                projectname::PackageMediaMaintenanceBrowserSelectionDirection::previous) == partialId,

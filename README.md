@@ -187,6 +187,10 @@ Third-party dependencies remain under their own licenses as recorded in
 - Package media maintenance cleanup batch rows are mouse selectable and
   keyboard selectable from the browser panel while cleanup/restore execution
   remains out of scope.
+- The Package Maintenance browser surface has a guarded Restore affordance for
+  selected restorable cleanup batches. Restore runs through the background
+  package media cleanup job and stays disabled with visible reasons for
+  non-restorable states.
 - A plain C++ track voice scheduler turns timeline clip plans, render windows,
   and track gain/pan/mute/solo snapshots into mixer-ready voice descriptors.
 - Project track volume, pan, mute, and solo state is persisted and fed into
@@ -487,4 +491,6 @@ or use `ctest --preset dev --output-on-failure`.
   first visible read-only Package Maintenance status surface.
 - `docs/adr/ADR-0084-package-media-maintenance-selection-controls.md` records
   Package Maintenance cleanup-batch selection controls.
+- `docs/adr/ADR-0085-package-media-maintenance-restore-guard.md` records the
+  guarded Package Maintenance restore affordance.
 - `docs/issues/NEXT-ISSUES.md` lists the next five small tasks.

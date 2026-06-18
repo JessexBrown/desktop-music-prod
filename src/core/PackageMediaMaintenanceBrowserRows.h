@@ -39,9 +39,18 @@ struct PackageMediaMaintenanceBrowserRowsOptions
     std::size_t maxBatchRows = 2;
 };
 
+struct PackageMediaMaintenanceBrowserAction
+{
+    std::string text;
+    bool visible = false;
+    bool enabled = false;
+    std::string disabledReason;
+};
+
 struct PackageMediaMaintenanceBrowserRows
 {
     std::vector<PackageMediaMaintenanceBrowserRow> rows;
+    PackageMediaMaintenanceBrowserAction restoreAction;
     int selectedRowIndex = -1;
 };
 

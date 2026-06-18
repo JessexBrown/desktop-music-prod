@@ -187,3 +187,10 @@ keyboard Up/Down when the browser has focus. Selection changes the displayed
 selected batch and restore readiness immediately, but it still does not run
 cleanup, restore, deletion, retention, plugin scanning, or package file
 mutation.
+
+The browser summary now exposes a guarded Restore affordance after a package
+maintenance snapshot exists. It is enabled only for selected cleanup batches
+that the maintenance view model marks restorable. Disabled states keep their
+reason visible in the browser/status text. Activated restore work runs through
+the background package media cleanup job; the UI never moves package files
+directly.

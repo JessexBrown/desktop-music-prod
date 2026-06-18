@@ -8,6 +8,7 @@
 #include "core/AudioDeviceService.h"
 #include "core/BackgroundAudioImportJob.h"
 #include "core/BackgroundMediaRelinkPreparationJob.h"
+#include "core/BackgroundPackageMediaCleanupJob.h"
 #include "core/BackgroundTimelinePlaybackPreparationJob.h"
 #include "core/ImportedClipInspector.h"
 #include "core/ImportedClipInspectorEditDraft.h"
@@ -62,6 +63,10 @@ public:
     void setSelectableRowCallback(std::function<void(std::string)> callback);
     void setSelectableRowKeyboardSelectionCallbacks(std::function<void()> previousCallback,
                                                     std::function<void()> nextCallback);
+    void setPanelAction(juce::String text,
+                        bool enabled,
+                        juce::String tooltip,
+                        std::function<void()> callback);
     [[nodiscard]] int getTimelineClipViewportWidthPixels() const;
     void setSubtitle(juce::String subtitle);
     void setLines(juce::StringArray lines);
@@ -72,8 +77,10 @@ private:
     [[nodiscard]] juce::Rectangle<int> getRowsContentBounds() const;
     [[nodiscard]] juce::Rectangle<int> getTimelineContentBounds() const;
     [[nodiscard]] juce::Rectangle<int> getViewportControlBounds() const;
+    [[nodiscard]] juce::Rectangle<int> getActionButtonBounds() const;
     [[nodiscard]] std::optional<std::size_t> hitTestSelectableRow(juce::Point<int> position) const;
     [[nodiscard]] bool shouldShowViewportControls() const;
+    [[nodiscard]] bool shouldShowActionButton() const;
     [[nodiscard]] bool shouldPaintKeyboardFocus() const;
     void paintTimelineClipLane(juce::Graphics& graphics, juce::Rectangle<int> bounds);
 
@@ -84,12 +91,14 @@ private:
     juce::TextButton zoomOutViewportButton_ { "-" };
     juce::TextButton zoomInViewportButton_ { "+" };
     juce::TextButton panRightViewportButton_ { ">" };
+    juce::TextButton actionButton_ { "Action" };
     juce::String title_;
     juce::String subtitle_;
     std::vector<WorkspacePanelRow> rows_;
     projectname::TimelineClipLaneLayout timelineClipLane_;
     std::function<void(std::string)> timelineClipSelected_;
     std::function<void(std::string)> selectableRowSelected_;
+    std::function<void()> panelActionRequested_;
     std::function<void()> previousTimelineClipRequested_;
     std::function<void()> nextTimelineClipRequested_;
     std::function<void()> previousSelectableRowRequested_;
@@ -154,21 +163,27 @@ private:
     void pollAudioImportJob();
     void pollMediaRelinkPreparationJob();
     void pollTimelinePlaybackPreparationJob();
+    void pollPackageMediaCleanupJob();
     void pollPackageMediaMaintenanceScan();
     void updateAudioImportProgress(const projectname::BackgroundAudioImportProgress& progress);
     void updateMediaRelinkPreparationProgress(
         const projectname::BackgroundMediaRelinkPreparationProgress& progress);
     void updateTimelinePlaybackPreparationProgress(
         const projectname::BackgroundTimelinePlaybackPreparationProgress& progress);
+    void updatePackageMediaCleanupProgress(
+        const projectname::BackgroundPackageMediaCleanupProgress& progress);
     void applyCompletedAudioImport(projectname::BackgroundAudioImportResult result);
     void applyCompletedMediaRelinkPreparation(projectname::BackgroundMediaRelinkPreparationResult result);
     void applyCompletedTimelinePlaybackPreparation(projectname::BackgroundTimelinePlaybackPreparationResult result);
+    void applyCompletedPackageMediaCleanup(projectname::BackgroundPackageMediaCleanupResult result);
     void requestPackageMediaMaintenanceRefresh();
     void applyPackageMediaMaintenanceScanResult(PackageMediaMaintenanceScanResult result);
     void refreshBrowserPanel();
     void selectPackageMediaCleanupBatch(std::string cleanupId);
     void selectAdjacentPackageMediaCleanupBatch(
         projectname::PackageMediaMaintenanceBrowserSelectionDirection direction);
+    void startPackageMediaRestore();
+    [[nodiscard]] bool hasActivePackageFileWork() const;
     void refreshWorkspaceTimelineLane();
     void refreshInspectorPanel();
     void refreshInspectorStartBeatControl(const projectname::ImportedClipInspectorState& inspector);
@@ -222,6 +237,7 @@ private:
     std::unique_ptr<projectname::BackgroundAudioImportJob> audioImportJob_;
     std::unique_ptr<projectname::BackgroundMediaRelinkPreparationJob> mediaRelinkPreparationJob_;
     std::unique_ptr<projectname::BackgroundTimelinePlaybackPreparationJob> timelinePlaybackPreparationJob_;
+    std::unique_ptr<projectname::BackgroundPackageMediaCleanupJob> packageMediaCleanupJob_;
     std::future<PackageMediaMaintenanceScanResult> packageMediaMaintenanceScan_;
     projectname::PackageMediaMaintenanceViewModel packageMediaMaintenanceViewModel_;
     bool hasPackageMediaMaintenanceSnapshot_ = false;

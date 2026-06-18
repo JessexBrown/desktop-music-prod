@@ -78,6 +78,19 @@ namespace
     return "Restore: unavailable";
 }
 
+[[nodiscard]] std::string restoreDisabledReason(const PackageMediaMaintenanceViewModel& model)
+{
+    if (model.restoreActionEnabled)
+        return {};
+
+    if (!model.restoreUnavailableReason.empty())
+        return model.restoreUnavailableReason;
+
+    return model.hasSelectedBatch
+        ? "Selected cleanup batch cannot be restored."
+        : "Select a cleanup batch to restore.";
+}
+
 [[nodiscard]] std::string makeBatchLine(
     const PackageMediaMaintenanceBatchRow& row,
     std::size_t batchIndex)
@@ -135,6 +148,13 @@ PackageMediaMaintenanceBrowserRows buildPackageMediaMaintenanceBrowserRows(
     PackageMediaMaintenanceBrowserRowsOptions options)
 {
     PackageMediaMaintenanceBrowserRows rows;
+    rows.restoreAction.text = "Restore";
+    rows.restoreAction.visible = options.hasSnapshot;
+    rows.restoreAction.enabled = options.hasSnapshot && model.restoreActionEnabled;
+    rows.restoreAction.disabledReason = options.hasSnapshot
+        ? restoreDisabledReason(model)
+        : "Waiting for package media scan.";
+
     addRow(rows,
            PackageMediaMaintenanceBrowserRowKind::library,
            "Library: Samples / Plugins / Presets");

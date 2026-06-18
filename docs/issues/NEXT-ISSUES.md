@@ -34,14 +34,15 @@ Acceptance:
 - Add a non-modal path back to the Audio/MIDI setup dialog.
 - Keep the first implementation separate from plugin scanning.
 
-## 5. Add Package Media Maintenance Restore Action Guard
+## 5. Add Package Media Maintenance Cleanup Action Guard
 
 Acceptance:
-- Add a visible but guarded restore affordance for the selected cleanup batch.
-- Enable it only when `PackageMediaMaintenanceViewModel` reports restore-ready
-  state; otherwise surface the disabled reason in the status/browser area.
+- Add a visible but guarded cleanup/quarantine affordance for current package
+  media cleanup candidates.
+- Enable it only when the maintenance model reports cleanup review is available
+  and no package file work is active; otherwise surface the disabled reason.
 - Keep permanent deletion and retention policy out of this task.
-- Run any restore through the existing background package media cleanup job;
+- Run any cleanup/quarantine through the existing background package media cleanup job;
   never move package files on the UI or audio thread.
-- Cover enabled, disabled, conflict, restored, and no-selection states with
-  model/UI tests where practical.
+- Cover enabled, disabled, missing-reference, unsafe-reference, active-work, and
+  empty-candidate states with model/UI tests where practical.
