@@ -71,6 +71,8 @@ add_library(projectname_core
     src/core/PackagePath.h
     src/core/PackageMediaCleanupBatchDiscovery.cpp
     src/core/PackageMediaCleanupBatchDiscovery.h
+    src/core/PackageMediaMaintenanceBrowserRows.cpp
+    src/core/PackageMediaMaintenanceBrowserRows.h
     src/core/PackageMediaMaintenanceViewModel.cpp
     src/core/PackageMediaMaintenanceViewModel.h
     src/core/PackageMediaCleanupStatus.cpp

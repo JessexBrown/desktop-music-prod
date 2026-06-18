@@ -1,0 +1,61 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+#pragma once
+
+#include "PackageMediaMaintenanceViewModel.h"
+
+#include <cstddef>
+#include <string>
+#include <vector>
+
+namespace projectname
+{
+enum class PackageMediaMaintenanceBrowserRowKind
+{
+    library,
+    scanState,
+    mediaStatus,
+    candidateSummary,
+    batchCount,
+    selectedBatch,
+    restoreSummary,
+    batch,
+    discoveryIssues,
+};
+
+struct PackageMediaMaintenanceBrowserRow
+{
+    PackageMediaMaintenanceBrowserRowKind kind = PackageMediaMaintenanceBrowserRowKind::library;
+    std::string text;
+    std::string cleanupId;
+    bool selectable = false;
+    bool selected = false;
+};
+
+struct PackageMediaMaintenanceBrowserRowsOptions
+{
+    bool hasSnapshot = false;
+    bool scanRunning = false;
+    std::size_t maxBatchRows = 2;
+};
+
+struct PackageMediaMaintenanceBrowserRows
+{
+    std::vector<PackageMediaMaintenanceBrowserRow> rows;
+    int selectedRowIndex = -1;
+};
+
+enum class PackageMediaMaintenanceBrowserSelectionDirection
+{
+    previous,
+    next,
+};
+
+[[nodiscard]] PackageMediaMaintenanceBrowserRows buildPackageMediaMaintenanceBrowserRows(
+    const PackageMediaMaintenanceViewModel& model,
+    PackageMediaMaintenanceBrowserRowsOptions options);
+
+[[nodiscard]] std::string selectAdjacentPackageMediaCleanupId(
+    const PackageMediaMaintenanceViewModel& model,
+    PackageMediaMaintenanceBrowserSelectionDirection direction);
+} // namespace projectname

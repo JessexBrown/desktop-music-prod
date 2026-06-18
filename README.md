@@ -184,6 +184,9 @@ Third-party dependencies remain under their own licenses as recorded in
 - The JUCE browser panel shows the first read-only package media maintenance
   surface from a background snapshot: inventory status, cleanup batch rows,
   selected batch state, restore readiness, and discovery issue count.
+- Package media maintenance cleanup batch rows are mouse selectable and
+  keyboard selectable from the browser panel while cleanup/restore execution
+  remains out of scope.
 - A plain C++ track voice scheduler turns timeline clip plans, render windows,
   and track gain/pan/mute/solo snapshots into mixer-ready voice descriptors.
 - Project track volume, pan, mute, and solo state is persisted and fed into
@@ -482,4 +485,6 @@ or use `ctest --preset dev --output-on-failure`.
   package media maintenance view-model contract.
 - `docs/adr/ADR-0083-package-media-maintenance-status-surface.md` records the
   first visible read-only Package Maintenance status surface.
+- `docs/adr/ADR-0084-package-media-maintenance-selection-controls.md` records
+  Package Maintenance cleanup-batch selection controls.
 - `docs/issues/NEXT-ISSUES.md` lists the next five small tasks.

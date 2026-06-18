@@ -165,8 +165,22 @@ PackageMediaMaintenanceViewModel buildPackageMediaMaintenanceViewModel(
     for (const auto& batch : request.discovery.batches)
         model.batches.push_back(makeBatchRow(batch));
 
-    model.selectedBatchIndex = findSelectedBatchIndex(model.batches, request.selectedCleanupId);
+    return selectPackageMediaMaintenanceBatch(std::move(model), std::move(request.selectedCleanupId));
+}
+
+PackageMediaMaintenanceViewModel selectPackageMediaMaintenanceBatch(
+    PackageMediaMaintenanceViewModel model,
+    std::string selectedCleanupId)
+{
+    for (auto& row : model.batches)
+        row.selected = false;
+
+    model.selectedCleanupId.clear();
+    model.selectedBatchIndex = findSelectedBatchIndex(model.batches, selectedCleanupId);
     model.hasSelectedBatch = model.selectedBatchIndex >= 0;
+    model.restoreActionEnabled = false;
+    model.restoreUnavailableReason.clear();
+
     if (!model.hasSelectedBatch)
     {
         model.restoreUnavailableReason = "Select a cleanup batch to restore.";

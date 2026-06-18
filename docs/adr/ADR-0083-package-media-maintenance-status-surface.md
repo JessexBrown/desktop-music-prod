@@ -53,6 +53,6 @@ I/O on the audio callback.
 
 ## Follow-Ups
 
-- Add selectable cleanup batch rows in the Package Maintenance surface.
+- Add guarded restore controls for selected cleanup batches.
 - Add restore execution through the existing background cleanup job.
 - Define retention rules before any permanent deletion command.

@@ -58,4 +58,8 @@ struct PackageMediaMaintenanceViewModel
 
 [[nodiscard]] PackageMediaMaintenanceViewModel buildPackageMediaMaintenanceViewModel(
     PackageMediaMaintenanceViewModelRequest request);
+
+[[nodiscard]] PackageMediaMaintenanceViewModel selectPackageMediaMaintenanceBatch(
+    PackageMediaMaintenanceViewModel model,
+    std::string selectedCleanupId);
 } // namespace projectname

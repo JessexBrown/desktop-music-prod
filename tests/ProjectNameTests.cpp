@@ -12,6 +12,7 @@
 #include "core/ImportedMediaPackageInventory.h"
 #include "core/PackageMediaCleanupBatchDiscovery.h"
 #include "core/PackageMediaCleanupStatus.h"
+#include "core/PackageMediaMaintenanceBrowserRows.h"
 #include "core/PackageMediaMaintenanceViewModel.h"
 #include "core/PackageMediaQuarantineCommand.h"
 #include "core/PackageMediaQuarantinePreflightPlan.h"
@@ -232,6 +233,47 @@ bool hasCleanupBatchDiscoveryIssue(
     }
 
     return false;
+}
+
+const projectname::PackageMediaMaintenanceBrowserRow* findMaintenanceBrowserRow(
+    const projectname::PackageMediaMaintenanceBrowserRows& rows,
+    projectname::PackageMediaMaintenanceBrowserRowKind kind)
+{
+    for (const auto& row : rows.rows)
+    {
+        if (row.kind == kind)
+            return &row;
+    }
+
+    return nullptr;
+}
+
+const projectname::PackageMediaMaintenanceBrowserRow* findMaintenanceBrowserBatchRow(
+    const projectname::PackageMediaMaintenanceBrowserRows& rows,
+    const std::string& cleanupId)
+{
+    for (const auto& row : rows.rows)
+    {
+        if (row.kind == projectname::PackageMediaMaintenanceBrowserRowKind::batch
+            && row.cleanupId == cleanupId)
+        {
+            return &row;
+        }
+    }
+
+    return nullptr;
+}
+
+std::size_t countSelectableMaintenanceBrowserRows(
+    const projectname::PackageMediaMaintenanceBrowserRows& rows)
+{
+    return static_cast<std::size_t>(
+        std::count_if(rows.rows.begin(),
+                      rows.rows.end(),
+                      [](const projectname::PackageMediaMaintenanceBrowserRow& row)
+                      {
+                          return row.selectable;
+                      }));
 }
 
 void saveTestCleanupBatchManifest(
@@ -3425,6 +3467,119 @@ void packageMediaMaintenanceViewModelCarriesDiscoveryIssues()
            "Maintenance view model still enables valid selected batch restore");
 
     expect(std::filesystem::remove_all(package) > 0, "Temporary maintenance issue package deleted");
+}
+
+void packageMediaMaintenanceBrowserRowsRenderSelectableBatchState()
+{
+    {
+        const projectname::PackageMediaMaintenanceViewModel model;
+        const auto rows = projectname::buildPackageMediaMaintenanceBrowserRows(
+            model,
+            { false, false, 2 });
+
+        const auto* batchCount = findMaintenanceBrowserRow(
+            rows,
+            projectname::PackageMediaMaintenanceBrowserRowKind::batchCount);
+        expect(batchCount != nullptr && batchCount->text == "Batches: waiting for scan",
+               "Maintenance browser rows render waiting state before scan snapshot");
+        expect(countSelectableMaintenanceBrowserRows(rows) == 0,
+               "Maintenance browser rows have no selectable rows before scan snapshot");
+        expect(rows.selectedRowIndex < 0,
+               "Maintenance browser rows have no selected row before scan snapshot");
+    }
+
+    {
+        projectname::PackageMediaMaintenanceViewModelRequest request;
+        const auto model = projectname::buildPackageMediaMaintenanceViewModel(std::move(request));
+        const auto rows = projectname::buildPackageMediaMaintenanceBrowserRows(
+            model,
+            { true, false, 2 });
+
+        const auto* selected = findMaintenanceBrowserRow(
+            rows,
+            projectname::PackageMediaMaintenanceBrowserRowKind::selectedBatch);
+        expect(selected != nullptr && selected->text == "Selected: none",
+               "Maintenance browser rows render empty batch selection state");
+        expect(countSelectableMaintenanceBrowserRows(rows) == 0,
+               "Maintenance browser rows expose no selectable rows for empty batches");
+    }
+
+    const auto package = makeTemporaryPackagePath("projectname-maintenance-browser-rows-test");
+    const auto completedId = std::string("2026-06-19T00-10-00Z-completed");
+    const auto restoredId = std::string("2026-06-19T00-20-00Z-restored");
+    const auto conflictId = std::string("2026-06-19T00-30-00Z-conflict");
+    const auto partialId = std::string("2026-06-19T00-40-00Z-partial");
+
+    saveTestCleanupBatchManifest(package,
+                                 completedId,
+                                 "2026-06-19T00-10-00Z",
+                                 projectname::PackageMediaQuarantineManifestState::completed);
+    saveTestCleanupBatchManifest(package,
+                                 restoredId,
+                                 "2026-06-19T00-20-00Z",
+                                 projectname::PackageMediaQuarantineManifestState::restored);
+    saveTestCleanupBatchManifest(package,
+                                 conflictId,
+                                 "2026-06-19T00-30-00Z",
+                                 projectname::PackageMediaQuarantineManifestState::restoreConflict);
+    saveTestCleanupBatchManifest(package,
+                                 partialId,
+                                 "2026-06-19T00-40-00Z",
+                                 projectname::PackageMediaQuarantineManifestState::partialFailure);
+
+    projectname::PackageMediaMaintenanceViewModelRequest request;
+    request.discovery = projectname::discoverPackageMediaCleanupBatches(package);
+    request.selectedCleanupId = completedId;
+    const auto oldestSelectedModel =
+        projectname::buildPackageMediaMaintenanceViewModel(std::move(request));
+    const auto oldestSelectedRows = projectname::buildPackageMediaMaintenanceBrowserRows(
+        oldestSelectedModel,
+        { true, false, 2 });
+
+    const auto* completedRow = findMaintenanceBrowserBatchRow(oldestSelectedRows, completedId);
+    expect(completedRow != nullptr && completedRow->selectable && completedRow->selected,
+           "Maintenance browser rows keep an older selected batch visible and selectable");
+    expect(completedRow != nullptr && completedRow->text.find("selected") != std::string::npos,
+           "Maintenance browser rows render selected batch text");
+    expect(completedRow != nullptr && completedRow->text.find("Batch 4") != std::string::npos,
+           "Maintenance browser rows label visible selected batch with its full batch order");
+    expect(countSelectableMaintenanceBrowserRows(oldestSelectedRows) == 2,
+           "Maintenance browser rows cap visible selectable batch rows");
+    expect(oldestSelectedRows.selectedRowIndex >= 0,
+           "Maintenance browser rows expose selected row index for UI focus painting");
+
+    auto staleSelectionModel =
+        projectname::selectPackageMediaMaintenanceBatch(oldestSelectedModel, "missing-selection");
+    expect(staleSelectionModel.hasSelectedBatch && staleSelectionModel.selectedCleanupId == partialId,
+           "Maintenance view model selection helper falls back to newest valid batch");
+    const auto staleSelectionRows = projectname::buildPackageMediaMaintenanceBrowserRows(
+        staleSelectionModel,
+        { true, false, 2 });
+    const auto* partialRow = findMaintenanceBrowserBatchRow(staleSelectionRows, partialId);
+    expect(partialRow != nullptr && partialRow->selected,
+           "Maintenance browser rows render stale-selection fallback as selected");
+
+    auto conflictSelectionModel =
+        projectname::selectPackageMediaMaintenanceBatch(staleSelectionModel, conflictId);
+    expect(projectname::selectAdjacentPackageMediaCleanupId(
+               conflictSelectionModel,
+               projectname::PackageMediaMaintenanceBrowserSelectionDirection::previous) == partialId,
+           "Maintenance browser keyboard selection moves to previous batch");
+    expect(projectname::selectAdjacentPackageMediaCleanupId(
+               conflictSelectionModel,
+               projectname::PackageMediaMaintenanceBrowserSelectionDirection::next) == restoredId,
+           "Maintenance browser keyboard selection moves to next batch");
+    expect(projectname::selectAdjacentPackageMediaCleanupId(
+               staleSelectionModel,
+               projectname::PackageMediaMaintenanceBrowserSelectionDirection::previous) == partialId,
+           "Maintenance browser keyboard selection clamps at newest batch");
+    expect(projectname::selectAdjacentPackageMediaCleanupId(
+               oldestSelectedModel,
+               projectname::PackageMediaMaintenanceBrowserSelectionDirection::next) == completedId,
+           "Maintenance browser keyboard selection clamps at oldest batch");
+
+    expect(std::filesystem::remove_all(package) > 0,
+           "Temporary maintenance browser rows package deleted");
 }
 
 void importedClipInspectorReportsSelectedOrFirstImportedClipMetadata()
@@ -7319,6 +7474,7 @@ int main()
     packageMediaMaintenanceViewModelSummarizesEmptyAndCleanupCandidateStates();
     packageMediaMaintenanceViewModelCombinesBatchRowsAndRestoreEnablement();
     packageMediaMaintenanceViewModelCarriesDiscoveryIssues();
+    packageMediaMaintenanceBrowserRowsRenderSelectableBatchState();
     importedClipInspectorReportsSelectedOrFirstImportedClipMetadata();
     waveformThumbnailLoaderReportsInvalidAnalysis();
     projectModelPlacesImportedAudioClips();

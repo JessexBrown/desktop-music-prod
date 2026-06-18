@@ -34,14 +34,14 @@ Acceptance:
 - Add a non-modal path back to the Audio/MIDI setup dialog.
 - Keep the first implementation separate from plugin scanning.
 
-## 5. Add Package Media Maintenance Batch Selection Controls
+## 5. Add Package Media Maintenance Restore Action Guard
 
 Acceptance:
-- Add keyboard/mouse-selectable cleanup batch rows to the read-only Package
-  Maintenance browser surface.
-- Preserve selected cleanup batch id across background refreshes and fall back
-  to the newest valid batch when the previous selection disappears.
-- Keep cleanup/restore execution, permanent deletion, and retention policy out
-  of this task.
-- Cover selected-row rendering, stale-selection fallback, and empty-batch states
-  with smokeable model/UI tests where practical.
+- Add a visible but guarded restore affordance for the selected cleanup batch.
+- Enable it only when `PackageMediaMaintenanceViewModel` reports restore-ready
+  state; otherwise surface the disabled reason in the status/browser area.
+- Keep permanent deletion and retention policy out of this task.
+- Run any restore through the existing background package media cleanup job;
+  never move package files on the UI or audio thread.
+- Cover enabled, disabled, conflict, restored, and no-selection states with
+  model/UI tests where practical.

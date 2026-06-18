@@ -181,3 +181,9 @@ The first visible JUCE surface is a read-only browser summary backed by a
 background package scan. It shows media status, candidate counts, cleanup batch
 rows, selected batch status, restore readiness, and discovery issue count
 without exposing cleanup or restore execution.
+
+Cleanup batch rows in that browser summary are selectable by mouse and by
+keyboard Up/Down when the browser has focus. Selection changes the displayed
+selected batch and restore readiness immediately, but it still does not run
+cleanup, restore, deletion, retention, plugin scanning, or package file
+mutation.

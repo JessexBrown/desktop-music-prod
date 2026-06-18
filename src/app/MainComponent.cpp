@@ -3,6 +3,7 @@
 #include "core/AppCommandRegistry.h"
 #include "core/ImportedMediaPackageInventory.h"
 #include "core/PackageMediaCleanupBatchDiscovery.h"
+#include "core/PackageMediaMaintenanceBrowserRows.h"
 #include "core/PackageMediaMaintenanceViewModel.h"
 #include "core/ProductIdentity.h"
 #include "core/WorkspaceCommandRouter.h"
@@ -15,6 +16,7 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 namespace
 {
@@ -279,150 +281,28 @@ void setButtonEnabledFromCommand(juce::Button& button,
     return lines;
 }
 
-[[nodiscard]] juce::String shortenBrowserValue(const std::string& value)
-{
-    juce::String text(value);
-    constexpr auto maxCharacters = 22;
-    if (text.length() <= maxCharacters)
-        return text;
-
-    return text.substring(0, maxCharacters - 3) + "...";
-}
-
-[[nodiscard]] juce::String statusLabel(projectname::PackageMediaCleanupStatusKind kind)
-{
-    switch (kind)
-    {
-        case projectname::PackageMediaCleanupStatusKind::quarantineCompleted:
-            return "ready";
-        case projectname::PackageMediaCleanupStatusKind::restoreCompleted:
-            return "restored";
-        case projectname::PackageMediaCleanupStatusKind::restoreConflict:
-            return "conflict";
-        case projectname::PackageMediaCleanupStatusKind::partialFailure:
-            return "needs review";
-        case projectname::PackageMediaCleanupStatusKind::cleanupFailed:
-            return "failed";
-        case projectname::PackageMediaCleanupStatusKind::reviewAvailable:
-            return "review";
-        case projectname::PackageMediaCleanupStatusKind::missingReferences:
-            return "missing";
-        case projectname::PackageMediaCleanupStatusKind::unsafeReferences:
-            return "unsafe";
-        case projectname::PackageMediaCleanupStatusKind::noCandidates:
-            return "clean";
-        case projectname::PackageMediaCleanupStatusKind::idle:
-        case projectname::PackageMediaCleanupStatusKind::inventoryRunning:
-        case projectname::PackageMediaCleanupStatusKind::preflightRunning:
-        case projectname::PackageMediaCleanupStatusKind::quarantineRunning:
-        case projectname::PackageMediaCleanupStatusKind::restoreRunning:
-        case projectname::PackageMediaCleanupStatusKind::operationCompleted:
-        case projectname::PackageMediaCleanupStatusKind::preflightReady:
-        case projectname::PackageMediaCleanupStatusKind::activePackageWork:
-        case projectname::PackageMediaCleanupStatusKind::cancelled:
-            return "status";
-    }
-
-    return "status";
-}
-
-[[nodiscard]] juce::String restoreSummary(
-    const projectname::PackageMediaMaintenanceViewModel& model)
-{
-    if (model.restoreActionEnabled)
-        return "Restore: available";
-
-    if (!model.hasSelectedBatch)
-        return "Restore: select batch";
-
-    const auto& row = model.batches[static_cast<std::size_t>(model.selectedBatchIndex)];
-    if (row.conflictCount > 0)
-        return "Restore: conflict review";
-
-    if (row.errorCount > 0)
-        return "Restore: failure review";
-
-    if (row.movedEntryCount > 0 && row.restoredEntryCount == row.movedEntryCount)
-        return "Restore: already restored";
-
-    return "Restore: unavailable";
-}
-
-[[nodiscard]] juce::String makeBatchLine(
-    const projectname::PackageMediaMaintenanceBatchRow& row,
-    int displayIndex)
-{
-    auto line = juce::String("Batch ")
-        + juce::String(displayIndex)
-        + ": "
-        + shortenBrowserValue(row.cleanupId)
-        + " | "
-        + statusLabel(row.status.kind);
-
-    if (row.selected)
-        line += " | selected";
-
-    return line;
-}
-
-[[nodiscard]] juce::StringArray makePackageMediaMaintenanceLines(
+[[nodiscard]] std::vector<WorkspacePanelRow> makePackageMediaMaintenancePanelRows(
     const projectname::PackageMediaMaintenanceViewModel& model,
     bool hasSnapshot,
     bool scanRunning)
 {
-    juce::StringArray lines;
-    lines.add("Library: Samples / Plugins / Presets");
+    const auto modelRows = projectname::buildPackageMediaMaintenanceBrowserRows(
+        model,
+        { hasSnapshot, scanRunning, 2 });
 
-    if (scanRunning)
-        lines.add("Media: scanning package");
-
-    if (!hasSnapshot)
+    std::vector<WorkspacePanelRow> panelRows;
+    panelRows.reserve(modelRows.rows.size());
+    for (const auto& row : modelRows.rows)
     {
-        lines.add("Batches: waiting for scan");
-        lines.add("Restore: unavailable");
-        return lines;
+        WorkspacePanelRow panelRow;
+        panelRow.text = juce::String(row.text);
+        panelRow.selectionId = row.cleanupId;
+        panelRow.selectable = row.selectable;
+        panelRow.selected = row.selected;
+        panelRows.push_back(std::move(panelRow));
     }
 
-    lines.add("Media: " + juce::String(model.inventoryStatus.statusText));
-    lines.add("Candidates: "
-              + juce::String(static_cast<int>(model.cleanupCandidateCount))
-              + " media / "
-              + juce::String(static_cast<int>(model.staleStagingCandidateCount))
-              + " staging");
-    lines.add("Batches: " + juce::String(static_cast<int>(model.batches.size())));
-
-    if (model.hasSelectedBatch)
-    {
-        const auto& selected = model.batches[static_cast<std::size_t>(model.selectedBatchIndex)];
-        lines.add("Selected: "
-                  + shortenBrowserValue(selected.cleanupId)
-                  + " | "
-                  + statusLabel(selected.status.kind));
-    }
-    else
-    {
-        lines.add("Selected: none");
-    }
-
-    lines.add(restoreSummary(model));
-
-    auto displayedRows = 0;
-    for (const auto& row : model.batches)
-    {
-        if (displayedRows >= 2)
-            break;
-
-        lines.add(makeBatchLine(row, displayedRows + 1));
-        ++displayedRows;
-    }
-
-    const auto issueCount = !model.discoveryIssues.empty()
-        ? model.discoveryIssues.size()
-        : (model.discoveryError.empty() ? std::size_t { 0 } : std::size_t { 1 });
-    lines.add(model.hasDiscoveryIssues
-                  ? "Issues: " + juce::String(static_cast<int>(issueCount)) + " discovery"
-                  : "Issues: none");
-    return lines;
+    return panelRows;
 }
 
 [[nodiscard]] PackageMediaMaintenanceScanResult runPackageMediaMaintenanceScan(
@@ -448,10 +328,10 @@ void setButtonEnabledFromCommand(juce::Button& button,
 
 WorkspacePanel::WorkspacePanel(juce::String title, juce::String subtitle, juce::StringArray lines)
     : title_(std::move(title)),
-      subtitle_(std::move(subtitle)),
-      lines_(std::move(lines))
+      subtitle_(std::move(subtitle))
 {
     setWantsKeyboardFocus(true);
+    setLines(std::move(lines));
 
     configureButton(panLeftViewportButton_, juce::Colour(0xffc6ccd5));
     configureButton(resetViewportButton_, juce::Colour(0xffc6ccd5));
@@ -545,16 +425,31 @@ void WorkspacePanel::paint(juce::Graphics& graphics)
     content.removeFromTop(10);
     graphics.setFont(juce::FontOptions(13.0f));
 
-    for (const auto& line : lines_)
+    for (const auto& rowModel : rows_)
     {
         if (content.getHeight() < 76)
             break;
 
-        graphics.setColour(juce::Colour(0xff252830));
         const auto row = content.removeFromTop(28);
+        if (rowModel.selected)
+            graphics.setColour(accent.withAlpha(0.18f));
+        else if (rowModel.selectable)
+            graphics.setColour(juce::Colour(0xff2a2e35));
+        else
+            graphics.setColour(juce::Colour(0xff252830));
+
         graphics.fillRoundedRectangle(row.toFloat(), 4.0f);
-        graphics.setColour(textSecondary);
-        graphics.drawFittedText(line, row.reduced(10, 0), juce::Justification::centredLeft, 1);
+
+        if (rowModel.selectable)
+        {
+            graphics.setColour(rowModel.selected ? accent.withAlpha(0.92f) : panelOutline);
+            graphics.drawRoundedRectangle(row.toFloat().reduced(0.5f),
+                                          4.0f,
+                                          rowModel.selected ? 1.6f : 1.0f);
+        }
+
+        graphics.setColour(rowModel.selected ? textPrimary : textSecondary);
+        graphics.drawFittedText(rowModel.text, row.reduced(10, 0), juce::Justification::centredLeft, 1);
         content.removeFromTop(6);
     }
 
@@ -562,16 +457,22 @@ void WorkspacePanel::paint(juce::Graphics& graphics)
         paintTimelineClipLane(graphics, content);
 }
 
-juce::Rectangle<int> WorkspacePanel::getTimelineContentBounds() const
+juce::Rectangle<int> WorkspacePanel::getRowsContentBounds() const
 {
     auto content = getLocalBounds().reduced(16);
     content.removeFromTop(24);
     content.removeFromTop(22);
     content.removeFromTop(10);
+    return content;
+}
 
-    for (const auto& line : lines_)
+juce::Rectangle<int> WorkspacePanel::getTimelineContentBounds() const
+{
+    auto content = getRowsContentBounds();
+
+    for (const auto& row : rows_)
     {
-        juce::ignoreUnused(line);
+        juce::ignoreUnused(row);
         if (content.getHeight() < 76)
             break;
 
@@ -582,9 +483,28 @@ juce::Rectangle<int> WorkspacePanel::getTimelineContentBounds() const
     return content.getHeight() >= 54 ? content : juce::Rectangle<int> {};
 }
 
+std::optional<std::size_t> WorkspacePanel::hitTestSelectableRow(juce::Point<int> position) const
+{
+    auto content = getRowsContentBounds();
+    for (std::size_t index = 0; index < rows_.size(); ++index)
+    {
+        if (content.getHeight() < 76)
+            break;
+
+        const auto row = content.removeFromTop(28);
+        if (rows_[index].selectable && row.contains(position))
+            return index;
+
+        content.removeFromTop(6);
+    }
+
+    return std::nullopt;
+}
+
 bool WorkspacePanel::shouldPaintKeyboardFocus() const
 {
     return (previousTimelineClipRequested_ || nextTimelineClipRequested_
+            || previousSelectableRowRequested_ || nextSelectableRowRequested_
             || timelinePanLeftRequested_ || timelinePanRightRequested_
             || timelineZoomInRequested_ || timelineZoomOutRequested_)
         && hasKeyboardFocus(true);
@@ -643,6 +563,19 @@ void WorkspacePanel::mouseDown(const juce::MouseEvent& event)
 {
     grabKeyboardFocus();
 
+    if (selectableRowSelected_)
+    {
+        const auto rowIndex = hitTestSelectableRow(event.getPosition());
+        if (rowIndex.has_value())
+        {
+            const auto& row = rows_[*rowIndex];
+            if (!row.selectionId.empty())
+                selectableRowSelected_(row.selectionId);
+
+            return;
+        }
+    }
+
     if (!timelineClipSelected_ || timelineClipLane_.clips.empty())
         return;
 
@@ -664,6 +597,21 @@ void WorkspacePanel::mouseDown(const juce::MouseEvent& event)
 
 bool WorkspacePanel::keyPressed(const juce::KeyPress& key)
 {
+    if (!key.getModifiers().isCommandDown())
+    {
+        if (key.getKeyCode() == juce::KeyPress::upKey && previousSelectableRowRequested_)
+        {
+            previousSelectableRowRequested_();
+            return true;
+        }
+
+        if (key.getKeyCode() == juce::KeyPress::downKey && nextSelectableRowRequested_)
+        {
+            nextSelectableRowRequested_();
+            return true;
+        }
+    }
+
     const projectname::WorkspaceCommandShortcut shortcut {
         toWorkspaceCommandKey(key),
         key.getModifiers().isCommandDown(),
@@ -780,6 +728,19 @@ void WorkspacePanel::setTimelineViewportControlCallbacks(std::function<void()> p
     repaint();
 }
 
+void WorkspacePanel::setSelectableRowCallback(std::function<void(std::string)> callback)
+{
+    selectableRowSelected_ = std::move(callback);
+}
+
+void WorkspacePanel::setSelectableRowKeyboardSelectionCallbacks(std::function<void()> previousCallback,
+                                                               std::function<void()> nextCallback)
+{
+    previousSelectableRowRequested_ = std::move(previousCallback);
+    nextSelectableRowRequested_ = std::move(nextCallback);
+    repaint();
+}
+
 int WorkspacePanel::getTimelineClipViewportWidthPixels() const
 {
     const auto timelineBounds = getTimelineContentBounds();
@@ -797,7 +758,22 @@ void WorkspacePanel::setSubtitle(juce::String subtitle)
 
 void WorkspacePanel::setLines(juce::StringArray lines)
 {
-    lines_ = std::move(lines);
+    std::vector<WorkspacePanelRow> rows;
+    rows.reserve(static_cast<std::size_t>(lines.size()));
+    for (const auto& line : lines)
+    {
+        WorkspacePanelRow row;
+        row.text = line;
+        rows.push_back(std::move(row));
+    }
+
+    rows_ = std::move(rows);
+    repaint();
+}
+
+void WorkspacePanel::setRows(std::vector<WorkspacePanelRow> rows)
+{
+    rows_ = std::move(rows);
     repaint();
 }
 
@@ -920,6 +896,22 @@ MainComponent::MainComponent()
                   { "Track mix", "Master" })
 {
     configureControls();
+    browserPanel_.setSelectableRowCallback(
+        [this](std::string cleanupId)
+        {
+            selectPackageMediaCleanupBatch(std::move(cleanupId));
+        });
+    browserPanel_.setSelectableRowKeyboardSelectionCallbacks(
+        [this]()
+        {
+            selectAdjacentPackageMediaCleanupBatch(
+                projectname::PackageMediaMaintenanceBrowserSelectionDirection::previous);
+        },
+        [this]()
+        {
+            selectAdjacentPackageMediaCleanupBatch(
+                projectname::PackageMediaMaintenanceBrowserSelectionDirection::next);
+        });
     workspacePanel_.setTimelineClipSelectedCallback(
         [this](std::string clipId)
         {
@@ -2242,9 +2234,56 @@ void MainComponent::refreshBrowserPanel()
     browserPanel_.setSubtitle(scanRunning
                                   ? "Project assets and media scan running"
                                   : "Project assets and media maintenance");
-    browserPanel_.setLines(makePackageMediaMaintenanceLines(packageMediaMaintenanceViewModel_,
-                                                            hasPackageMediaMaintenanceSnapshot_,
-                                                            scanRunning));
+    browserPanel_.setRows(makePackageMediaMaintenancePanelRows(packageMediaMaintenanceViewModel_,
+                                                               hasPackageMediaMaintenanceSnapshot_,
+                                                               scanRunning));
+}
+
+void MainComponent::selectPackageMediaCleanupBatch(std::string cleanupId)
+{
+    if (!hasPackageMediaMaintenanceSnapshot_ || packageMediaMaintenanceViewModel_.batches.empty())
+    {
+        setStatus("No cleanup batches to select");
+        return;
+    }
+
+    const auto requestedCleanupId = cleanupId;
+    packageMediaMaintenanceViewModel_ =
+        projectname::selectPackageMediaMaintenanceBatch(std::move(packageMediaMaintenanceViewModel_),
+                                                        std::move(cleanupId));
+    selectedPackageMediaCleanupId_ = packageMediaMaintenanceViewModel_.selectedCleanupId;
+    refreshBrowserPanel();
+
+    if (selectedPackageMediaCleanupId_.empty())
+    {
+        setStatus("No cleanup batch selected");
+        return;
+    }
+
+    const auto prefix = selectedPackageMediaCleanupId_ == requestedCleanupId
+        ? juce::String("Selected cleanup batch: ")
+        : juce::String("Selected newest cleanup batch: ");
+    setStatus(prefix + juce::String(selectedPackageMediaCleanupId_));
+}
+
+void MainComponent::selectAdjacentPackageMediaCleanupBatch(
+    projectname::PackageMediaMaintenanceBrowserSelectionDirection direction)
+{
+    if (!hasPackageMediaMaintenanceSnapshot_ || packageMediaMaintenanceViewModel_.batches.empty())
+    {
+        setStatus("No cleanup batches to select");
+        return;
+    }
+
+    auto cleanupId = projectname::selectAdjacentPackageMediaCleanupId(packageMediaMaintenanceViewModel_,
+                                                                      direction);
+    if (cleanupId.empty())
+    {
+        setStatus("No cleanup batches to select");
+        return;
+    }
+
+    selectPackageMediaCleanupBatch(std::move(cleanupId));
 }
 
 void MainComponent::refreshWorkspaceTimelineLane()
