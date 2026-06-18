@@ -82,6 +82,9 @@ Secondary action: `Cancel`
 
 Package Maintenance lists cleanup batches found under
 `backups/media-trash/<cleanup-id>/restore-manifest.json`.
+`PackageMediaCleanupBatchDiscovery` provides the first non-UI model for this
+list by validating cleanup ids, loading safe restore manifests, attaching
+status output, and surfacing invalid or unreadable batches as review issues.
 
 For each cleanup batch, the UI shows:
 
@@ -159,7 +162,11 @@ plain C++ command models. It should not move files on the UI thread, scan
 plugins, delete quarantined media, invent retention rules, or mutate project
 state from the audio callback.
 
-`PackageMediaCleanupStatus` is the first testable model slice. It turns
+`PackageMediaCleanupStatus` is the first testable status model slice. It turns
 inventory, preflight, quarantine, restore, conflict, partial-failure, and
 cancellation states into stable status text, severity, and target affordance
 identifiers for the browser, inspector, and status bar.
+
+`PackageMediaCleanupBatchDiscovery` is the first testable restore-list model
+slice. It keeps visible UI out of scope while defining how cleanup batches are
+found and how corrupt or suspicious batches remain reviewable.

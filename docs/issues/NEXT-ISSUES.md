@@ -34,15 +34,14 @@ Acceptance:
 - Add a non-modal path back to the Audio/MIDI setup dialog.
 - Keep the first implementation separate from plugin scanning.
 
-## 5. Add Package Media Cleanup Batch Discovery
+## 5. Add Package Media Maintenance View Model
 
 Acceptance:
-- Add a plain C++ scanner that lists package-local cleanup batches from
-  `backups/media-trash/<cleanup-id>/restore-manifest.json`.
-- Validate cleanup ids and package-relative manifest paths before loading, then
-  attach `PackageMediaCleanupStatus` output for completed, restored,
-  restore-conflict, and partial-failure manifests.
-- Cover valid batches, invalid cleanup ids, unreadable manifests, and sorted
-  newest-first batch order with unit tests.
+- Add a plain C++ view model that combines package media inventory status,
+  cleanup batch discovery, selected cleanup batch id, and restore action
+  enablement for the future Package Maintenance view.
+- Cover empty packages, cleanup candidates, completed/restored/conflicted
+  batches, partial-failure batches, invalid discovery issues, and selected-batch
+  fallback behavior with unit tests.
 - Keep visible JUCE UI, permanent deletion, and retention policy out of this
   task.

@@ -175,6 +175,9 @@ Third-party dependencies remain under their own licenses as recorded in
   quarantine, restore, conflict, partial-failure, and cancellation states to
   stable user-facing copy, severity, and browser/inspector/status-bar
   affordance ids.
+- A plain C++ package media cleanup batch discovery model lists package-local
+  restore manifests, validates cleanup ids and manifest paths before loading,
+  attaches cleanup status output, and reports non-fatal discovery issues.
 - A plain C++ track voice scheduler turns timeline clip plans, render windows,
   and track gain/pan/mute/solo snapshots into mixer-ready voice descriptors.
 - Project track volume, pan, mute, and solo state is persisted and fed into
@@ -467,4 +470,6 @@ or use `ctest --preset dev --output-on-failure`.
   cancellable background cleanup/restore job wrapper.
 - `docs/adr/ADR-0080-package-media-cleanup-status-model.md` records the
   package media cleanup status mapping contract.
+- `docs/adr/ADR-0081-package-media-cleanup-batch-discovery.md` records the
+  package media cleanup batch discovery contract.
 - `docs/issues/NEXT-ISSUES.md` lists the next five small tasks.

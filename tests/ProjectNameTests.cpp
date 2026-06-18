@@ -10,6 +10,7 @@
 #include "core/ImportedClipMediaRelink.h"
 #include "core/ImportedClipInspector.h"
 #include "core/ImportedMediaPackageInventory.h"
+#include "core/PackageMediaCleanupBatchDiscovery.h"
 #include "core/PackageMediaCleanupStatus.h"
 #include "core/PackageMediaQuarantineCommand.h"
 #include "core/PackageMediaQuarantinePreflightPlan.h"
@@ -216,6 +217,53 @@ const projectname::PackageMediaQuarantineSkippedEntry* findQuarantineSkippedEntr
     }
 
     return nullptr;
+}
+
+bool hasCleanupBatchDiscoveryIssue(
+    const projectname::PackageMediaCleanupBatchDiscoveryResult& result,
+    projectname::PackageMediaCleanupBatchDiscoveryIssueKind kind,
+    const std::string& cleanupId)
+{
+    for (const auto& issue : result.issues)
+    {
+        if (issue.kind == kind && issue.cleanupId == cleanupId)
+            return true;
+    }
+
+    return false;
+}
+
+void saveTestCleanupBatchManifest(
+    const std::filesystem::path& package,
+    const std::string& cleanupId,
+    const std::string& createdAtUtc,
+    projectname::PackageMediaQuarantineManifestState state)
+{
+    auto manifest = makeTestQuarantineRestoreManifest(cleanupId);
+    manifest.createdAtUtc = createdAtUtc;
+    manifest.state = state;
+
+    if (state == projectname::PackageMediaQuarantineManifestState::restored)
+    {
+        for (auto& entry : manifest.movedEntries)
+            entry.restored = true;
+    }
+    else if (state == projectname::PackageMediaQuarantineManifestState::restoreConflict)
+    {
+        manifest.movedEntries.front().restoreConflict = true;
+    }
+    else if (state == projectname::PackageMediaQuarantineManifestState::partialFailure)
+    {
+        manifest.error = "Restore batch needs review.";
+        manifest.movedEntries.front().error = "Quarantine path is missing.";
+    }
+
+    const auto manifestPath =
+        package / "backups" / "media-trash" / cleanupId / "restore-manifest.json";
+    std::filesystem::create_directories(manifestPath.parent_path());
+    std::string error;
+    expect(projectname::savePackageMediaQuarantineRestoreManifest(manifest, manifestPath, error),
+           "Test cleanup batch manifest saves");
 }
 
 projectname::ImportedMediaPackageInventory makePreflightInventoryWithCandidates(
@@ -3104,6 +3152,105 @@ void packageMediaCleanupStatusMapsQuarantineRestoreAndCancellation()
         expect(cancelled.statusText == "Cleanup was cancelled before moving media.",
                "Cleanup cancellation text is stable");
     }
+}
+
+void packageMediaCleanupBatchDiscoveryListsValidBatchesNewestFirst()
+{
+    const auto package = makeTemporaryPackagePath("projectname-cleanup-batch-discovery-test");
+    const auto completedId = std::string("2026-06-18T23-00-00Z-completed");
+    const auto restoredId = std::string("2026-06-18T23-10-00Z-restored");
+    const auto conflictId = std::string("2026-06-18T23-20-00Z-conflict");
+    const auto partialId = std::string("2026-06-18T23-30-00Z-partial");
+
+    saveTestCleanupBatchManifest(package,
+                                 completedId,
+                                 "2026-06-18T23-00-00Z",
+                                 projectname::PackageMediaQuarantineManifestState::completed);
+    saveTestCleanupBatchManifest(package,
+                                 restoredId,
+                                 "2026-06-18T23-10-00Z",
+                                 projectname::PackageMediaQuarantineManifestState::restored);
+    saveTestCleanupBatchManifest(package,
+                                 conflictId,
+                                 "2026-06-18T23-20-00Z",
+                                 projectname::PackageMediaQuarantineManifestState::restoreConflict);
+    saveTestCleanupBatchManifest(package,
+                                 partialId,
+                                 "2026-06-18T23-30-00Z",
+                                 projectname::PackageMediaQuarantineManifestState::partialFailure);
+
+    const auto result = projectname::discoverPackageMediaCleanupBatches(package);
+    expect(result.error.empty(), "Cleanup batch discovery leaves result error empty for valid batches");
+    expect(result.issues.empty(), "Cleanup batch discovery reports no issues for valid batches");
+    expect(result.batches.size() == 4, "Cleanup batch discovery lists all valid batches");
+
+    if (result.batches.size() == 4)
+    {
+        expect(result.batches[0].cleanupId == partialId
+                   && result.batches[1].cleanupId == conflictId
+                   && result.batches[2].cleanupId == restoredId
+                   && result.batches[3].cleanupId == completedId,
+               "Cleanup batch discovery sorts newest first");
+        expect(result.batches[0].status.kind == projectname::PackageMediaCleanupStatusKind::partialFailure,
+               "Cleanup batch discovery attaches partial-failure status");
+        expect(result.batches[1].status.kind == projectname::PackageMediaCleanupStatusKind::restoreConflict,
+               "Cleanup batch discovery attaches restore-conflict status");
+        expect(result.batches[2].status.kind == projectname::PackageMediaCleanupStatusKind::restoreCompleted,
+               "Cleanup batch discovery attaches restored status");
+        expect(result.batches[3].status.kind == projectname::PackageMediaCleanupStatusKind::quarantineCompleted,
+               "Cleanup batch discovery attaches completed quarantine status");
+        expect(result.batches.front().manifestRelativePath.generic_string()
+                   == "backups/media-trash/" + partialId + "/restore-manifest.json",
+               "Cleanup batch discovery stores package-relative manifest path");
+    }
+
+    expect(std::filesystem::remove_all(package) > 0, "Temporary cleanup batch discovery package deleted");
+}
+
+void packageMediaCleanupBatchDiscoveryReportsInvalidAndUnreadableBatches()
+{
+    const auto package = makeTemporaryPackagePath("projectname-cleanup-batch-issue-test");
+    const auto validId = std::string("2026-06-18T23-40-00Z-valid");
+    const auto unreadableId = std::string("2026-06-18T23-50-00Z-unreadable");
+    const auto missingId = std::string("2026-06-19T00-00-00Z-missing");
+    const auto invalidId = std::string("bad id");
+
+    saveTestCleanupBatchManifest(package,
+                                 validId,
+                                 "2026-06-18T23-40-00Z",
+                                 projectname::PackageMediaQuarantineManifestState::completed);
+    writeTextFile(package
+                      / "backups"
+                      / "media-trash"
+                      / unreadableId
+                      / "restore-manifest.json",
+                  "{ invalid json");
+    std::filesystem::create_directories(package / "backups" / "media-trash" / missingId);
+    writeTextFile(package
+                      / "backups"
+                      / "media-trash"
+                      / invalidId
+                      / "restore-manifest.json",
+                  "{ }");
+
+    const auto result = projectname::discoverPackageMediaCleanupBatches(package);
+    expect(result.batches.size() == 1, "Cleanup batch discovery keeps valid batches with issues present");
+    expect(result.batches.size() == 1 && result.batches.front().cleanupId == validId,
+           "Cleanup batch discovery loads the valid batch");
+    expect(hasCleanupBatchDiscoveryIssue(result,
+                                         projectname::PackageMediaCleanupBatchDiscoveryIssueKind::invalidCleanupId,
+                                         invalidId),
+           "Cleanup batch discovery reports invalid cleanup ids");
+    expect(hasCleanupBatchDiscoveryIssue(result,
+                                         projectname::PackageMediaCleanupBatchDiscoveryIssueKind::manifestLoadFailed,
+                                         unreadableId),
+           "Cleanup batch discovery reports unreadable manifests");
+    expect(hasCleanupBatchDiscoveryIssue(result,
+                                         projectname::PackageMediaCleanupBatchDiscoveryIssueKind::manifestMissing,
+                                         missingId),
+           "Cleanup batch discovery reports missing manifests");
+
+    expect(std::filesystem::remove_all(package) > 0, "Temporary cleanup batch issue package deleted");
 }
 
 void importedClipInspectorReportsSelectedOrFirstImportedClipMetadata()
@@ -6993,6 +7140,8 @@ int main()
     backgroundPackageMediaCleanupJobPropagatesCommandFailure();
     packageMediaCleanupStatusMapsInventoryAndPreflightStates();
     packageMediaCleanupStatusMapsQuarantineRestoreAndCancellation();
+    packageMediaCleanupBatchDiscoveryListsValidBatchesNewestFirst();
+    packageMediaCleanupBatchDiscoveryReportsInvalidAndUnreadableBatches();
     importedClipInspectorReportsSelectedOrFirstImportedClipMetadata();
     waveformThumbnailLoaderReportsInvalidAnalysis();
     projectModelPlacesImportedAudioClips();
