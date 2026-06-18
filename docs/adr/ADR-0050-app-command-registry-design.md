@@ -87,5 +87,5 @@ shortcut editor UI.
 
 ## Follow-Ups
 
-- Add compact left/right timeline pan controls after the persistent indicator.
+- Add a fit-to-imported-clips viewport helper after the persistent indicator.
 - Add undo boundaries before editable inspector or timeline clip operations.

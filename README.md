@@ -65,8 +65,8 @@ Third-party dependencies remain under their own licenses as recorded in
 - The workspace subtitle shows the current timeline view start and horizontal
   beat scale, so keyboard pan/zoom changes remain visible after the status text
   moves on.
-- Compact workspace controls can reset the timeline view to beat zero and zoom
-  the viewport in or out without adding global shortcuts.
+- Compact workspace controls can pan the timeline view, reset it to beat zero,
+  and zoom the viewport in or out without adding global shortcuts.
 - Focused workspace shortcuts route through a small tested command router before
   the JUCE panel executes clip-selection or viewport callbacks.
 - A small app command registry records stable ids, metadata, scopes, and
@@ -337,4 +337,6 @@ or use `ctest --preset dev --output-on-failure`.
   workspace viewport indicator.
 - `docs/adr/ADR-0054-compact-timeline-viewport-controls.md` records the first
   visible viewport reset and zoom controls.
+- `docs/adr/ADR-0055-compact-timeline-pan-controls.md` records the visible
+  left/right viewport pan controls.
 - `docs/issues/NEXT-ISSUES.md` lists the next five small tasks.

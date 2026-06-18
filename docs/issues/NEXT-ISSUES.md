@@ -34,13 +34,11 @@ Acceptance:
 - Add a non-modal path back to the Audio/MIDI setup dialog.
 - Keep the first implementation separate from plugin scanning.
 
-## 5. Add Compact Timeline Pan Controls
+## 5. Add a Timeline Fit-to-Clips View Helper
 
 Acceptance:
-- Add small visible controls for timeline pan left/right near the existing
-  workspace viewport indicator.
-- Route controls through existing session viewport pan methods and refresh the
-  lane plus indicator after each command.
-- Keep existing focused keyboard pan/zoom behavior and reset/zoom controls
-  intact.
-- Do not add clip editing, drag/drop behavior, or global shortcuts.
+- Add a plain C++ helper that computes a viewport start/scale capable of showing
+  all imported timeline clips within the current lane width.
+- Add focused tests for empty projects, one clip, and multiple spaced clips.
+- Do not add a visible button until the helper behavior is proven.
+- Keep clip editing, drag/drop behavior, and global shortcuts out of this task.

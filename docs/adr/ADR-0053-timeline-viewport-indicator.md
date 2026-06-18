@@ -43,7 +43,7 @@ timeline control buttons.
 
 ## Follow-Ups
 
-- Add compact left/right pan controls near the viewport indicator.
+- Add a fit-to-imported-clips viewport helper and optional compact control.
 - Add undo boundaries before editable inspector or timeline clip operations.
 - Keep global shortcuts and command palette work behind the command registry
   focus policy.

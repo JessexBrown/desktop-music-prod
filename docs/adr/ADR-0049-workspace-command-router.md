@@ -46,7 +46,7 @@ the returned command. Current behavior is preserved:
 
 ## Follow-Ups
 
-- Add compact left/right timeline pan controls.
+- Add a fit-to-imported-clips viewport helper and optional compact control.
 - Add visible viewport controls or a compact zoom indicator after command
   routing is clearer.
 - Add undo boundaries before editable inspector or timeline clip operations.

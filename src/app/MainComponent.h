@@ -37,9 +37,11 @@ public:
                                               std::function<void()> panRightCallback,
                                               std::function<void()> zoomInCallback,
                                               std::function<void()> zoomOutCallback);
-    void setTimelineViewportControlCallbacks(std::function<void()> resetStartCallback,
+    void setTimelineViewportControlCallbacks(std::function<void()> panLeftCallback,
+                                             std::function<void()> resetStartCallback,
                                              std::function<void()> zoomOutCallback,
-                                             std::function<void()> zoomInCallback);
+                                             std::function<void()> zoomInCallback,
+                                             std::function<void()> panRightCallback);
     [[nodiscard]] int getTimelineClipViewportWidthPixels() const;
     void setSubtitle(juce::String subtitle);
     void setLines(juce::StringArray lines);
@@ -52,9 +54,11 @@ private:
     [[nodiscard]] bool shouldPaintKeyboardFocus() const;
     void paintTimelineClipLane(juce::Graphics& graphics, juce::Rectangle<int> bounds);
 
+    juce::TextButton panLeftViewportButton_ { "<" };
     juce::TextButton resetViewportButton_ { "0" };
     juce::TextButton zoomOutViewportButton_ { "-" };
     juce::TextButton zoomInViewportButton_ { "+" };
+    juce::TextButton panRightViewportButton_ { ">" };
     juce::String title_;
     juce::String subtitle_;
     juce::StringArray lines_;
@@ -66,9 +70,11 @@ private:
     std::function<void()> timelinePanRightRequested_;
     std::function<void()> timelineZoomInRequested_;
     std::function<void()> timelineZoomOutRequested_;
+    std::function<void()> timelinePanLeftControlRequested_;
     std::function<void()> timelineResetStartRequested_;
     std::function<void()> timelineZoomOutControlRequested_;
     std::function<void()> timelineZoomInControlRequested_;
+    std::function<void()> timelinePanRightControlRequested_;
 };
 
 class MainComponent final : public juce::Component,
