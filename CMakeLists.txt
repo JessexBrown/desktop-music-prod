@@ -47,6 +47,8 @@ add_library(projectname_core
     src/core/AppCommandRegistry.h
     src/core/AppSession.cpp
     src/core/AppSession.h
+    src/core/AudioSetupStatus.cpp
+    src/core/AudioSetupStatus.h
     src/core/AudioEngineStub.cpp
     src/core/AudioEngineStub.h
     src/core/BackgroundAudioImportJob.cpp

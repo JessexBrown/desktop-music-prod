@@ -215,8 +215,10 @@ private:
     void fitTimelineViewportToImportedClips();
     void centerTimelineViewportOnSelectedClip();
     void refreshMixerControls();
+    void refreshDevicePanel(bool force = false);
     void applyMixerControlChange();
     void showAudioSettings();
+    void dismissAudioSetupPrompt();
     void setStatus(juce::String status);
     [[nodiscard]] std::filesystem::path getDefaultProjectPackagePath() const;
     [[nodiscard]] const std::filesystem::path& getCurrentProjectPackagePath() const noexcept;
@@ -249,6 +251,7 @@ private:
     juce::ToggleButton muteToggle_ { "Mute" };
     juce::ToggleButton soloToggle_ { "Solo" };
     juce::String statusText_;
+    juce::String audioSetupInitializationError_;
     std::filesystem::path currentProjectPackagePath_;
     std::unique_ptr<juce::FileChooser> projectNewChooser_;
     std::unique_ptr<juce::FileChooser> projectSaveAsChooser_;
@@ -268,6 +271,8 @@ private:
     bool canCancelAudioImport_ = false;
     bool canCancelMediaRelinkPreparation_ = false;
     bool canCancelTimelinePlaybackPreparation_ = false;
+    bool audioSetupPromptDismissed_ = false;
+    std::string lastAudioSetupStatusSignature_;
 
     WorkspacePanel browserPanel_;
     WorkspacePanel workspacePanel_;

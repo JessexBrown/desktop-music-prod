@@ -1,5 +1,6 @@
 #include "core/AppSession.h"
 #include "core/AppCommandRegistry.h"
+#include "core/AudioSetupStatus.h"
 #include "core/AudioEngineStub.h"
 #include "core/BackgroundAudioImportJob.h"
 #include "core/BackgroundMediaRelinkPreparationJob.h"
@@ -5884,6 +5885,56 @@ void appCommandRegistryDescribesPrototypeTopBarCommands()
            "App command dispatcher reports unknown command ids");
 }
 
+void audioSetupStatusModelsFirstRunReadyAndErrorStates()
+{
+    projectname::AudioSetupStatusRequest request;
+    request.outputDeviceOpen = true;
+    request.outputChannelCount = 2;
+    request.sampleRateHz = 48000.0;
+    request.bufferSizeSamples = 256;
+    request.outputDeviceName = "Studio Output";
+
+    const auto firstRun = projectname::buildAudioSetupStatusViewModel(request);
+    expect(firstRun.kind == projectname::AudioSetupStatusKind::firstRun,
+           "Audio setup model shows a first-run state for an open output");
+    expect(firstRun.setupActionVisible, "Audio setup model keeps setup action visible on first run");
+    expect(firstRun.dismissActionVisible, "Audio setup model exposes a first-run dismiss action");
+    expect(!firstRun.needsAttention, "Audio setup first-run model does not report an error");
+    expect(firstRun.lines.size() == 4, "Audio setup first-run model includes output details and a test cue");
+
+    request.firstRunPromptDismissed = true;
+    const auto ready = projectname::buildAudioSetupStatusViewModel(request);
+    expect(ready.kind == projectname::AudioSetupStatusKind::ready,
+           "Audio setup model shows ready after first-run dismissal");
+    expect(ready.setupActionVisible, "Audio setup model keeps setup action visible after dismissal");
+    expect(!ready.dismissActionVisible, "Audio setup model hides dismiss action after dismissal");
+    expect(!ready.needsAttention, "Audio setup ready model does not need attention");
+
+    request.outputDeviceOpen = false;
+    request.outputChannelCount = 0;
+    request.initializationError.clear();
+    const auto unavailable = projectname::buildAudioSetupStatusViewModel(request);
+    expect(unavailable.kind == projectname::AudioSetupStatusKind::unavailable,
+           "Audio setup model reports unavailable output without initialization error");
+    expect(unavailable.setupActionVisible, "Audio setup unavailable model keeps setup action visible");
+    expect(unavailable.needsAttention, "Audio setup unavailable model needs attention");
+
+    request.initializationError = "No audio device";
+    const auto failed = projectname::buildAudioSetupStatusViewModel(request);
+    expect(failed.kind == projectname::AudioSetupStatusKind::initializationFailed,
+           "Audio setup model reports initialization failure");
+    expect(failed.setupActionVisible, "Audio setup failure model keeps setup action visible");
+    expect(failed.needsAttention, "Audio setup failure model needs attention");
+    expect(!failed.lines.empty() && failed.lines[1].find("No audio device") != std::string::npos,
+           "Audio setup failure model keeps the initialization error visible");
+
+    request.outputDeviceOpen = true;
+    request.outputChannelCount = 2;
+    const auto recovered = projectname::buildAudioSetupStatusViewModel(request);
+    expect(recovered.kind == projectname::AudioSetupStatusKind::ready,
+           "Audio setup model treats a recovered open output as ready despite a stale init error");
+}
+
 void appCommandRoutesImportedClipEditUndoRedo()
 {
     constexpr auto clipId = "clip-imported-playback";
@@ -7638,6 +7689,7 @@ int main()
     timelineViewportCenterHelperFramesSelectedImportedAudioClip();
     workspaceCommandRouterPreservesFocusedWorkspaceShortcuts();
     appCommandRegistryDescribesPrototypeTopBarCommands();
+    audioSetupStatusModelsFirstRunReadyAndErrorStates();
     appCommandRoutesImportedClipEditUndoRedo();
     appSessionSelectsImportedAudioClips();
     appSessionTracksImportedClipPlacementUndoHistory();

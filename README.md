@@ -21,6 +21,9 @@ Third-party dependencies remain under their own licenses as recorded in
 - Dark DAW workspace skeleton with transport, browser, central workspace, device
   panel, mixer area, and inspector.
 - Audio/MIDI device setup abstraction using JUCE's device manager.
+- The Device Panel now shows a first-run Audio/MIDI setup prompt, ready/error
+  output states, and a non-modal setup action that opens the existing JUCE
+  selector without involving plugin scanning.
 - Play/Stop transport state with tempo, time signature, and timeline position.
 - Minimal core audio engine stub that renders a generated test tone and a
   duration-bounded generated clip through the Windows fallback smoke path, plus
@@ -215,7 +218,7 @@ Third-party dependencies remain under their own licenses as recorded in
   existing manifest and writes the next manifest through `manifest.json.tmp`.
 - Shared app session that keeps UI playback state tied to the project-backed
   transport.
-- Save/Open/Import controls in the app shell for a deterministic
+- Project menu, Import control, and deterministic initial
   `Rabbington Studio Demo.project` package in the user's documents folder.
 - Import uses a native file chooser in the JUCE shell, runs project-package WAV
   import on a background job with frame-level decode progress, byte-level copy
@@ -518,4 +521,7 @@ or use `ctest --preset dev --output-on-failure`.
   CI FetchContent caching and second-host core verification.
 - `docs/adr/ADR-0089-native-project-package-choosers.md` records the native
   project package chooser workflow and Save As asset-copy boundary.
+- `docs/adr/ADR-0090-audio-midi-first-run-setup-flow.md` records the
+  first-run Audio/MIDI setup prompt and non-modal recovery path.
+- `docs/AUDIO_MIDI_SETUP_UX.md` documents the first-run device setup UX states.
 - `docs/issues/NEXT-ISSUES.md` lists the next five small tasks.

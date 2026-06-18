@@ -1,6 +1,7 @@
 #include "MainComponent.h"
 
 #include "core/AppCommandRegistry.h"
+#include "core/AudioSetupStatus.h"
 #include "core/BackgroundPackageMediaCleanupJob.h"
 #include "core/ImportedMediaPackageInventory.h"
 #include "core/PackageMediaCleanupBatchDiscovery.h"
@@ -368,6 +369,15 @@ void setButtonEnabledFromCommand(juce::Button& button,
     }
 
     return lines;
+}
+
+[[nodiscard]] juce::StringArray makeStringArray(const std::vector<std::string>& lines)
+{
+    juce::StringArray result;
+    for (const auto& line : lines)
+        result.add(juce::String(line));
+
+    return result;
 }
 
 [[nodiscard]] std::vector<WorkspacePanelRow> makePackageMediaMaintenancePanelRows(
@@ -1164,7 +1174,9 @@ MainComponent::MainComponent()
     refreshBrowserPanel();
 
     const auto error = audioService_.initialiseDefaultDevice();
+    audioSetupInitializationError_ = error;
     refreshInspectorPanel();
+    refreshDevicePanel(true);
     requestPackageMediaMaintenanceRefresh();
     setStatus(error.isEmpty() ? "Ready - press Play for a generated test tone"
                               : "Audio setup needs attention: " + error);
@@ -1358,6 +1370,8 @@ void MainComponent::timerCallback()
     const auto outputSampleRate = currentOutputSampleRate(audioService_.getDeviceSummary());
     if (std::abs(outputSampleRate - lastInspectorOutputSampleRateHz_) > 1.0)
         refreshInspectorPanel();
+
+    refreshDevicePanel();
 }
 
 void MainComponent::configureControls()
@@ -3253,6 +3267,54 @@ void MainComponent::refreshMixerControls()
     refreshingMixerControls_ = false;
 }
 
+void MainComponent::refreshDevicePanel(bool force)
+{
+    const auto summary = audioService_.getDeviceSummary();
+
+    projectname::AudioSetupStatusRequest request;
+    request.firstRunPromptDismissed = audioSetupPromptDismissed_;
+    request.outputDeviceOpen = summary.isOpen;
+    request.outputChannelCount = summary.outputChannels;
+    request.sampleRateHz = summary.sampleRate;
+    request.bufferSizeSamples = summary.bufferSizeSamples;
+    request.outputDeviceName = summary.name.toStdString();
+    request.initializationError = audioSetupInitializationError_.toStdString();
+
+    const auto model = projectname::buildAudioSetupStatusViewModel(request);
+
+    std::ostringstream signature;
+    signature << static_cast<int>(model.kind) << '|'
+              << model.subtitle << '|'
+              << model.setupActionVisible << '|'
+              << model.setupActionEnabled << '|'
+              << model.dismissActionVisible << '|'
+              << audioSetupPromptDismissed_;
+    for (const auto& line : model.lines)
+        signature << '|' << line;
+
+    const auto nextSignature = signature.str();
+    if (!force && nextSignature == lastAudioSetupStatusSignature_)
+        return;
+
+    lastAudioSetupStatusSignature_ = nextSignature;
+    devicePanel_.setSubtitle(juce::String(model.subtitle));
+    devicePanel_.setLines(makeStringArray(model.lines));
+    devicePanel_.setPanelAction(model.setupActionVisible ? juce::String(model.setupActionLabel) : juce::String {},
+                                model.setupActionEnabled,
+                                juce::String(model.setupActionTooltip),
+                                [this]()
+                                {
+                                    dispatchAppCommand(projectname::AppCommandIds::audioSettingsShow);
+                                });
+    devicePanel_.setSecondaryPanelAction(model.dismissActionVisible ? juce::String(model.dismissActionLabel) : juce::String {},
+                                         true,
+                                         juce::String(model.dismissActionTooltip),
+                                         [this]()
+                                         {
+                                             dismissAudioSetupPrompt();
+                                         });
+}
+
 void MainComponent::applyMixerControlChange()
 {
     if (refreshingMixerControls_)
@@ -3288,6 +3350,9 @@ void MainComponent::applyMixerControlChange()
 
 void MainComponent::showAudioSettings()
 {
+    audioSetupPromptDismissed_ = true;
+    refreshDevicePanel(true);
+
     auto selector = std::make_unique<juce::AudioDeviceSelectorComponent>(audioService_.getDeviceManager(),
                                                                          0,
                                                                          2,
@@ -3308,6 +3373,14 @@ void MainComponent::showAudioSettings()
     options.useNativeTitleBar = true;
     options.resizable = true;
     options.launchAsync();
+    setStatus("Audio/MIDI setup opened - press Play to test output");
+}
+
+void MainComponent::dismissAudioSetupPrompt()
+{
+    audioSetupPromptDismissed_ = true;
+    refreshDevicePanel(true);
+    setStatus("Audio setup reminder dismissed");
 }
 
 void MainComponent::setStatus(juce::String status)
