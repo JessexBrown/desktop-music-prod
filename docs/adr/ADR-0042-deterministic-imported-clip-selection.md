@@ -45,6 +45,4 @@ recent import.
 
 ## Follow-Ups
 
-- Add a command routing layer before global shortcuts expand.
-- Add a compact selected-clip action surface before editable clip operations.
 - Add undo boundaries before editable inspector clip operations.

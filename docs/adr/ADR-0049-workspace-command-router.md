@@ -46,7 +46,4 @@ the returned command. Current behavior is preserved:
 
 ## Follow-Ups
 
-- Add a compact center-selected control beside the viewport controls.
-- Add visible viewport controls or a compact zoom indicator after command
-  routing is clearer.
 - Add undo boundaries before editable inspector or timeline clip operations.

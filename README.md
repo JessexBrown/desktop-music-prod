@@ -66,8 +66,8 @@ Third-party dependencies remain under their own licenses as recorded in
   beat scale, so keyboard pan/zoom changes remain visible after the status text
   moves on.
 - Compact workspace controls can pan the timeline view, reset it to beat zero,
-  fit imported clips, and zoom the viewport in or out without adding global
-  shortcuts.
+  fit imported clips, center the selected imported clip, and zoom the viewport
+  in or out without adding global shortcuts.
 - A plain C++ selected-clip centering helper computes a viewport start for the
   selected imported timeline clip while preserving the current zoom scale.
 - Focused workspace shortcuts route through a small tested command router before
@@ -349,4 +349,6 @@ or use `ctest --preset dev --output-on-failure`.
   compact workspace control for fitting imported timeline clips.
 - `docs/adr/ADR-0058-selected-clip-timeline-centering-helper.md` records the
   tested model helper for centering the selected imported timeline clip.
+- `docs/adr/ADR-0059-compact-selected-clip-center-control.md` records the
+  visible compact workspace control for centering the selected imported clip.
 - `docs/issues/NEXT-ISSUES.md` lists the next five small tasks.

@@ -44,8 +44,4 @@ callback.
 
 ## Follow-Ups
 
-- Add visible viewport controls or a compact zoom indicator after command
-  routing is clearer.
-- Add a command routing layer before global shortcuts, command palette, or text
-  editing surfaces expand.
 - Add undo boundaries before editable inspector or timeline clip operations.

@@ -46,7 +46,4 @@ session command so keyboard and mouse selection share the same visible state.
 
 ## Follow-Ups
 
-- Add a command routing layer before global shortcuts, command palette, or text
-  editing surfaces expand.
 - Add undo boundaries before editable inspector or timeline clip operations.
-- Add timeline viewport scroll/zoom state before expanding arrangement editing.

@@ -42,7 +42,6 @@ selected clip.
 
 ## Follow-Ups
 
-- Add a command routing layer before global shortcuts expand.
 - Add undo boundaries before editable inspector or timeline clip operations.
 - Add clip movement and resizing only after explicit edit previews and undo are
   defined.

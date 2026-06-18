@@ -217,6 +217,7 @@ WorkspacePanel::WorkspacePanel(juce::String title, juce::String subtitle, juce::
     configureButton(panLeftViewportButton_, juce::Colour(0xffc6ccd5));
     configureButton(resetViewportButton_, juce::Colour(0xffc6ccd5));
     configureButton(fitClipsViewportButton_, juce::Colour(0xffc6ccd5));
+    configureButton(centerSelectedViewportButton_, juce::Colour(0xffc6ccd5));
     configureButton(zoomOutViewportButton_, juce::Colour(0xffc6ccd5));
     configureButton(zoomInViewportButton_, juce::Colour(0xffc6ccd5));
     configureButton(panRightViewportButton_, juce::Colour(0xffc6ccd5));
@@ -224,6 +225,7 @@ WorkspacePanel::WorkspacePanel(juce::String title, juce::String subtitle, juce::
     panLeftViewportButton_.setTooltip("Pan timeline view left");
     resetViewportButton_.setTooltip("Reset timeline view to the project start");
     fitClipsViewportButton_.setTooltip("Fit imported audio clips in the timeline view");
+    centerSelectedViewportButton_.setTooltip("Center the selected imported clip in the timeline view");
     zoomOutViewportButton_.setTooltip("Zoom timeline view out");
     zoomInViewportButton_.setTooltip("Zoom timeline view in");
     panRightViewportButton_.setTooltip("Pan timeline view right");
@@ -242,6 +244,11 @@ WorkspacePanel::WorkspacePanel(juce::String title, juce::String subtitle, juce::
     {
         if (timelineFitClipsRequested_)
             timelineFitClipsRequested_();
+    };
+    centerSelectedViewportButton_.onClick = [this]()
+    {
+        if (timelineCenterSelectedRequested_)
+            timelineCenterSelectedRequested_();
     };
     zoomOutViewportButton_.onClick = [this]()
     {
@@ -262,6 +269,7 @@ WorkspacePanel::WorkspacePanel(juce::String title, juce::String subtitle, juce::
     addChildComponent(panLeftViewportButton_);
     addChildComponent(resetViewportButton_);
     addChildComponent(fitClipsViewportButton_);
+    addChildComponent(centerSelectedViewportButton_);
     addChildComponent(zoomOutViewportButton_);
     addChildComponent(zoomInViewportButton_);
     addChildComponent(panRightViewportButton_);
@@ -348,7 +356,7 @@ juce::Rectangle<int> WorkspacePanel::getViewportControlBounds() const
     auto content = getLocalBounds().reduced(16);
     content.removeFromTop(24);
     auto subtitleArea = content.removeFromTop(22);
-    return subtitleArea.removeFromRight(196).reduced(0, 1);
+    return subtitleArea.removeFromRight(228).reduced(0, 1);
 }
 
 bool WorkspacePanel::shouldShowViewportControls() const
@@ -356,6 +364,7 @@ bool WorkspacePanel::shouldShowViewportControls() const
     return timelinePanLeftControlRequested_
         || timelineResetStartRequested_
         || timelineFitClipsRequested_
+        || timelineCenterSelectedRequested_
         || timelineZoomOutControlRequested_
         || timelineZoomInControlRequested_
         || timelinePanRightControlRequested_;
@@ -367,6 +376,7 @@ void WorkspacePanel::resized()
     panLeftViewportButton_.setVisible(visible);
     resetViewportButton_.setVisible(visible);
     fitClipsViewportButton_.setVisible(visible);
+    centerSelectedViewportButton_.setVisible(visible);
     zoomOutViewportButton_.setVisible(visible);
     zoomInViewportButton_.setVisible(visible);
     panRightViewportButton_.setVisible(visible);
@@ -380,6 +390,8 @@ void WorkspacePanel::resized()
     resetViewportButton_.setBounds(controls.removeFromLeft(28));
     controls.removeFromLeft(4);
     fitClipsViewportButton_.setBounds(controls.removeFromLeft(36));
+    controls.removeFromLeft(4);
+    centerSelectedViewportButton_.setBounds(controls.removeFromLeft(28));
     controls.removeFromLeft(4);
     zoomOutViewportButton_.setBounds(controls.removeFromLeft(28));
     controls.removeFromLeft(4);
@@ -513,6 +525,7 @@ void WorkspacePanel::setTimelineViewportKeyboardCallbacks(std::function<void()> 
 void WorkspacePanel::setTimelineViewportControlCallbacks(std::function<void()> panLeftCallback,
                                                          std::function<void()> resetStartCallback,
                                                          std::function<void()> fitClipsCallback,
+                                                         std::function<void()> centerSelectedCallback,
                                                          std::function<void()> zoomOutCallback,
                                                          std::function<void()> zoomInCallback,
                                                          std::function<void()> panRightCallback)
@@ -520,6 +533,7 @@ void WorkspacePanel::setTimelineViewportControlCallbacks(std::function<void()> p
     timelinePanLeftControlRequested_ = std::move(panLeftCallback);
     timelineResetStartRequested_ = std::move(resetStartCallback);
     timelineFitClipsRequested_ = std::move(fitClipsCallback);
+    timelineCenterSelectedRequested_ = std::move(centerSelectedCallback);
     timelineZoomOutControlRequested_ = std::move(zoomOutCallback);
     timelineZoomInControlRequested_ = std::move(zoomInCallback);
     timelinePanRightControlRequested_ = std::move(panRightCallback);
@@ -710,6 +724,10 @@ MainComponent::MainComponent()
         [this]()
         {
             fitTimelineViewportToImportedClips();
+        },
+        [this]()
+        {
+            centerTimelineViewportOnSelectedClip();
         },
         [this]()
         {
@@ -1665,6 +1683,25 @@ void MainComponent::fitTimelineViewportToImportedClips()
     refreshWorkspaceTimelineLane();
     setStatus(juce::String("Fit imported clips - ")
               + juce::String(projectname::formatTimelineViewportIndicator(*fit)));
+}
+
+void MainComponent::centerTimelineViewportOnSelectedClip()
+{
+    const auto centered = projectname::centerTimelineViewportOnSelectedImportedAudioClip(
+        session_.getProject(),
+        session_.getTimelineViewport(),
+        workspacePanel_.getTimelineClipViewportWidthPixels());
+
+    if (!centered.has_value())
+    {
+        setStatus("No selected imported audio clip to center in the timeline.");
+        return;
+    }
+
+    session_.setTimelineViewport(centered->viewStartBeats, centered->beatsPerPixel);
+    refreshWorkspaceTimelineLane();
+    setStatus(juce::String("Centered selected clip - ")
+              + juce::String(projectname::formatTimelineViewportIndicator(*centered)));
 }
 
 void MainComponent::refreshMixerControls()

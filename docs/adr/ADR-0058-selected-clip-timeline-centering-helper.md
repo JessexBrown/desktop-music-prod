@@ -48,7 +48,6 @@ or global shortcuts.
 
 ## Follow-Ups
 
-- Add a compact center-selected control beside the viewport controls.
 - Add undo boundaries before editable inspector or timeline clip operations.
 - Keep global shortcuts and command palette work behind the command registry
   focus policy.

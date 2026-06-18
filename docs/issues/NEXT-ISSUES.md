@@ -34,13 +34,12 @@ Acceptance:
 - Add a non-modal path back to the Audio/MIDI setup dialog.
 - Keep the first implementation separate from plugin scanning.
 
-## 5. Add a Compact Selected-Clip Center Control
+## 5. Design the Undo Boundary for Imported Clip Edits
 
 Acceptance:
-- Add a small visible center-selected control beside the existing workspace
-  viewport controls.
-- Route it through `centerTimelineViewportOnSelectedImportedAudioClip`, update
-  the session viewport, and refresh the lane plus indicator.
-- Surface a non-disruptive status message when no selected imported clip can be
-  centered.
-- Keep clip editing, drag/drop behavior, and global shortcuts out of this task.
+- Add an ADR for the first undo/redo boundary around imported clip edits.
+- Define the model operations that must become undoable first, including clip
+  placement and media replacement.
+- Define focused tests needed before adding editable inspector or drag/drop clip
+  operations.
+- Do not add visible undo/redo buttons or global shortcuts in this task.

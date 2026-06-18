@@ -37,8 +37,4 @@ selection shortcuts.
 
 ## Follow-Ups
 
-- Add a command routing layer before global shortcuts, command palette, or text
-  editing surfaces expand.
 - Add undo boundaries before editable inspector or timeline clip operations.
-- Add focused workspace keyboard or toolbar controls to change viewport start
-  and zoom.

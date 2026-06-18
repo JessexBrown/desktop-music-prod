@@ -40,6 +40,7 @@ public:
     void setTimelineViewportControlCallbacks(std::function<void()> panLeftCallback,
                                              std::function<void()> resetStartCallback,
                                              std::function<void()> fitClipsCallback,
+                                             std::function<void()> centerSelectedCallback,
                                              std::function<void()> zoomOutCallback,
                                              std::function<void()> zoomInCallback,
                                              std::function<void()> panRightCallback);
@@ -58,6 +59,7 @@ private:
     juce::TextButton panLeftViewportButton_ { "<" };
     juce::TextButton resetViewportButton_ { "0" };
     juce::TextButton fitClipsViewportButton_ { "Fit" };
+    juce::TextButton centerSelectedViewportButton_ { "C" };
     juce::TextButton zoomOutViewportButton_ { "-" };
     juce::TextButton zoomInViewportButton_ { "+" };
     juce::TextButton panRightViewportButton_ { ">" };
@@ -75,6 +77,7 @@ private:
     std::function<void()> timelinePanLeftControlRequested_;
     std::function<void()> timelineResetStartRequested_;
     std::function<void()> timelineFitClipsRequested_;
+    std::function<void()> timelineCenterSelectedRequested_;
     std::function<void()> timelineZoomOutControlRequested_;
     std::function<void()> timelineZoomInControlRequested_;
     std::function<void()> timelinePanRightControlRequested_;
@@ -128,6 +131,7 @@ private:
     void zoomTimelineViewport(double multiplier);
     void resetTimelineViewportStart();
     void fitTimelineViewportToImportedClips();
+    void centerTimelineViewportOnSelectedClip();
     void refreshMixerControls();
     void applyMixerControlChange();
     void showAudioSettings();
