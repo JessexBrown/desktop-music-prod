@@ -56,6 +56,6 @@ inspector fields, drag/drop edits, or package file restoration.
 
 ## Follow-Ups
 
-- Add a plain C++ imported clip inspector edit draft/validation model.
+- Add visible imported clip inspector start-beat controls.
 - Add visible undo/redo controls only after focus ownership and text-entry
   behavior are covered by tests.

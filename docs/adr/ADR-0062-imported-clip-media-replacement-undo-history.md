@@ -61,6 +61,6 @@ global shortcuts, editable inspector fields, or timeline drag/drop.
 
 ## Follow-Ups
 
-- Add a plain C++ imported clip inspector edit draft/validation model.
+- Add visible imported clip inspector start-beat controls.
 - Add editable inspector or timeline gesture commits only after visible commands
   and text-entry behavior are covered by tests.

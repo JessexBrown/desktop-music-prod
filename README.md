@@ -125,6 +125,9 @@ Third-party dependencies remain under their own licenses as recorded in
 - ADR-0064 defines the editable imported clip inspector flow before visible
   text fields are added, including focus ownership, commit/cancel behavior,
   validation, and undo grouping.
+- A plain C++ imported clip inspector edit draft model validates selected-clip
+  start-beat edits and media relink metadata before future visible controls call
+  app-session commit commands.
 - A plain C++ track voice scheduler turns timeline clip plans, render windows,
   and track gain/pan/mute/solo snapshots into mixer-ready voice descriptors.
 - Project track volume, pan, mute, and solo state is persisted and fed into
@@ -156,7 +159,8 @@ Third-party dependencies remain under their own licenses as recorded in
   handling, timeline viewport state, fit-to-clips and selected-clip centering
   helpers, imported clip placement and media replacement undo/redo, imported
   clip edit undo/redo command routing, indicator formatting, and keyboard
-  commands, workspace command routing, app command registry metadata,
+  commands, imported clip inspector edit draft validation and cancel behavior,
+  workspace command routing, app command registry metadata,
   enablement, and dispatch results, timeline lane
   layout/hit-testing/placement/loop-range scaling, track voice scheduling
   policy, persisted track mix state, stereo prepared voice summing, loop-region
@@ -376,4 +380,6 @@ or use `ctest --preset dev --output-on-failure`.
   command routing path for top-of-stack imported clip edit undo/redo.
 - `docs/adr/ADR-0064-imported-clip-inspector-editing-flow.md` records the
   editable inspector focus, commit/cancel, validation, and undo grouping design.
+- `docs/adr/ADR-0065-imported-clip-inspector-edit-draft-model.md` records the
+  plain C++ draft/validation model for future imported clip inspector controls.
 - `docs/issues/NEXT-ISSUES.md` lists the next five small tasks.

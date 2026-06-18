@@ -46,4 +46,4 @@ the returned command. Current behavior is preserved:
 
 ## Follow-Ups
 
-- Add a plain C++ imported clip inspector edit draft/validation model.
+- Add visible imported clip inspector start-beat controls.

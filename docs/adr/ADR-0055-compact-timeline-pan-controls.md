@@ -45,6 +45,6 @@ command-palette entries.
 
 ## Follow-Ups
 
-- Add a plain C++ imported clip inspector edit draft/validation model.
+- Add visible imported clip inspector start-beat controls.
 - Keep global shortcuts and command palette work behind the command registry
   focus policy.

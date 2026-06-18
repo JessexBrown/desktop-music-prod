@@ -42,6 +42,6 @@ selected clip.
 
 ## Follow-Ups
 
-- Add a plain C++ imported clip inspector edit draft/validation model.
+- Add visible imported clip inspector start-beat controls.
 - Add clip movement and resizing only after explicit edit previews and undo are
   defined.

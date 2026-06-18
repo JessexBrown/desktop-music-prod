@@ -34,12 +34,12 @@ Acceptance:
 - Add a non-modal path back to the Audio/MIDI setup dialog.
 - Keep the first implementation separate from plugin scanning.
 
-## 5. Add Imported Clip Inspector Edit Draft Model
+## 5. Add Visible Imported Clip Start-Beat Control
 
 Acceptance:
-- Add a plain C++ edit draft/validation model for imported clip inspector
-  fields.
-- Cover start-beat commit/cancel validation and media relink metadata validation
-  with tests.
-- Keep visible controls, global shortcuts, file chooser behavior, package file
-  restoration, and drag/drop clip operations out of this task.
+- Add a selected-clip-only start-beat text field to the right inspector using
+  `ImportedClipInspectorEditDraft`.
+- Return accepted values through `AppSession::setImportedAudioClipStartBeats`
+  and Escape cancels back to the last committed value.
+- Keep media relink UI, file chooser behavior, package restoration, global
+  shortcuts, and drag/drop clip operations out of this task.

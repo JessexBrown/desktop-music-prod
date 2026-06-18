@@ -46,4 +46,4 @@ session command so keyboard and mouse selection share the same visible state.
 
 ## Follow-Ups
 
-- Add a plain C++ imported clip inspector edit draft/validation model.
+- Add visible imported clip inspector start-beat controls.

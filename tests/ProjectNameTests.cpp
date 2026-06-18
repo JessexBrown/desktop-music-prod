@@ -4,6 +4,7 @@
 #include "core/BackgroundAudioImportJob.h"
 #include "core/BackgroundTimelinePlaybackPreparationJob.h"
 #include "core/BackgroundWaveformAnalysisJob.h"
+#include "core/ImportedClipInspectorEditDraft.h"
 #include "core/ImportedClipInspector.h"
 #include "core/ProjectAudioImport.h"
 #include "core/ProjectModel.h"
@@ -114,6 +115,22 @@ projectname::ProjectModel makeProjectWithImportedTimelineClip(double startBeats,
 
     project.addTrack(std::move(track));
     return project;
+}
+
+projectname::ImportedClipInspectorState makeImportedClipInspectorEditState(bool usingSelectedClip)
+{
+    projectname::ImportedClipInspectorState state;
+    state.status = projectname::ImportedClipInspectorStatus::ready;
+    state.trackId = "track-imported-playback";
+    state.trackName = "Imported Playback";
+    state.clipId = "clip-imported-playback";
+    state.clipName = "Timeline Clip";
+    state.relativePath = "audio/timeline-clip.wav";
+    state.analysisPath = "analysis/timeline-clip.waveform.json";
+    state.startBeats = 4.0;
+    state.lengthBeats = 2.0;
+    state.usingSelectedClip = usingSelectedClip;
+    return state;
 }
 
 projectname::ProjectClip makeImportedTimelineCacheClip(int index, double startBeats)
@@ -1824,6 +1841,178 @@ void importedClipInspectorReportsSelectedOrFirstImportedClipMetadata()
     expect(std::filesystem::remove(wavPath), "Temporary inspector WAV deleted");
     expect(std::filesystem::remove(secondWavPath), "Temporary second inspector WAV deleted");
     expect(std::filesystem::remove_all(package) > 0, "Temporary inspector package deleted");
+}
+
+void importedClipInspectorEditDraftValidatesStartBeatCommitAndCancel()
+{
+    constexpr auto clipId = "clip-imported-playback";
+
+    auto fallbackDraft =
+        projectname::ImportedClipInspectorEditDraft::fromInspectorState(
+            makeImportedClipInspectorEditState(false));
+    expect(fallbackDraft.getAvailability()
+               == projectname::ImportedClipInspectorEditAvailability::readOnlyFallback,
+           "Imported clip edit draft marks fallback inspector as read-only");
+    expect(!fallbackDraft.canEdit(),
+           "Imported clip edit draft does not edit unselected fallback metadata");
+
+    fallbackDraft.setStartBeatText("8.0");
+    std::string error;
+    expect(!fallbackDraft.makeStartBeatCommit(error).has_value(),
+           "Imported clip edit draft rejects fallback start-beat commits");
+    expect(!error.empty(), "Fallback start-beat rejection reports a recoverable error");
+
+    auto draft =
+        projectname::ImportedClipInspectorEditDraft::fromInspectorState(
+            makeImportedClipInspectorEditState(true));
+    expect(draft.canEdit(), "Imported clip edit draft allows selected clip editing");
+    expect(draft.getStartBeatText() == "4",
+           "Imported clip edit draft formats committed start beat for text editing");
+
+    draft.setStartBeatText("not-a-beat");
+    auto validation = draft.validateStartBeat();
+    expect(validation.code == projectname::ImportedClipInspectorEditValidationCode::invalidStartBeat,
+           "Imported clip edit draft rejects non-numeric start beat text");
+    expect(!draft.makeStartBeatCommit(error).has_value(),
+           "Imported clip edit draft does not emit commit for non-numeric start beat");
+
+    draft.setStartBeatText("-0.25");
+    validation = draft.validateStartBeat();
+    expect(validation.code == projectname::ImportedClipInspectorEditValidationCode::invalidStartBeat,
+           "Imported clip edit draft rejects negative start beat text");
+
+    draft.setStartBeatText(" 8.25 ");
+    auto commit = draft.makeStartBeatCommit(error);
+    expect(commit.has_value() && commit->clipId == clipId,
+           "Imported clip edit draft emits selected clip id for valid start commit");
+    expect(commit.has_value() && std::abs(commit->startBeats - 8.25) < 0.0001,
+           "Imported clip edit draft parses valid start beat commit");
+    expect(error.empty(), "Valid start-beat commit leaves error empty");
+
+    projectname::AppSession session(makeProjectWithImportedTimelineClip(4.0, 2.0));
+    expect(commit.has_value()
+               && session.setImportedAudioClipStartBeats(commit->clipId, commit->startBeats, error),
+           "Imported clip edit draft start commit applies through app session");
+    const auto* movedClip = findClipById(session.getProject(), clipId);
+    expect(movedClip != nullptr && std::abs(movedClip->startBeats - 8.25) < 0.0001,
+           "Applied start-beat draft commit updates selected imported clip");
+    expect(session.canUndoImportedClipPlacementEdit(),
+           "Applied start-beat draft commit records one placement undo entry");
+
+    projectname::AppSession cancelSession(makeProjectWithImportedTimelineClip(4.0, 2.0));
+    auto cancelDraft =
+        projectname::ImportedClipInspectorEditDraft::fromInspectorState(
+            makeImportedClipInspectorEditState(true));
+    cancelDraft.setStartBeatText("12.0");
+    cancelDraft.cancelStartBeatEdit();
+    expect(cancelDraft.getStartBeatText() == "4",
+           "Imported clip edit draft cancel restores committed start-beat text");
+    auto cancelledCommit = cancelDraft.makeStartBeatCommit(error);
+    expect(cancelledCommit.has_value()
+               && std::abs(cancelledCommit->startBeats - 4.0) < 0.0001,
+           "Cancelled start-beat draft resolves to original committed value");
+    expect(cancelledCommit.has_value()
+               && cancelSession.setImportedAudioClipStartBeats(cancelledCommit->clipId,
+                                                               cancelledCommit->startBeats,
+                                                               error),
+           "Cancelled start-beat no-op remains acceptable to the session");
+    expect(!cancelSession.canUndoImportedClipPlacementEdit(),
+           "Cancelled start-beat edit does not record undo history");
+}
+
+void importedClipInspectorEditDraftValidatesMediaRelinkMetadata()
+{
+    constexpr auto clipId = "clip-imported-playback";
+
+    auto fallbackDraft =
+        projectname::ImportedClipInspectorEditDraft::fromInspectorState(
+            makeImportedClipInspectorEditState(false));
+    fallbackDraft.setMediaRelinkDraft("audio/rejected.wav",
+                                      "analysis/rejected.waveform.json",
+                                      1.0);
+    std::string error;
+    expect(!fallbackDraft.makeMediaRelinkCommit(error).has_value(),
+           "Imported clip edit draft rejects fallback media relink commits");
+
+    auto draft =
+        projectname::ImportedClipInspectorEditDraft::fromInspectorState(
+            makeImportedClipInspectorEditState(true));
+
+    draft.setMediaRelinkDraft("", "analysis/relinked.waveform.json", 3.0);
+    auto validation = draft.validateMediaRelink();
+    expect(validation.code == projectname::ImportedClipInspectorEditValidationCode::missingMediaPath,
+           "Imported clip edit draft rejects empty media path");
+    expect(!draft.makeMediaRelinkCommit(error).has_value(),
+           "Imported clip edit draft does not emit relink commit for missing media path");
+
+    draft.setMediaRelinkDraft("../outside.wav", "analysis/relinked.waveform.json", 3.0);
+    validation = draft.validateMediaRelink();
+    expect(validation.code == projectname::ImportedClipInspectorEditValidationCode::unsafeMediaPath,
+           "Imported clip edit draft rejects media paths outside the project package");
+
+    draft.setMediaRelinkDraft("audio/relinked.wav", "../analysis/relinked.waveform.json", 3.0);
+    validation = draft.validateMediaRelink();
+    expect(validation.code == projectname::ImportedClipInspectorEditValidationCode::unsafeAnalysisPath,
+           "Imported clip edit draft rejects unsafe analysis paths");
+
+    draft.setMediaRelinkDraft("audio/relinked.wav",
+                              "analysis/relinked.waveform.json",
+                              std::numeric_limits<double>::quiet_NaN());
+    validation = draft.validateMediaRelink();
+    expect(validation.code == projectname::ImportedClipInspectorEditValidationCode::invalidLengthBeats,
+           "Imported clip edit draft rejects non-finite relink length");
+
+    draft.setMediaRelinkDraft("audio/relinked.wav", "", 3.25);
+    auto commit = draft.makeMediaRelinkCommit(error);
+    expect(commit.has_value() && commit->clipId == clipId,
+           "Imported clip edit draft emits selected clip id for valid relink commit");
+    expect(commit.has_value() && commit->relativePath == "audio/relinked.wav",
+           "Imported clip edit draft preserves validated relink media path");
+    expect(commit.has_value() && commit->analysisPath.empty(),
+           "Imported clip edit draft permits empty analysis path for not-yet-generated analysis");
+    expect(commit.has_value() && std::abs(commit->lengthBeats - 3.25) < 0.0001,
+           "Imported clip edit draft preserves validated relink length");
+
+    projectname::AppSession session(makeProjectWithImportedTimelineClip(4.0, 2.0));
+    expect(commit.has_value()
+               && session.replaceImportedAudioClipMedia(commit->clipId,
+                                                        commit->relativePath,
+                                                        commit->analysisPath,
+                                                        commit->lengthBeats,
+                                                        error),
+           "Imported clip edit draft media relink commit applies through app session");
+    const auto* relinkedClip = findClipById(session.getProject(), clipId);
+    expect(relinkedClip != nullptr && relinkedClip->relativePath == "audio/relinked.wav",
+           "Applied media relink draft commit updates imported clip media path");
+    expect(relinkedClip != nullptr && relinkedClip->analysisPath.empty(),
+           "Applied media relink draft commit stores empty pending analysis path");
+    expect(relinkedClip != nullptr && std::abs(relinkedClip->lengthBeats - 3.25) < 0.0001,
+           "Applied media relink draft commit updates imported clip length");
+    expect(session.canUndoImportedClipMediaReplacementEdit(),
+           "Applied media relink draft commit records one media replacement undo entry");
+
+    projectname::AppSession cancelSession(makeProjectWithImportedTimelineClip(4.0, 2.0));
+    auto cancelDraft =
+        projectname::ImportedClipInspectorEditDraft::fromInspectorState(
+            makeImportedClipInspectorEditState(true));
+    cancelDraft.setMediaRelinkDraft("audio/cancelled.wav",
+                                    "analysis/cancelled.waveform.json",
+                                    6.0);
+    cancelDraft.cancelMediaRelinkEdit();
+    expect(cancelDraft.getMediaRelativePath() == "audio/timeline-clip.wav"
+               && cancelDraft.getAnalysisPath() == "analysis/timeline-clip.waveform.json"
+               && std::abs(cancelDraft.getLengthBeats() - 2.0) < 0.0001,
+           "Imported clip edit draft cancel restores committed media relink metadata");
+    auto cancelledCommit = cancelDraft.makeMediaRelinkCommit(error);
+    expect(cancelledCommit.has_value()
+               && cancelSession.replaceImportedAudioClipMedia(cancelledCommit->clipId,
+                                                              cancelledCommit->relativePath,
+                                                              cancelledCommit->analysisPath,
+                                                              cancelledCommit->lengthBeats,
+                                                              error),
+           "Cancelled media relink no-op remains acceptable to the session");
+    expect(!cancelSession.canUndoImportedClipMediaReplacementEdit(),
+           "Cancelled media relink edit does not record undo history");
 }
 
 void waveformThumbnailLoaderReportsInvalidAnalysis()
@@ -5026,6 +5215,8 @@ int main()
     backgroundAudioImportJobImportsProjectPackage();
     backgroundAudioImportJobReportsFailureWithoutMutatingProject();
     backgroundAudioImportJobCancelsBeforeStart();
+    importedClipInspectorEditDraftValidatesStartBeatCommitAndCancel();
+    importedClipInspectorEditDraftValidatesMediaRelinkMetadata();
 
     if (failures == 0)
     {

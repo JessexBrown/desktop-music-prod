@@ -87,7 +87,7 @@ file chooser for relink.
 
 ## Follow-Ups
 
-- Add a plain C++ imported clip inspector edit draft/validation model.
+- Add visible imported clip inspector start-beat controls.
 - Add visible inspector edit controls only after the draft model has unit tests.
 - Add relink file chooser behavior separately from package file cleanup or
   restoration.
