@@ -1,6 +1,16 @@
 # Next Issues
 
-## 1. Replace Deterministic Save/Open With Native Project Choosers
+## 1. Confirm GitHub-Hosted CI Run Status
+
+Acceptance:
+- Observe the pushed GitHub Actions workflow run once repository Actions status
+  is accessible.
+- Verify the `Windows MSVC App` job passes `projectname_app_smoke`.
+- Verify the `Linux Core` job passes the `core-dev` configure/build/test path.
+- If either job fails, fix the workflow while preserving FetchContent caching
+  and second-host core coverage.
+
+## 2. Replace Deterministic Save/Open With Native Project Choosers
 
 Acceptance:
 - Add native file chooser actions for New, Save As, and Open.
@@ -11,7 +21,7 @@ Acceptance:
 - Surface missing or invalid manifest errors in the app UI without replacing the
   current project.
 
-## 2. Design the Audio/MIDI First-Run Setup Flow
+## 3. Design the Audio/MIDI First-Run Setup Flow
 
 Acceptance:
 - Create a short UX note for first-run device setup.
@@ -19,7 +29,7 @@ Acceptance:
 - Add a non-modal path back to the Audio/MIDI setup dialog.
 - Keep the first implementation separate from plugin scanning.
 
-## 3. Add Package Media Restore Entry Selection Model
+## 4. Add Package Media Restore Entry Selection Model
 
 Acceptance:
 - Add a plain C++ selection model for restorable entries in the selected cleanup
@@ -31,18 +41,10 @@ Acceptance:
 - Cover restored, conflict, partial-failure, stale-path, and empty-selection
   states with unit tests.
 
-## 4. Continue SPDX Baseline Reduction for App/Core Sources
+## 5. Continue SPDX Baseline Reduction for App/Core Sources
 
 Acceptance:
 - Add SPDX headers to one small, reviewable group of legacy app or core source
   files.
 - Remove those paths from `docs/SPDX_EXCEPTIONS.txt`.
 - Keep `projectname_spdx_check` passing.
-
-## 5. Add CI Status Badge and Failure Triage Notes
-
-Acceptance:
-- Add a README CI status badge once the public workflow/check naming is stable.
-- Add a short troubleshooting note for common Windows app-smoke and Linux
-  core-only CI failures.
-- Keep workflow behavior unchanged unless the note exposes a concrete CI bug.
