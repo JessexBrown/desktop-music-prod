@@ -66,9 +66,8 @@ Third-party dependencies remain under their own licenses as recorded in
   beat scale, so keyboard pan/zoom changes remain visible after the status text
   moves on.
 - Compact workspace controls can pan the timeline view, reset it to beat zero,
-  and zoom the viewport in or out without adding global shortcuts.
-- A plain C++ fit-to-imported-clips viewport helper computes view start and beat
-  scale for imported timeline clips before adding a visible fit button.
+  fit imported clips, and zoom the viewport in or out without adding global
+  shortcuts.
 - Focused workspace shortcuts route through a small tested command router before
   the JUCE panel executes clip-selection or viewport callbacks.
 - A small app command registry records stable ids, metadata, scopes, and
@@ -343,4 +342,6 @@ or use `ctest --preset dev --output-on-failure`.
   left/right viewport pan controls.
 - `docs/adr/ADR-0056-timeline-fit-to-clips-viewport-helper.md` records the
   tested model helper for fitting imported clips in the timeline viewport.
+- `docs/adr/ADR-0057-compact-timeline-fit-control.md` records the visible
+  compact workspace control for fitting imported timeline clips.
 - `docs/issues/NEXT-ISSUES.md` lists the next five small tasks.

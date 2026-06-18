@@ -63,7 +63,7 @@ audio-thread work into command handlers.
 
 ## Follow-Ups
 
-- Add a compact fit-to-imported-clips control beside the viewport controls.
+- Add a selected-clip centering helper before adding another viewport control.
 - Add command palette and shortcut editor UI only after text-entry/focus
   ownership is covered by tests.
 - Add undo boundaries before editable inspector or timeline clip operations.

@@ -34,12 +34,12 @@ Acceptance:
 - Add a non-modal path back to the Audio/MIDI setup dialog.
 - Keep the first implementation separate from plugin scanning.
 
-## 5. Add a Compact Timeline Fit-to-Clips Control
+## 5. Add a Selected-Clip Timeline Centering Helper
 
 Acceptance:
-- Add a small visible fit-to-clips control beside the existing workspace
-  viewport controls.
-- Route it through `fitTimelineViewportToImportedAudioClips`, update the session
-  viewport, and refresh the lane plus indicator.
-- Surface a non-disruptive status message when no imported clips can be fit.
+- Add a plain C++ helper that computes a timeline viewport start capable of
+  centering the selected imported audio clip without changing zoom scale.
+- Add focused tests for no selection, missing selected clip, and an offscreen
+  selected imported clip.
+- Do not add a visible center button until the helper behavior is proven.
 - Keep clip editing, drag/drop behavior, and global shortcuts out of this task.

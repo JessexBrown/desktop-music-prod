@@ -45,7 +45,7 @@ command-palette entries.
 
 ## Follow-Ups
 
-- Add a compact fit-to-imported-clips control beside the viewport controls.
+- Add a selected-clip centering helper before adding another viewport control.
 - Add undo boundaries before editable inspector or timeline clip operations.
 - Keep global shortcuts and command palette work behind the command registry
   focus policy.
