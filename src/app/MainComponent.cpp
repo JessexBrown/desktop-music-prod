@@ -168,6 +168,36 @@ void setButtonEnabledFromCommand(juce::Button& button,
     return "Preparing timeline audio";
 }
 
+[[nodiscard]] juce::String formatMediaRelinkPreparationPhase(
+    projectname::BackgroundMediaRelinkPreparationPhase phase)
+{
+    switch (phase)
+    {
+        case projectname::BackgroundMediaRelinkPreparationPhase::pending:
+            return "Preparing media relink";
+
+        case projectname::BackgroundMediaRelinkPreparationPhase::decoding:
+            return "Decoding relink audio";
+
+        case projectname::BackgroundMediaRelinkPreparationPhase::copying:
+            return "Staging relink audio";
+
+        case projectname::BackgroundMediaRelinkPreparationPhase::analysing:
+            return "Analysing relink audio";
+
+        case projectname::BackgroundMediaRelinkPreparationPhase::completed:
+            return "Relink audio ready";
+
+        case projectname::BackgroundMediaRelinkPreparationPhase::failed:
+            return "Media relink preparation failed";
+
+        case projectname::BackgroundMediaRelinkPreparationPhase::cancelled:
+            return "Media relink preparation cancelled";
+    }
+
+    return "Preparing media relink";
+}
+
 [[nodiscard]] std::int64_t makeTimelineVoiceWindowFrameCount(
     const projectname::AudioDeviceSummary& summary,
     double sampleRateHz) noexcept
@@ -797,10 +827,13 @@ MainComponent::~MainComponent()
     stopTimer();
     if (audioImportJob_ != nullptr)
         audioImportJob_->requestCancel();
+    if (mediaRelinkPreparationJob_ != nullptr)
+        mediaRelinkPreparationJob_->requestCancel();
     if (timelinePlaybackPreparationJob_ != nullptr)
         timelinePlaybackPreparationJob_->requestCancel();
 
     audioImportJob_.reset();
+    mediaRelinkPreparationJob_.reset();
     timelinePlaybackPreparationJob_.reset();
     audioService_.shutdown();
 }
@@ -865,6 +898,12 @@ void MainComponent::resized()
 
     auto inspectorStartRow = getInspectorStartBeatRowBounds();
     auto inspectorStartContent = inspectorStartRow.reduced(10, 3);
+    if (inspectorCancelRelinkButton_.isVisible())
+    {
+        inspectorCancelRelinkButton_.setBounds(inspectorStartContent.removeFromRight(
+            std::min(58, inspectorStartContent.getWidth())));
+        inspectorStartContent.removeFromRight(std::min(6, inspectorStartContent.getWidth()));
+    }
     inspectorRelinkButton_.setBounds(inspectorStartContent.removeFromRight(
         std::min(64, inspectorStartContent.getWidth())));
     inspectorStartContent.removeFromRight(std::min(8, inspectorStartContent.getWidth()));
@@ -918,6 +957,10 @@ void MainComponent::buttonClicked(juce::Button* button)
     {
         relinkSelectedClipMedia();
     }
+    else if (button == &inspectorCancelRelinkButton_)
+    {
+        cancelMediaRelinkPreparation();
+    }
     else if (button == &cancelImportButton_)
     {
         dispatchAppCommand(projectname::AppCommandIds::audioImportCancel);
@@ -954,6 +997,7 @@ void MainComponent::sliderValueChanged(juce::Slider* slider)
 void MainComponent::timerCallback()
 {
     pollAudioImportJob();
+    pollMediaRelinkPreparationJob();
     pollTimelinePlaybackPreparationJob();
     session_.advanceSeconds(1.0 / 30.0);
     updateTransportLabels();
@@ -993,6 +1037,7 @@ void MainComponent::configureControls()
     addAndMakeVisible(inspectorStartBeatLabel_);
     addAndMakeVisible(inspectorStartBeatEditor_);
     addAndMakeVisible(inspectorRelinkButton_);
+    addAndMakeVisible(inspectorCancelRelinkButton_);
 
     configureButton(playButton_, accent);
     configureButton(stopButton_, accentWarm);
@@ -1000,6 +1045,7 @@ void MainComponent::configureControls()
     configureButton(openButton_, juce::Colour(0xffc6ccd5));
     configureButton(importButton_, juce::Colour(0xffc6ccd5));
     configureButton(inspectorRelinkButton_, juce::Colour(0xffc6ccd5));
+    configureButton(inspectorCancelRelinkButton_, accentWarm);
     configureButton(cancelImportButton_, accentWarm);
     configureButton(cancelTimelinePreparationButton_, accentWarm);
     configureButton(audioButton_, juce::Colour(0xffc6ccd5));
@@ -1010,6 +1056,7 @@ void MainComponent::configureControls()
     openButton_.addListener(this);
     importButton_.addListener(this);
     inspectorRelinkButton_.addListener(this);
+    inspectorCancelRelinkButton_.addListener(this);
     cancelImportButton_.addListener(this);
     cancelTimelinePreparationButton_.addListener(this);
     audioButton_.addListener(this);
@@ -1058,8 +1105,10 @@ void MainComponent::configureControls()
     inspectorStartBeatLabel_.setVisible(false);
     inspectorStartBeatEditor_.setVisible(false);
     inspectorRelinkButton_.setVisible(false);
+    inspectorCancelRelinkButton_.setVisible(false);
     inspectorStartBeatEditor_.setTooltip("Selected imported clip start beat");
     inspectorRelinkButton_.setTooltip("Replace selected clip media with a PCM16 WAV file");
+    inspectorCancelRelinkButton_.setTooltip("Cancel the active media relink preparation");
     inspectorStartBeatEditor_.onReturnKey = [this]()
     {
         commitInspectorStartBeatEdit();
@@ -1078,7 +1127,10 @@ projectname::AppCommandRegistry MainComponent::buildAppCommandRegistry() const
     availability.canUndoImportedClipEdit = session_.canUndoImportedClipEdit();
     availability.canRedoImportedClipEdit = session_.canRedoImportedClipEdit();
     availability.canImportAudio =
-        audioImportChooser_ == nullptr && mediaRelinkChooser_ == nullptr && audioImportJob_ == nullptr;
+        audioImportChooser_ == nullptr
+        && mediaRelinkChooser_ == nullptr
+        && audioImportJob_ == nullptr
+        && mediaRelinkPreparationJob_ == nullptr;
     availability.canCancelImport = audioImportJob_ != nullptr && canCancelAudioImport_;
     availability.canCancelTimelinePreparation =
         timelinePlaybackPreparationJob_ != nullptr && canCancelTimelinePlaybackPreparation_;
@@ -1424,6 +1476,12 @@ void MainComponent::importAudio()
         return;
     }
 
+    if (mediaRelinkPreparationJob_ != nullptr)
+    {
+        setStatus("Finish or cancel media relink preparation before importing audio");
+        return;
+    }
+
     const auto initialDirectory = juce::File::getSpecialLocation(juce::File::userMusicDirectory);
     audioImportChooser_ = std::make_unique<juce::FileChooser>("Import a PCM16 WAV file",
                                                               initialDirectory,
@@ -1462,6 +1520,12 @@ void MainComponent::relinkSelectedClipMedia()
     if (audioImportChooser_ != nullptr || audioImportJob_ != nullptr)
     {
         setStatus("Finish the current audio import before relinking media");
+        return;
+    }
+
+    if (mediaRelinkPreparationJob_ != nullptr)
+    {
+        setStatus("Media relink preparation is already running");
         return;
     }
 
@@ -1505,6 +1569,24 @@ void MainComponent::cancelAudioImport()
     canCancelAudioImport_ = false;
     refreshAppCommandEnabledState();
     setStatus("Cancelling import before package write if possible");
+}
+
+void MainComponent::cancelMediaRelinkPreparation()
+{
+    if (mediaRelinkPreparationJob_ == nullptr)
+    {
+        setStatus("No media relink preparation is running");
+        canCancelMediaRelinkPreparation_ = false;
+        refreshInspectorRelinkButtonState();
+        refreshAppCommandEnabledState();
+        return;
+    }
+
+    mediaRelinkPreparationJob_->requestCancel();
+    canCancelMediaRelinkPreparation_ = false;
+    refreshInspectorRelinkButtonState();
+    refreshAppCommandEnabledState();
+    setStatus("Cancelling media relink preparation");
 }
 
 void MainComponent::cancelTimelinePlaybackPreparation()
@@ -1574,15 +1656,66 @@ void MainComponent::handleMediaRelinkResult(const juce::FileChooser& chooser)
         return;
     }
 
-    setStatus("Relinking selected clip media");
-
-    projectname::ImportedClipMediaRelinkPreparationRequest request;
+    projectname::BackgroundMediaRelinkPreparationRequest request;
     request.project = session_.getProject();
     request.packageDirectory = getDefaultProjectPackagePath();
     request.sourceWavPath = std::filesystem::path(selectedFile.getFullPathName().toStdString());
     request.selectedClipId = session_.getSelectedClipId();
 
-    auto result = projectname::prepareImportedClipMediaRelink(std::move(request));
+    mediaRelinkPreparationJob_ =
+        std::make_unique<projectname::BackgroundMediaRelinkPreparationJob>(std::move(request));
+    mediaRelinkPreparationJob_->start();
+    canCancelMediaRelinkPreparation_ = true;
+    refreshInspectorRelinkButtonState();
+    refreshAppCommandEnabledState();
+    setStatus("Preparing media relink for " + selectedFile.getFileName());
+}
+
+void MainComponent::pollAudioImportJob()
+{
+    if (audioImportJob_ == nullptr)
+        return;
+
+    updateAudioImportProgress(audioImportJob_->getProgress());
+
+    if (!audioImportJob_->isReady())
+        return;
+
+    auto result = audioImportJob_->waitForResult();
+    audioImportJob_.reset();
+    canCancelAudioImport_ = false;
+    refreshAppCommandEnabledState();
+    applyCompletedAudioImport(std::move(result));
+}
+
+void MainComponent::pollMediaRelinkPreparationJob()
+{
+    if (mediaRelinkPreparationJob_ == nullptr)
+        return;
+
+    updateMediaRelinkPreparationProgress(mediaRelinkPreparationJob_->getProgress());
+
+    if (!mediaRelinkPreparationJob_->isReady())
+        return;
+
+    auto result = mediaRelinkPreparationJob_->waitForResult();
+    mediaRelinkPreparationJob_.reset();
+    canCancelMediaRelinkPreparation_ = false;
+    refreshInspectorRelinkButtonState();
+    refreshAppCommandEnabledState();
+    applyCompletedMediaRelinkPreparation(std::move(result));
+}
+
+void MainComponent::applyCompletedMediaRelinkPreparation(
+    projectname::BackgroundMediaRelinkPreparationResult result)
+{
+    if (result.cancelled)
+    {
+        setStatus("Media relink cancelled");
+        refreshInspectorPanel();
+        return;
+    }
+
     if (!result.preparation.has_value())
     {
         setStatus("Media relink failed: " + juce::String(result.error));
@@ -1625,23 +1758,6 @@ void MainComponent::handleMediaRelinkResult(const juce::FileChooser& chooser)
         status += " - playback cache was not refreshed";
 
     setStatus(status);
-}
-
-void MainComponent::pollAudioImportJob()
-{
-    if (audioImportJob_ == nullptr)
-        return;
-
-    updateAudioImportProgress(audioImportJob_->getProgress());
-
-    if (!audioImportJob_->isReady())
-        return;
-
-    auto result = audioImportJob_->waitForResult();
-    audioImportJob_.reset();
-    canCancelAudioImport_ = false;
-    refreshAppCommandEnabledState();
-    applyCompletedAudioImport(std::move(result));
 }
 
 void MainComponent::pollTimelinePlaybackPreparationJob()
@@ -1723,6 +1839,48 @@ void MainComponent::updateAudioImportProgress(const projectname::BackgroundAudio
         case projectname::BackgroundAudioImportPhase::cancelled:
             break;
     }
+}
+
+void MainComponent::updateMediaRelinkPreparationProgress(
+    const projectname::BackgroundMediaRelinkPreparationProgress& progress)
+{
+    const auto canCancel =
+        progress.phase == projectname::BackgroundMediaRelinkPreparationPhase::pending
+        || progress.phase == projectname::BackgroundMediaRelinkPreparationPhase::decoding
+        || progress.phase == projectname::BackgroundMediaRelinkPreparationPhase::copying
+        || progress.phase == projectname::BackgroundMediaRelinkPreparationPhase::analysing;
+    canCancelMediaRelinkPreparation_ = canCancel && !progress.cancelRequested;
+    refreshInspectorRelinkButtonState();
+    refreshAppCommandEnabledState();
+
+    auto status = formatMediaRelinkPreparationPhase(progress.phase)
+        + " - " + juce::String(progress.percent) + "%";
+
+    if (progress.cancelRequested && canCancel)
+        status = "Cancelling media relink preparation - " + juce::String(progress.percent) + "%";
+
+    if (progress.phase == projectname::BackgroundMediaRelinkPreparationPhase::decoding
+        && progress.framesTotal > 0)
+    {
+        status += " ("
+            + juce::String(static_cast<double>(progress.framesProcessed), 0)
+            + "/"
+            + juce::String(static_cast<double>(progress.framesTotal), 0)
+            + " frames)";
+    }
+    else if (progress.phase == projectname::BackgroundMediaRelinkPreparationPhase::copying
+             && progress.bytesTotal > 0)
+    {
+        const auto copiedKiB = static_cast<double>(progress.bytesProcessed) / 1024.0;
+        const auto totalKiB = static_cast<double>(progress.bytesTotal) / 1024.0;
+        status += " ("
+            + juce::String(copiedKiB, 1)
+            + "/"
+            + juce::String(totalKiB, 1)
+            + " KiB)";
+    }
+
+    setStatus(status);
 }
 
 void MainComponent::updateTimelinePlaybackPreparationProgress(
@@ -1863,32 +2021,49 @@ void MainComponent::refreshInspectorStartBeatControl(const projectname::Imported
     inspectorEditDraft_ = projectname::ImportedClipInspectorEditDraft::fromInspectorState(inspector);
     const auto editable = inspectorEditDraft_.canEdit();
 
-    inspectorStartBeatLabel_.setVisible(editable);
-    inspectorStartBeatEditor_.setVisible(editable);
-    inspectorStartBeatEditor_.setEnabled(editable);
-    refreshInspectorRelinkButtonState();
-
     if (!editable)
     {
         inspectorStartBeatEditor_.setText({}, juce::dontSendNotification);
+        refreshInspectorRelinkButtonState();
         return;
     }
 
     inspectorStartBeatEditor_.setText(juce::String(inspectorEditDraft_.getStartBeatText()),
                                       juce::dontSendNotification);
+    refreshInspectorRelinkButtonState();
 }
 
 void MainComponent::refreshInspectorRelinkButtonState()
 {
-    const auto visible = inspectorEditDraft_.canEdit();
-    const auto enabled = visible
+    const auto wasRelinkVisible = inspectorRelinkButton_.isVisible();
+    const auto wasCancelVisible = inspectorCancelRelinkButton_.isVisible();
+    const auto wasStartBeatVisible = inspectorStartBeatEditor_.isVisible();
+
+    const auto editable = inspectorEditDraft_.canEdit();
+    const auto relinkRunning = mediaRelinkPreparationJob_ != nullptr;
+    const auto showStartBeatEdit = editable && !relinkRunning;
+    const auto relinkEnabled = editable
         && audioImportChooser_ == nullptr
         && mediaRelinkChooser_ == nullptr
         && audioImportJob_ == nullptr
+        && mediaRelinkPreparationJob_ == nullptr
         && timelinePlaybackPreparationJob_ == nullptr;
 
-    inspectorRelinkButton_.setVisible(visible);
-    inspectorRelinkButton_.setEnabled(enabled);
+    inspectorStartBeatLabel_.setVisible(showStartBeatEdit);
+    inspectorStartBeatEditor_.setVisible(showStartBeatEdit);
+    inspectorStartBeatEditor_.setEnabled(showStartBeatEdit);
+    inspectorRelinkButton_.setVisible(editable);
+    inspectorRelinkButton_.setEnabled(relinkEnabled);
+    inspectorCancelRelinkButton_.setVisible(relinkRunning);
+    inspectorCancelRelinkButton_.setEnabled(relinkRunning && canCancelMediaRelinkPreparation_);
+
+    if (wasRelinkVisible != inspectorRelinkButton_.isVisible()
+        || wasCancelVisible != inspectorCancelRelinkButton_.isVisible()
+        || wasStartBeatVisible != inspectorStartBeatEditor_.isVisible())
+    {
+        resized();
+        inspectorPanel_.repaint();
+    }
 }
 
 juce::Rectangle<int> MainComponent::getInspectorStartBeatRowBounds() const

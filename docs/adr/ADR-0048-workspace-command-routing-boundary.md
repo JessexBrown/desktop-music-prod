@@ -66,4 +66,4 @@ they affect user-visible workflow. Do not add global shortcuts by scattering
 
 ## Follow-Ups
 
-- Add background media relink preparation job.
+- Design imported media package cleanup and restoration.

@@ -60,7 +60,7 @@ shortcut editor.
 
 ## Follow-Ups
 
-- Add background media relink preparation job.
+- Design imported media package cleanup and restoration.
 - Move toward a longer-lived app command table when global shortcuts or command
   palette UI need it.
 - Add command palette and shortcut editor UI only after focus and text-entry

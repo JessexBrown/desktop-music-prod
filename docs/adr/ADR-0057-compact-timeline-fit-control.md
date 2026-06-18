@@ -42,6 +42,6 @@ entry, plugin action, or audio-thread behavior.
 
 ## Follow-Ups
 
-- Add background media relink preparation job.
+- Design imported media package cleanup and restoration.
 - Keep global shortcuts and command palette work behind the command registry
   focus policy.

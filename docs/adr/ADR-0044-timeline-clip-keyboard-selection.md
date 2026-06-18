@@ -46,4 +46,4 @@ session command so keyboard and mouse selection share the same visible state.
 
 ## Follow-Ups
 
-- Add background media relink preparation job.
+- Design imported media package cleanup and restoration.

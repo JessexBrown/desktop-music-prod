@@ -46,4 +46,4 @@ the returned command. Current behavior is preserved:
 
 ## Follow-Ups
 
-- Add background media relink preparation job.
+- Design imported media package cleanup and restoration.

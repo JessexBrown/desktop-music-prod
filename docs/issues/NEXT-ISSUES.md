@@ -34,16 +34,14 @@ Acceptance:
 - Add a non-modal path back to the Audio/MIDI setup dialog.
 - Keep the first implementation separate from plugin scanning.
 
-## 5. Add Background Media Relink Preparation Job
+## 5. Design Imported Media Package Cleanup and Restoration
 
 Acceptance:
-- Wrap `ImportedClipMediaRelink` preparation in a cancellable background job
-  with decode, copy, analysis, and completion progress.
-- Keep the visible inspector Relink button disabled while a relink job is
-  running, and surface cancel/failure/stale-selection status without blocking
-  the UI.
-- Commit only prepared current-selection results through
-  `commitPreparedImportedClipMediaRelink`, then refresh timeline, inspector,
-  playback cache state, and undo/redo enablement.
-- Keep package cleanup/restoration, global shortcuts, command-palette entries,
-  and drag/drop clip operations out of this task.
+- Create an ADR for how imported audio, waveform summaries, and staged relink
+  files become unreferenced.
+- Define restoration/undo expectations for media replacement history before any
+  destructive cleanup exists.
+- Specify when cleanup can run safely relative to save/open, undo/redo, and
+  background import/relink jobs.
+- Keep actual deletion UI, command-palette entries, and drag/drop clip
+  operations out of this task.

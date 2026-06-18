@@ -138,8 +138,9 @@ Third-party dependencies remain under their own licenses as recorded in
   replacements, produces draft-valid package-relative metadata, and cleans
   cancellation or stale-selection staging for visible chooser wiring.
 - The JUCE right inspector exposes a selected-clip-only Relink button that opens
-  a native WAV chooser, prepares and commits staged media replacement, refreshes
-  the timeline/inspector/undo state, and previews the refreshed clip cache.
+  a native WAV chooser, prepares staged media replacement on a cancellable
+  background job, commits current-selection results, refreshes the
+  timeline/inspector/undo state, and previews the refreshed clip cache.
 - A plain C++ track voice scheduler turns timeline clip plans, render windows,
   and track gain/pan/mute/solo snapshots into mixer-ready voice descriptors.
 - Project track volume, pan, mute, and solo state is persisted and fed into
@@ -172,8 +173,8 @@ Third-party dependencies remain under their own licenses as recorded in
   helpers, imported clip placement and media replacement undo/redo, imported
   clip edit undo/redo command routing, indicator formatting, and keyboard
   commands, imported clip inspector edit draft validation and cancel behavior,
-  imported clip media relink preparation and cleanup behavior, workspace
-  command routing, app command registry metadata,
+  imported clip media relink preparation and cleanup behavior, background media
+  relink preparation jobs, workspace command routing, app command registry metadata,
   enablement, and dispatch results, timeline lane
   layout/hit-testing/placement/loop-range scaling, track voice scheduling
   policy, persisted track mix state, stereo prepared voice summing, loop-region
@@ -403,4 +404,6 @@ or use `ctest --preset dev --output-on-failure`.
   the plain C++ relink preparation and staged commit boundary.
 - `docs/adr/ADR-0069-visible-imported-clip-media-relink-control.md` records
   the visible selected-clip-only inspector relink control.
+- `docs/adr/ADR-0070-background-media-relink-preparation-job.md` records the
+  cancellable background media relink preparation boundary.
 - `docs/issues/NEXT-ISSUES.md` lists the next five small tasks.

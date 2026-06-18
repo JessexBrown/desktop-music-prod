@@ -42,6 +42,6 @@ selected clip.
 
 ## Follow-Ups
 
-- Add background media relink preparation job.
+- Design imported media package cleanup and restoration.
 - Add clip movement and resizing only after explicit edit previews and undo are
   defined.

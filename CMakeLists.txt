@@ -51,6 +51,8 @@ add_library(projectname_core
     src/core/AudioEngineStub.h
     src/core/BackgroundAudioImportJob.cpp
     src/core/BackgroundAudioImportJob.h
+    src/core/BackgroundMediaRelinkPreparationJob.cpp
+    src/core/BackgroundMediaRelinkPreparationJob.h
     src/core/BackgroundTimelinePlaybackPreparationJob.cpp
     src/core/BackgroundTimelinePlaybackPreparationJob.h
     src/core/BackgroundWaveformAnalysisJob.cpp

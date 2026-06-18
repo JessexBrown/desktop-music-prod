@@ -40,7 +40,7 @@ app:
 This slice runs relink preparation synchronously from the chooser completion
 callback. That keeps the visible flow small and reuses the tested staging
 boundary, but it can block the UI for large WAV files. A background relink job is
-the next refinement.
+added in ADR-0070.
 
 The app command registry is not expanded in this slice. Relink remains an
 inspector-local control until the project designs broader command palette,
@@ -55,12 +55,11 @@ shortcut, and menu behavior.
   history and invalidates stale prepared playback cache entries.
 - Relink preparation and package writes still happen away from the real-time
   audio callback.
-- Large relinks may briefly block the UI until a background job wrapper is
-  added.
+- ADR-0070 moves relink preparation to a background job while keeping this
+  visible selected-clip control.
 - No dependency is added.
 
 ## Follow-Ups
 
-- Add background media relink preparation job.
-- Design unreferenced package asset cleanup/restoration separately.
+- Design imported media package cleanup and restoration.
 - Add command-palette and shortcut entries only after command UX is designed.

@@ -44,4 +44,4 @@ updates the status line with the new view start or zoom scale.
 
 ## Follow-Ups
 
-- Add background media relink preparation job.
+- Design imported media package cleanup and restoration.

@@ -2,6 +2,7 @@
 #include "core/AppCommandRegistry.h"
 #include "core/AudioEngineStub.h"
 #include "core/BackgroundAudioImportJob.h"
+#include "core/BackgroundMediaRelinkPreparationJob.h"
 #include "core/BackgroundTimelinePlaybackPreparationJob.h"
 #include "core/BackgroundWaveformAnalysisJob.h"
 #include "core/ImportedClipInspectorEditDraft.h"
@@ -2236,6 +2237,142 @@ void importedClipMediaRelinkCommitCleansStaleSelection()
     expect(std::filesystem::remove(sourceWav), "Temporary stale media relink WAV deleted");
     if (std::filesystem::exists(package))
         expect(std::filesystem::remove_all(package) > 0, "Temporary stale media relink package deleted");
+}
+
+void backgroundMediaRelinkPreparationJobPreparesSelectedClip()
+{
+    constexpr auto clipId = "clip-imported-playback";
+
+    auto project = makeProjectWithImportedTimelineClip(4.0, 2.0);
+    std::string error;
+    expect(project.selectImportedAudioClip(clipId, error),
+           "Background media relink test selects imported clip");
+
+    const auto package = makeTemporaryPackagePath("projectname-bg-media-relink-test");
+    const auto sourceWav = makeTemporaryAudioPath("projectname-bg-media-relink-source-test");
+    writePcm16Wav(sourceWav, 10, 1, { 1000, 2000, 3000, 4000, 5000 });
+
+    projectname::BackgroundMediaRelinkPreparationRequest request;
+    request.project = project;
+    request.packageDirectory = package;
+    request.sourceWavPath = sourceWav;
+    request.selectedClipId = clipId;
+
+    projectname::BackgroundMediaRelinkPreparationJob job(std::move(request));
+    expect(!job.hasStarted(), "Background media relink job starts idle");
+    job.start();
+    expect(job.hasStarted(), "Background media relink job reports started");
+
+    auto result = job.waitForResult();
+    auto progress = job.getProgress();
+    expect(result.status == projectname::ImportedClipMediaRelinkPreparationStatus::prepared,
+           "Background media relink job prepares selected clip");
+    expect(result.preparation.has_value(),
+           "Background media relink job returns preparation metadata");
+    expect(progress.phase == projectname::BackgroundMediaRelinkPreparationPhase::completed,
+           "Background media relink job reports completed phase");
+    expect(progress.percent == 100,
+           "Background media relink job reports complete percent");
+    expect(progress.framesTotal == 5 && progress.framesProcessed == 5,
+           "Background media relink job reports decode frame progress");
+    expect(progress.bytesTotal > 0 && progress.bytesProcessed == progress.bytesTotal,
+           "Background media relink job reports staged copy byte progress");
+
+    if (result.preparation.has_value())
+    {
+        expect(std::filesystem::is_regular_file(result.preparation->stagedAudioPath),
+               "Background media relink job leaves prepared staged audio for commit");
+        projectname::discardPreparedImportedClipMediaRelink(*result.preparation);
+    }
+
+    expect(std::filesystem::remove(sourceWav), "Temporary background media relink source WAV deleted");
+    if (std::filesystem::exists(package))
+        expect(std::filesystem::remove_all(package) > 0, "Temporary background media relink package deleted");
+}
+
+void backgroundMediaRelinkPreparationJobReportsInvalidSource()
+{
+    constexpr auto clipId = "clip-imported-playback";
+
+    auto project = makeProjectWithImportedTimelineClip(4.0, 2.0);
+    std::string error;
+    expect(project.selectImportedAudioClip(clipId, error),
+           "Invalid background media relink test selects imported clip");
+
+    const auto package = makeTemporaryPackagePath("projectname-bg-media-relink-invalid-test");
+    const auto invalidWav = makeTemporaryAudioPath("projectname-bg-media-relink-invalid-source-test");
+    {
+        std::ofstream file(invalidWav, std::ios::binary | std::ios::trunc);
+        file << "not a wav";
+    }
+
+    projectname::BackgroundMediaRelinkPreparationRequest request;
+    request.project = project;
+    request.packageDirectory = package;
+    request.sourceWavPath = invalidWav;
+    request.selectedClipId = clipId;
+
+    projectname::BackgroundMediaRelinkPreparationJob job(std::move(request));
+    job.start();
+
+    auto result = job.waitForResult();
+    const auto progress = job.getProgress();
+    expect(result.status == projectname::ImportedClipMediaRelinkPreparationStatus::decodeFailed,
+           "Background media relink job reports invalid WAV decode failure");
+    expect(!result.cancelled, "Invalid background media relink job is not cancelled");
+    expect(!result.preparation.has_value(),
+           "Invalid background media relink job does not return preparation");
+    expect(!result.error.empty(),
+           "Invalid background media relink job returns recoverable error text");
+    expect(progress.phase == projectname::BackgroundMediaRelinkPreparationPhase::failed,
+           "Invalid background media relink job reports failed phase");
+    expect(!std::filesystem::exists(package / ".projectname-staging"),
+           "Invalid background media relink job does not leave staging directory");
+
+    expect(std::filesystem::remove(invalidWav), "Temporary invalid background media relink WAV deleted");
+    if (std::filesystem::exists(package))
+        expect(std::filesystem::remove_all(package) > 0,
+               "Temporary invalid background media relink package deleted");
+}
+
+void backgroundMediaRelinkPreparationJobCancelsBeforeStart()
+{
+    constexpr auto clipId = "clip-imported-playback";
+
+    auto project = makeProjectWithImportedTimelineClip(4.0, 2.0);
+    std::string error;
+    expect(project.selectImportedAudioClip(clipId, error),
+           "Cancelled background media relink test selects imported clip");
+
+    const auto package = makeTemporaryPackagePath("projectname-bg-media-relink-cancel-test");
+    const auto sourceWav = makeTemporaryAudioPath("projectname-bg-media-relink-cancel-source-test");
+    writePcm16Wav(sourceWav, 10, 1, { 1000, 2000, 3000, 4000, 5000 });
+
+    projectname::BackgroundMediaRelinkPreparationRequest request;
+    request.project = project;
+    request.packageDirectory = package;
+    request.sourceWavPath = sourceWav;
+    request.selectedClipId = clipId;
+
+    projectname::BackgroundMediaRelinkPreparationJob job(std::move(request));
+    job.requestCancel();
+
+    auto result = job.waitForResult();
+    const auto progress = job.getProgress();
+    expect(result.cancelled, "Background media relink job reports cancellation");
+    expect(result.status == projectname::ImportedClipMediaRelinkPreparationStatus::cancelled,
+           "Background media relink cancellation keeps cancelled preparation status");
+    expect(!result.preparation.has_value(),
+           "Cancelled background media relink job returns no preparation");
+    expect(progress.phase == projectname::BackgroundMediaRelinkPreparationPhase::cancelled,
+           "Cancelled background media relink job reports cancelled phase");
+    expect(!std::filesystem::exists(package / ".projectname-staging"),
+           "Cancelled background media relink job leaves no staging directory");
+
+    expect(std::filesystem::remove(sourceWav), "Temporary cancelled background media relink WAV deleted");
+    if (std::filesystem::exists(package))
+        expect(std::filesystem::remove_all(package) > 0,
+               "Temporary cancelled background media relink package deleted");
 }
 
 void waveformThumbnailLoaderReportsInvalidAnalysis()
@@ -5444,6 +5581,9 @@ int main()
     importedClipMediaRelinkPreparationRejectsInvalidSourceWithoutStaging();
     importedClipMediaRelinkPreparationCancelsAndCleansStaging();
     importedClipMediaRelinkCommitCleansStaleSelection();
+    backgroundMediaRelinkPreparationJobPreparesSelectedClip();
+    backgroundMediaRelinkPreparationJobReportsInvalidSource();
+    backgroundMediaRelinkPreparationJobCancelsBeforeStart();
 
     if (failures == 0)
     {

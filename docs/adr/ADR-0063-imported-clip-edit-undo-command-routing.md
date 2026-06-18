@@ -56,6 +56,6 @@ inspector fields, drag/drop edits, or package file restoration.
 
 ## Follow-Ups
 
-- Add background media relink preparation job.
+- Design imported media package cleanup and restoration.
 - Add visible undo/redo controls only after focus ownership and text-entry
   behavior are covered by tests.

@@ -7,10 +7,10 @@
 #include "core/AppSession.h"
 #include "core/AudioDeviceService.h"
 #include "core/BackgroundAudioImportJob.h"
+#include "core/BackgroundMediaRelinkPreparationJob.h"
 #include "core/BackgroundTimelinePlaybackPreparationJob.h"
 #include "core/ImportedClipInspector.h"
 #include "core/ImportedClipInspectorEditDraft.h"
-#include "core/ImportedClipMediaRelink.h"
 #include "core/TimelineClipLane.h"
 #include "core/TimelinePlaybackPreparationCompletion.h"
 
@@ -118,16 +118,21 @@ private:
     [[nodiscard]] projectname::AppCommandResult redoImportedClipEdit();
     void importAudio();
     void relinkSelectedClipMedia();
+    void cancelMediaRelinkPreparation();
     void cancelAudioImport();
     void cancelTimelinePlaybackPreparation();
     void handleAudioImportResult(const juce::FileChooser& chooser);
     void handleMediaRelinkResult(const juce::FileChooser& chooser);
     void pollAudioImportJob();
+    void pollMediaRelinkPreparationJob();
     void pollTimelinePlaybackPreparationJob();
     void updateAudioImportProgress(const projectname::BackgroundAudioImportProgress& progress);
+    void updateMediaRelinkPreparationProgress(
+        const projectname::BackgroundMediaRelinkPreparationProgress& progress);
     void updateTimelinePlaybackPreparationProgress(
         const projectname::BackgroundTimelinePlaybackPreparationProgress& progress);
     void applyCompletedAudioImport(projectname::BackgroundAudioImportResult result);
+    void applyCompletedMediaRelinkPreparation(projectname::BackgroundMediaRelinkPreparationResult result);
     void applyCompletedTimelinePlaybackPreparation(projectname::BackgroundTimelinePlaybackPreparationResult result);
     void refreshWorkspaceTimelineLane();
     void refreshInspectorPanel();
@@ -173,14 +178,17 @@ private:
     juce::Label inspectorStartBeatLabel_;
     juce::TextEditor inspectorStartBeatEditor_;
     juce::TextButton inspectorRelinkButton_ { "Relink" };
+    juce::TextButton inspectorCancelRelinkButton_ { "Cancel" };
     juce::ToggleButton muteToggle_ { "Mute" };
     juce::ToggleButton soloToggle_ { "Solo" };
     juce::String statusText_;
     std::unique_ptr<juce::FileChooser> audioImportChooser_;
     std::unique_ptr<juce::FileChooser> mediaRelinkChooser_;
     std::unique_ptr<projectname::BackgroundAudioImportJob> audioImportJob_;
+    std::unique_ptr<projectname::BackgroundMediaRelinkPreparationJob> mediaRelinkPreparationJob_;
     std::unique_ptr<projectname::BackgroundTimelinePlaybackPreparationJob> timelinePlaybackPreparationJob_;
     bool canCancelAudioImport_ = false;
+    bool canCancelMediaRelinkPreparation_ = false;
     bool canCancelTimelinePlaybackPreparation_ = false;
 
     WorkspacePanel browserPanel_;

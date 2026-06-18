@@ -91,5 +91,5 @@ AIFF/FLAC/MP3 support, resampling, or time-stretching.
 
 ## Follow-Ups
 
-- Add background media relink preparation job.
+- Design imported media package cleanup and restoration.
 - Design unreferenced package asset cleanup/restoration separately.

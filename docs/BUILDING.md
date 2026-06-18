@@ -176,8 +176,8 @@ deterministic imported clip selection and keyboard traversal tests, sample-rate
 mismatch metadata propagation tests, timeline viewport state/command tests,
 timeline fit-to-clips and selected-clip centering helper tests, imported clip
 placement and media replacement undo/redo tests, imported clip edit undo/redo
-command routing tests, imported clip media relink preparation tests, workspace
-command routing tests, app command registry
+command routing tests, imported clip media relink preparation/background job
+tests, workspace command routing tests, app command registry
 metadata/enablement/dispatch-result tests, timeline viewport indicator
 formatting tests, persisted track mix state/static mix command tests, stereo
 prepared voice summing tests, and previous-manifest backup tests.
@@ -196,6 +196,6 @@ documents folder. Import Audio uses a native WAV file chooser and a background
 import job with frame-level decode progress, byte-level staged-copy progress,
 and cancel state, but still writes to that deterministic package until full
 project New/Open/Save As workflow is added.
-The right inspector's selected-clip Relink button currently uses a native WAV
-chooser and the staged relink preparation model synchronously; a background
-relink job is tracked as the next small task.
+The right inspector's selected-clip Relink button uses a native WAV chooser and
+a cancellable background job for staged relink preparation before committing
+current-selection results on the UI thread.

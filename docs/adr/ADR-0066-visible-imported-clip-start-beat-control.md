@@ -55,6 +55,6 @@ operations, or automated GUI interaction tests.
 
 ## Follow-Ups
 
-- Add background media relink preparation job.
+- Design imported media package cleanup and restoration.
 - Add automated GUI interaction coverage when a stable JUCE UI test approach is
   available.
