@@ -2481,6 +2481,257 @@ void packageMediaQuarantineCommandCleansTempManifestOnMissingSource()
     expect(std::filesystem::remove_all(package) > 0, "Temporary quarantine missing package deleted");
 }
 
+void packageMediaQuarantineRestoreCommandRestoresAllCandidates()
+{
+    const auto package = makeTemporaryPackagePath("projectname-quarantine-restore-test");
+    const auto cleanupId = std::string("2026-06-18T21-00-00Z-test");
+    auto inventory = makePreflightInventoryWithCandidates(package);
+    auto request = makePreflightRequest(std::move(inventory), cleanupId);
+    const auto preflight = projectname::buildPackageMediaQuarantinePreflightPlan(std::move(request));
+    expect(preflight.restoreManifest.has_value(), "Quarantine restore test preflight creates manifest");
+
+    if (preflight.restoreManifest.has_value())
+    {
+        projectname::PackageMediaQuarantineCommandRequest quarantineRequest;
+        quarantineRequest.packageDirectory = package;
+        quarantineRequest.restoreManifestDraft = *preflight.restoreManifest;
+        const auto quarantine = projectname::quarantinePackageMedia(std::move(quarantineRequest));
+        expect(quarantine.status == projectname::PackageMediaQuarantineCommandStatus::completed,
+               "Quarantine restore test moves candidates before restore");
+
+        projectname::PackageMediaQuarantineRestoreCommandRequest restoreRequest;
+        restoreRequest.packageDirectory = package;
+        restoreRequest.restoreManifestPath = quarantine.restoreManifestPath;
+        const auto restored = projectname::restorePackageMediaFromQuarantine(std::move(restoreRequest));
+        expect(restored.status == projectname::PackageMediaQuarantineRestoreCommandStatus::restored,
+               "Quarantine restore command restores all entries");
+        expect(restored.restoredCount == 3,
+               "Quarantine restore command reports restored entries");
+        expect(restored.conflictCount == 0 && restored.missingCount == 0,
+               "Quarantine restore command reports no conflicts or missing paths");
+        expect(!std::filesystem::exists(restored.temporaryRestoreManifestPath),
+               "Quarantine restore command removes temporary manifest after success");
+        expect(std::filesystem::is_regular_file(package / "audio" / "orphan.wav"),
+               "Quarantine restore command restores audio file");
+        expect(std::filesystem::is_regular_file(package / "analysis" / "orphan.waveform.json"),
+               "Quarantine restore command restores analysis file");
+        expect(std::filesystem::is_directory(package / ".projectname-staging" / "audio-import-a"),
+               "Quarantine restore command restores stale staging directory");
+        expect(!std::filesystem::exists(package
+                                        / "backups"
+                                        / "media-trash"
+                                        / cleanupId
+                                        / "audio"
+                                        / "orphan.wav"),
+               "Quarantine restore command removes restored audio from quarantine");
+
+        std::string error;
+        const auto loaded = projectname::loadPackageMediaQuarantineRestoreManifest(
+            restored.restoreManifestPath,
+            error);
+        expect(loaded.has_value(), "Restored quarantine manifest reloads");
+        expect(loaded.has_value()
+                   && loaded->state == projectname::PackageMediaQuarantineManifestState::restored,
+               "Restored quarantine manifest records restored state");
+        const auto* audio = loaded.has_value()
+            ? findQuarantineMovedEntry(*loaded,
+                                       projectname::PackageMediaQuarantineEntryKind::audio,
+                                       "audio/orphan.wav")
+            : nullptr;
+        expect(audio != nullptr && audio->restored && !audio->restoreConflict,
+               "Restored quarantine manifest marks audio restored");
+    }
+
+    expect(std::filesystem::remove_all(package) > 0, "Temporary quarantine restore package deleted");
+}
+
+void packageMediaQuarantineRestoreCommandRestoresSelectedEntries()
+{
+    const auto package = makeTemporaryPackagePath("projectname-quarantine-selected-restore-test");
+    const auto cleanupId = std::string("2026-06-18T21-10-00Z-test");
+    auto inventory = makePreflightInventoryWithCandidates(package);
+    auto request = makePreflightRequest(std::move(inventory), cleanupId);
+    const auto preflight = projectname::buildPackageMediaQuarantinePreflightPlan(std::move(request));
+    expect(preflight.restoreManifest.has_value(), "Selected quarantine restore test preflight creates manifest");
+
+    if (preflight.restoreManifest.has_value())
+    {
+        projectname::PackageMediaQuarantineCommandRequest quarantineRequest;
+        quarantineRequest.packageDirectory = package;
+        quarantineRequest.restoreManifestDraft = *preflight.restoreManifest;
+        const auto quarantine = projectname::quarantinePackageMedia(std::move(quarantineRequest));
+        expect(quarantine.status == projectname::PackageMediaQuarantineCommandStatus::completed,
+               "Selected quarantine restore test moves candidates before restore");
+
+        projectname::PackageMediaQuarantineRestoreCommandRequest restoreRequest;
+        restoreRequest.packageDirectory = package;
+        restoreRequest.restoreManifestPath = quarantine.restoreManifestPath;
+        restoreRequest.selectedOriginalRelativePaths.push_back("audio/orphan.wav");
+        const auto restored = projectname::restorePackageMediaFromQuarantine(std::move(restoreRequest));
+        expect(restored.status == projectname::PackageMediaQuarantineRestoreCommandStatus::restored,
+               "Quarantine restore command restores selected entry");
+        expect(restored.restoredCount == 1,
+               "Quarantine restore command reports selected restore count");
+        expect(std::filesystem::is_regular_file(package / "audio" / "orphan.wav"),
+               "Quarantine restore command restores selected audio");
+        expect(!std::filesystem::exists(package / "analysis" / "orphan.waveform.json"),
+               "Quarantine restore command leaves unselected analysis original absent");
+        expect(std::filesystem::is_regular_file(package
+                                                / "backups"
+                                                / "media-trash"
+                                                / cleanupId
+                                                / "analysis"
+                                                / "orphan.waveform.json"),
+               "Quarantine restore command leaves unselected analysis quarantined");
+        expect(!std::filesystem::exists(restored.temporaryRestoreManifestPath),
+               "Quarantine restore command removes temporary manifest after selected restore");
+
+        std::string error;
+        const auto loaded = projectname::loadPackageMediaQuarantineRestoreManifest(
+            restored.restoreManifestPath,
+            error);
+        expect(loaded.has_value()
+                   && loaded->state == projectname::PackageMediaQuarantineManifestState::completed,
+               "Selected restore keeps manifest completed until all entries restore");
+        const auto* audio = loaded.has_value()
+            ? findQuarantineMovedEntry(*loaded,
+                                       projectname::PackageMediaQuarantineEntryKind::audio,
+                                       "audio/orphan.wav")
+            : nullptr;
+        const auto* analysis = loaded.has_value()
+            ? findQuarantineMovedEntry(*loaded,
+                                       projectname::PackageMediaQuarantineEntryKind::analysis,
+                                       "analysis/orphan.waveform.json")
+            : nullptr;
+        expect(audio != nullptr && audio->restored,
+               "Selected restore marks selected audio restored");
+        expect(analysis != nullptr && !analysis->restored,
+               "Selected restore leaves unselected analysis unrestored");
+    }
+
+    expect(std::filesystem::remove_all(package) > 0, "Temporary selected restore package deleted");
+}
+
+void packageMediaQuarantineRestoreCommandMarksOccupiedOriginalConflicts()
+{
+    const auto package = makeTemporaryPackagePath("projectname-quarantine-restore-conflict-test");
+    const auto cleanupId = std::string("2026-06-18T21-20-00Z-test");
+    auto inventory = makePreflightInventoryWithCandidates(package);
+    auto request = makePreflightRequest(std::move(inventory), cleanupId);
+    const auto preflight = projectname::buildPackageMediaQuarantinePreflightPlan(std::move(request));
+    expect(preflight.restoreManifest.has_value(), "Conflict quarantine restore test preflight creates manifest");
+
+    if (preflight.restoreManifest.has_value())
+    {
+        projectname::PackageMediaQuarantineCommandRequest quarantineRequest;
+        quarantineRequest.packageDirectory = package;
+        quarantineRequest.restoreManifestDraft = *preflight.restoreManifest;
+        const auto quarantine = projectname::quarantinePackageMedia(std::move(quarantineRequest));
+        expect(quarantine.status == projectname::PackageMediaQuarantineCommandStatus::completed,
+               "Conflict quarantine restore test moves candidates before restore");
+        writeTextFile(package / "audio" / "orphan.wav", "active replacement");
+
+        projectname::PackageMediaQuarantineRestoreCommandRequest restoreRequest;
+        restoreRequest.packageDirectory = package;
+        restoreRequest.restoreManifestPath = quarantine.restoreManifestPath;
+        const auto restored = projectname::restorePackageMediaFromQuarantine(std::move(restoreRequest));
+        expect(restored.status == projectname::PackageMediaQuarantineRestoreCommandStatus::restoreConflict,
+               "Quarantine restore command reports occupied original conflict");
+        expect(restored.conflictCount == 1,
+               "Quarantine restore command reports one conflict");
+        expect(readTextFile(package / "audio" / "orphan.wav") == "active replacement",
+               "Quarantine restore command does not overwrite occupied original");
+        expect(std::filesystem::is_regular_file(package
+                                                / "backups"
+                                                / "media-trash"
+                                                / cleanupId
+                                                / "audio"
+                                                / "orphan.wav"),
+               "Quarantine restore command leaves conflicted audio quarantined");
+        expect(std::filesystem::is_regular_file(package / "analysis" / "orphan.waveform.json"),
+               "Quarantine restore command restores non-conflicting analysis");
+        expect(std::filesystem::is_directory(package / ".projectname-staging" / "audio-import-a"),
+               "Quarantine restore command restores non-conflicting staging");
+        expect(!std::filesystem::exists(restored.temporaryRestoreManifestPath),
+               "Quarantine restore command removes temporary manifest after conflict");
+
+        std::string error;
+        const auto loaded = projectname::loadPackageMediaQuarantineRestoreManifest(
+            restored.restoreManifestPath,
+            error);
+        expect(loaded.has_value()
+                   && loaded->state == projectname::PackageMediaQuarantineManifestState::restoreConflict,
+               "Conflict restore manifest records restore-conflict state");
+        const auto* audio = loaded.has_value()
+            ? findQuarantineMovedEntry(*loaded,
+                                       projectname::PackageMediaQuarantineEntryKind::audio,
+                                       "audio/orphan.wav")
+            : nullptr;
+        expect(audio != nullptr && audio->restoreConflict && !audio->restored,
+               "Conflict restore manifest marks audio conflict without restored flag");
+    }
+
+    expect(std::filesystem::remove_all(package) > 0, "Temporary conflict restore package deleted");
+}
+
+void packageMediaQuarantineRestoreCommandPersistsMissingQuarantinePath()
+{
+    const auto package = makeTemporaryPackagePath("projectname-quarantine-restore-missing-test");
+    const auto cleanupId = std::string("2026-06-18T21-30-00Z-test");
+    auto inventory = makePreflightInventoryWithCandidates(package);
+    auto request = makePreflightRequest(std::move(inventory), cleanupId);
+    const auto preflight = projectname::buildPackageMediaQuarantinePreflightPlan(std::move(request));
+    expect(preflight.restoreManifest.has_value(), "Missing quarantine restore test preflight creates manifest");
+
+    if (preflight.restoreManifest.has_value())
+    {
+        projectname::PackageMediaQuarantineCommandRequest quarantineRequest;
+        quarantineRequest.packageDirectory = package;
+        quarantineRequest.restoreManifestDraft = *preflight.restoreManifest;
+        const auto quarantine = projectname::quarantinePackageMedia(std::move(quarantineRequest));
+        expect(quarantine.status == projectname::PackageMediaQuarantineCommandStatus::completed,
+               "Missing quarantine restore test moves candidates before restore");
+        std::filesystem::remove(package
+                                / "backups"
+                                / "media-trash"
+                                / cleanupId
+                                / "analysis"
+                                / "orphan.waveform.json");
+
+        projectname::PackageMediaQuarantineRestoreCommandRequest restoreRequest;
+        restoreRequest.packageDirectory = package;
+        restoreRequest.restoreManifestPath = quarantine.restoreManifestPath;
+        const auto restored = projectname::restorePackageMediaFromQuarantine(std::move(restoreRequest));
+        expect(restored.status == projectname::PackageMediaQuarantineRestoreCommandStatus::missingQuarantinePath,
+               "Quarantine restore command reports missing quarantine path");
+        expect(restored.missingCount == 1,
+               "Quarantine restore command reports missing path count");
+        expect(std::filesystem::is_regular_file(package / "audio" / "orphan.wav"),
+               "Quarantine restore command restores other entries despite missing path");
+        expect(!std::filesystem::exists(package / "analysis" / "orphan.waveform.json"),
+               "Quarantine restore command cannot restore missing analysis quarantine");
+        expect(!std::filesystem::exists(restored.temporaryRestoreManifestPath),
+               "Quarantine restore command removes temporary manifest after missing path");
+
+        std::string error;
+        const auto loaded = projectname::loadPackageMediaQuarantineRestoreManifest(
+            restored.restoreManifestPath,
+            error);
+        expect(loaded.has_value()
+                   && loaded->state == projectname::PackageMediaQuarantineManifestState::partialFailure,
+               "Missing restore manifest records partial-failure state");
+        const auto* analysis = loaded.has_value()
+            ? findQuarantineMovedEntry(*loaded,
+                                       projectname::PackageMediaQuarantineEntryKind::analysis,
+                                       "analysis/orphan.waveform.json")
+            : nullptr;
+        expect(analysis != nullptr && !analysis->error.empty(),
+               "Missing restore manifest records analysis entry error");
+    }
+
+    expect(std::filesystem::remove_all(package) > 0, "Temporary missing restore package deleted");
+}
+
 void importedClipInspectorReportsSelectedOrFirstImportedClipMetadata()
 {
     {
@@ -6357,6 +6608,10 @@ int main()
     packageMediaQuarantineCommandMovesCandidates();
     packageMediaQuarantineCommandRollsBackOnDestinationConflict();
     packageMediaQuarantineCommandCleansTempManifestOnMissingSource();
+    packageMediaQuarantineRestoreCommandRestoresAllCandidates();
+    packageMediaQuarantineRestoreCommandRestoresSelectedEntries();
+    packageMediaQuarantineRestoreCommandMarksOccupiedOriginalConflicts();
+    packageMediaQuarantineRestoreCommandPersistsMissingQuarantinePath();
     importedClipInspectorReportsSelectedOrFirstImportedClipMetadata();
     waveformThumbnailLoaderReportsInvalidAnalysis();
     projectModelPlacesImportedAudioClips();

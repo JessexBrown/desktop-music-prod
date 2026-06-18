@@ -34,16 +34,14 @@ Acceptance:
 - Add a non-modal path back to the Audio/MIDI setup dialog.
 - Keep the first implementation separate from plugin scanning.
 
-## 5. Add Package Media Quarantine Restore Command
+## 5. Add Package Media Cleanup Background Job
 
 Acceptance:
-- Add a plain C++ command that loads one quarantine `restore-manifest.json` and
-  restores selected moved entries when their original package-relative paths
-  are empty.
-- Mark occupied original paths as restore conflicts without overwriting active
-  media, and persist the updated manifest state.
-- Cover successful audio/analysis/staging restores, selected-entry restores,
-  occupied-original conflicts, missing quarantine paths, and manifest temp-file
-  cleanup with tests.
-- Keep permanent deletion, retention policy, command-palette entries, and
-  cleanup UI out of this task.
+- Add a cancellable background job wrapper for package media inventory,
+  quarantine preflight, quarantine move, and restore commands.
+- Report phase/progress and final command status without running file moves on
+  the UI thread or audio callback.
+- Cover successful quarantine, successful restore, cancellation before start,
+  active package-work rejection, and command failure propagation with tests.
+- Keep visible cleanup UI, permanent deletion, and retention policy out of this
+  task.

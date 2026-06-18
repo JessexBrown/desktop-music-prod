@@ -163,6 +163,11 @@ Third-party dependencies remain under their own licenses as recorded in
   `backups/media-trash/<cleanup-id>/`, commits `restore-manifest.json`, and
   rolls back already-moved items on failure when their original paths remain
   empty.
+- A plain C++ package media quarantine restore command loads
+  `restore-manifest.json`, restores all or selected moved entries when original
+  package paths are empty, records occupied-original conflicts without
+  overwriting active media, and persists updated manifest state through
+  `restore-manifest.json.tmp`.
 - A plain C++ track voice scheduler turns timeline clip plans, render windows,
   and track gain/pan/mute/solo snapshots into mixer-ready voice descriptors.
 - Project track volume, pan, mute, and solo state is persisted and fed into
@@ -197,8 +202,8 @@ Third-party dependencies remain under their own licenses as recorded in
   commands, imported clip inspector edit draft validation and cancel behavior,
   imported clip media relink preparation and cleanup behavior, background media
   relink preparation jobs, imported media package inventory classification,
-  package media quarantine restore-manifest validation, preflight planning, and
-  file-moving rollback behavior,
+  package media quarantine restore-manifest validation, preflight planning,
+  file-moving rollback behavior, and restore/conflict behavior,
   workspace command routing, app command registry metadata, enablement, and
   dispatch results, timeline lane
   layout/hit-testing/placement/loop-range scaling, track voice scheduling
@@ -446,4 +451,6 @@ or use `ctest --preset dev --output-on-failure`.
   product-name decision and internal rename boundary.
 - `docs/adr/ADR-0077-package-media-quarantine-command.md` records the
   package media quarantine file-moving command.
+- `docs/adr/ADR-0078-package-media-quarantine-restore-command.md` records the
+  package media quarantine restore command.
 - `docs/issues/NEXT-ISSUES.md` lists the next five small tasks.

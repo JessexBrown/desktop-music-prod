@@ -5,6 +5,7 @@
 #include "PackagePath.h"
 
 #include <algorithm>
+#include <set>
 #include <system_error>
 #include <utility>
 
@@ -64,6 +65,31 @@ struct MoveFailure
         return std::filesystem::is_directory(source, filesystemError);
 
     return std::filesystem::is_regular_file(source, filesystemError);
+}
+
+[[nodiscard]] bool manifestPathIsPackageLocal(const std::filesystem::path& packageDirectory,
+                                              const std::filesystem::path& manifestPath)
+{
+    const auto relative = manifestPath.lexically_relative(packageDirectory);
+    if (relative.empty() || !isSafePackageRelativePath(relative))
+        return false;
+
+    auto part = relative.begin();
+    if (part == relative.end() || *part != "backups")
+        return false;
+
+    ++part;
+    if (part == relative.end() || *part != "media-trash")
+        return false;
+
+    ++part;
+    if (part == relative.end())
+        return false;
+
+    ++part;
+    return part != relative.end()
+        && *part == "restore-manifest.json"
+        && ++part == relative.end();
 }
 
 [[nodiscard]] std::optional<MoveFailure> moveEntryToQuarantine(
@@ -266,6 +292,154 @@ struct MoveFailure
         + filesystemError.message() + ".";
     return false;
 }
+
+[[nodiscard]] std::filesystem::path restoreCommandTemporaryManifestPath(
+    const std::filesystem::path& manifestPath)
+{
+    auto temporaryPath = manifestPath;
+    temporaryPath += ".tmp";
+    return temporaryPath;
+}
+
+[[nodiscard]] PackageMediaQuarantineRestoreCommandResult makeRestoreResult(
+    PackageMediaQuarantineRestoreCommandStatus status,
+    std::string error,
+    std::filesystem::path manifestPath,
+    std::filesystem::path temporaryManifestPath)
+{
+    PackageMediaQuarantineRestoreCommandResult result;
+    result.status = status;
+    result.error = std::move(error);
+    result.restoreManifestPath = std::move(manifestPath);
+    result.temporaryRestoreManifestPath = std::move(temporaryManifestPath);
+    return result;
+}
+
+[[nodiscard]] bool hasSelection(const PackageMediaQuarantineRestoreCommandRequest& request)
+{
+    return !request.selectedOriginalRelativePaths.empty();
+}
+
+[[nodiscard]] bool selectedForRestore(const PackageMediaQuarantineRestoreCommandRequest& request,
+                                      const PackageMediaQuarantineMovedEntry& entry)
+{
+    if (!hasSelection(request))
+        return true;
+
+    return std::find(request.selectedOriginalRelativePaths.begin(),
+                     request.selectedOriginalRelativePaths.end(),
+                     entry.originalRelativePath)
+        != request.selectedOriginalRelativePaths.end();
+}
+
+[[nodiscard]] std::optional<std::string> validateRestoreSelection(
+    const PackageMediaQuarantineRestoreCommandRequest& request,
+    const PackageMediaQuarantineRestoreManifest& manifest)
+{
+    std::set<std::string> seen;
+    for (const auto& selected : request.selectedOriginalRelativePaths)
+    {
+        if (!seen.insert(selected).second)
+            return "Restore command selected the same original path more than once: " + selected + ".";
+
+        const auto found = std::any_of(
+            manifest.movedEntries.begin(),
+            manifest.movedEntries.end(),
+            [&selected](const auto& entry)
+            {
+                return entry.originalRelativePath == selected;
+            });
+
+        if (!found)
+            return "Restore command selected an unknown original path: " + selected + ".";
+    }
+
+    return std::nullopt;
+}
+
+[[nodiscard]] bool writeUpdatedRestoreManifest(const PackageMediaQuarantineRestoreManifest& manifest,
+                                               const std::filesystem::path& manifestPath,
+                                               const std::filesystem::path& temporaryManifestPath,
+                                               std::string& error)
+{
+    std::error_code filesystemError;
+    std::filesystem::remove(temporaryManifestPath, filesystemError);
+    filesystemError.clear();
+
+    if (!savePackageMediaQuarantineRestoreManifest(manifest, temporaryManifestPath, error))
+        return false;
+
+    std::filesystem::copy_file(temporaryManifestPath,
+                               manifestPath,
+                               std::filesystem::copy_options::overwrite_existing,
+                               filesystemError);
+    if (filesystemError)
+    {
+        error = "Could not commit updated restore manifest: "
+            + filesystemError.message() + ".";
+        std::filesystem::remove(temporaryManifestPath, filesystemError);
+        return false;
+    }
+
+    filesystemError.clear();
+    std::filesystem::remove(temporaryManifestPath, filesystemError);
+    if (filesystemError)
+    {
+        error = "Could not remove temporary restore manifest: "
+            + filesystemError.message() + ".";
+        return false;
+    }
+
+    return true;
+}
+
+[[nodiscard]] PackageMediaQuarantineRestoreCommandStatus chooseRestoreStatus(
+    const PackageMediaQuarantineRestoreCommandResult& result,
+    bool hasMoveFailure)
+{
+    if (hasMoveFailure)
+        return PackageMediaQuarantineRestoreCommandStatus::moveFailed;
+
+    if (result.missingCount > 0)
+        return PackageMediaQuarantineRestoreCommandStatus::missingQuarantinePath;
+
+    if (result.conflictCount > 0)
+        return PackageMediaQuarantineRestoreCommandStatus::restoreConflict;
+
+    return PackageMediaQuarantineRestoreCommandStatus::restored;
+}
+
+void updateRestoreManifestState(PackageMediaQuarantineRestoreManifest& manifest,
+                                PackageMediaQuarantineRestoreCommandStatus status)
+{
+    if (status == PackageMediaQuarantineRestoreCommandStatus::missingQuarantinePath
+        || status == PackageMediaQuarantineRestoreCommandStatus::moveFailed)
+    {
+        manifest.state = PackageMediaQuarantineManifestState::partialFailure;
+        manifest.error = "One or more quarantine entries could not be restored.";
+        return;
+    }
+
+    if (status == PackageMediaQuarantineRestoreCommandStatus::restoreConflict)
+    {
+        manifest.state = PackageMediaQuarantineManifestState::restoreConflict;
+        manifest.error = "One or more quarantine entries could not be restored because original paths are occupied.";
+        return;
+    }
+
+    const auto allRestored = std::all_of(
+        manifest.movedEntries.begin(),
+        manifest.movedEntries.end(),
+        [](const auto& entry)
+        {
+            return entry.restored;
+        });
+
+    manifest.state = allRestored
+        ? PackageMediaQuarantineManifestState::restored
+        : PackageMediaQuarantineManifestState::completed;
+    manifest.error.clear();
+}
 } // namespace
 
 PackageMediaQuarantineCommandResult quarantinePackageMedia(
@@ -356,6 +530,126 @@ PackageMediaQuarantineCommandResult quarantinePackageMedia(
     result.restoreManifestPath = finalManifestPath;
     result.temporaryRestoreManifestPath = temporaryManifestPath;
     result.restoreManifest = std::move(request.restoreManifestDraft);
+    return result;
+}
+
+PackageMediaQuarantineRestoreCommandResult restorePackageMediaFromQuarantine(
+    PackageMediaQuarantineRestoreCommandRequest request)
+{
+    const auto temporaryManifestPath =
+        restoreCommandTemporaryManifestPath(request.restoreManifestPath);
+
+    if (request.packageDirectory.empty()
+        || request.restoreManifestPath.empty()
+        || !manifestPathIsPackageLocal(request.packageDirectory, request.restoreManifestPath))
+    {
+        return makeRestoreResult(PackageMediaQuarantineRestoreCommandStatus::invalidRequest,
+                                 "Restore command requires a package-local restore manifest path.",
+                                 request.restoreManifestPath,
+                                 temporaryManifestPath);
+    }
+
+    std::string error;
+    auto manifest = loadPackageMediaQuarantineRestoreManifest(request.restoreManifestPath, error);
+    if (!manifest.has_value())
+    {
+        return makeRestoreResult(PackageMediaQuarantineRestoreCommandStatus::manifestLoadFailed,
+                                 error,
+                                 request.restoreManifestPath,
+                                 temporaryManifestPath);
+    }
+
+    if (auto selectionError = validateRestoreSelection(request, *manifest))
+    {
+        return makeRestoreResult(PackageMediaQuarantineRestoreCommandStatus::invalidRequest,
+                                 *selectionError,
+                                 request.restoreManifestPath,
+                                 temporaryManifestPath);
+    }
+
+    PackageMediaQuarantineRestoreCommandResult result;
+    result.restoreManifestPath = request.restoreManifestPath;
+    result.temporaryRestoreManifestPath = temporaryManifestPath;
+
+    auto hasMoveFailure = false;
+    for (auto& entry : manifest->movedEntries)
+    {
+        if (!selectedForRestore(request, entry) || entry.restored)
+            continue;
+
+        entry.error.clear();
+        entry.restoreConflict = false;
+
+        const auto original = resolvePackagePath(request.packageDirectory, entry.originalRelativePath);
+        const auto quarantine = resolvePackagePath(request.packageDirectory, entry.quarantineRelativePath);
+
+        std::error_code filesystemError;
+        if (std::filesystem::exists(original, filesystemError))
+        {
+            entry.restoreConflict = true;
+            entry.error = "Original path is occupied.";
+            ++result.conflictCount;
+            continue;
+        }
+
+        filesystemError.clear();
+        if (!sourceExistsForEntry(quarantine, entry.kind, filesystemError))
+        {
+            entry.error = "Quarantine path is missing.";
+            ++result.missingCount;
+            continue;
+        }
+
+        filesystemError.clear();
+        std::filesystem::create_directories(original.parent_path(), filesystemError);
+        if (filesystemError)
+        {
+            entry.error = "Could not create restore destination directory: "
+                + filesystemError.message() + ".";
+            hasMoveFailure = true;
+            continue;
+        }
+
+        filesystemError.clear();
+        std::filesystem::rename(quarantine, original, filesystemError);
+        if (filesystemError)
+        {
+            entry.error = "Could not restore quarantine entry: "
+                + filesystemError.message() + ".";
+            hasMoveFailure = true;
+            continue;
+        }
+
+        entry.restored = true;
+        ++result.restoredCount;
+    }
+
+    result.status = chooseRestoreStatus(result, hasMoveFailure);
+    updateRestoreManifestState(*manifest, result.status);
+
+    if (!writeUpdatedRestoreManifest(*manifest,
+                                     request.restoreManifestPath,
+                                     temporaryManifestPath,
+                                     error))
+    {
+        result.status = error.find("commit") != std::string::npos
+            ? PackageMediaQuarantineRestoreCommandStatus::manifestCommitFailed
+            : PackageMediaQuarantineRestoreCommandStatus::manifestWriteFailed;
+        result.error = error;
+        result.restoreManifest = std::move(manifest);
+        return result;
+    }
+
+    if (result.status == PackageMediaQuarantineRestoreCommandStatus::restored)
+        result.error.clear();
+    else if (result.status == PackageMediaQuarantineRestoreCommandStatus::restoreConflict)
+        result.error = "One or more quarantine entries could not be restored because original paths are occupied.";
+    else if (result.status == PackageMediaQuarantineRestoreCommandStatus::missingQuarantinePath)
+        result.error = "One or more quarantine entries could not be restored because quarantine paths are missing.";
+    else if (result.status == PackageMediaQuarantineRestoreCommandStatus::moveFailed)
+        result.error = "One or more quarantine entries could not be restored.";
+
+    result.restoreManifest = std::move(manifest);
     return result;
 }
 } // namespace projectname
