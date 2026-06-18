@@ -43,8 +43,7 @@ timeline control buttons.
 
 ## Follow-Ups
 
-- Add compact viewport controls for reset, zoom in/out, and pan once the UI has
-  room for discoverable controls.
+- Add compact left/right pan controls near the viewport indicator.
 - Add undo boundaries before editable inspector or timeline clip operations.
 - Keep global shortcuts and command palette work behind the command registry
   focus policy.

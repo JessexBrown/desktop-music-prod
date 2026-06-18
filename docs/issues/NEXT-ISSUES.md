@@ -34,12 +34,13 @@ Acceptance:
 - Add a non-modal path back to the Audio/MIDI setup dialog.
 - Keep the first implementation separate from plugin scanning.
 
-## 5. Add Compact Timeline Viewport Controls
+## 5. Add Compact Timeline Pan Controls
 
 Acceptance:
-- Add small visible controls for timeline zoom in/out and reset-to-start near
-  the existing workspace viewport indicator.
-- Route controls through existing session viewport methods and refresh the lane
-  plus indicator after each command.
-- Keep existing focused keyboard pan/zoom behavior intact.
+- Add small visible controls for timeline pan left/right near the existing
+  workspace viewport indicator.
+- Route controls through existing session viewport pan methods and refresh the
+  lane plus indicator after each command.
+- Keep existing focused keyboard pan/zoom behavior and reset/zoom controls
+  intact.
 - Do not add clip editing, drag/drop behavior, or global shortcuts.

@@ -213,6 +213,34 @@ WorkspacePanel::WorkspacePanel(juce::String title, juce::String subtitle, juce::
       lines_(std::move(lines))
 {
     setWantsKeyboardFocus(true);
+
+    configureButton(resetViewportButton_, juce::Colour(0xffc6ccd5));
+    configureButton(zoomOutViewportButton_, juce::Colour(0xffc6ccd5));
+    configureButton(zoomInViewportButton_, juce::Colour(0xffc6ccd5));
+
+    resetViewportButton_.setTooltip("Reset timeline view to the project start");
+    zoomOutViewportButton_.setTooltip("Zoom timeline view out");
+    zoomInViewportButton_.setTooltip("Zoom timeline view in");
+
+    resetViewportButton_.onClick = [this]()
+    {
+        if (timelineResetStartRequested_)
+            timelineResetStartRequested_();
+    };
+    zoomOutViewportButton_.onClick = [this]()
+    {
+        if (timelineZoomOutControlRequested_)
+            timelineZoomOutControlRequested_();
+    };
+    zoomInViewportButton_.onClick = [this]()
+    {
+        if (timelineZoomInControlRequested_)
+            timelineZoomInControlRequested_();
+    };
+
+    addChildComponent(resetViewportButton_);
+    addChildComponent(zoomOutViewportButton_);
+    addChildComponent(zoomInViewportButton_);
 }
 
 void WorkspacePanel::paint(juce::Graphics& graphics)
@@ -238,7 +266,10 @@ void WorkspacePanel::paint(juce::Graphics& graphics)
 
     graphics.setColour(textSecondary);
     graphics.setFont(juce::FontOptions(13.0f));
-    graphics.drawFittedText(subtitle_, content.removeFromTop(22), juce::Justification::centredLeft, 1);
+    auto subtitleArea = content.removeFromTop(22);
+    if (shouldShowViewportControls())
+        subtitleArea.removeFromRight(getViewportControlBounds().getWidth() + 10);
+    graphics.drawFittedText(subtitle_, subtitleArea, juce::Justification::centredLeft, 1);
 
     content.removeFromTop(10);
     graphics.setFont(juce::FontOptions(13.0f));
@@ -286,6 +317,39 @@ bool WorkspacePanel::shouldPaintKeyboardFocus() const
             || timelinePanLeftRequested_ || timelinePanRightRequested_
             || timelineZoomInRequested_ || timelineZoomOutRequested_)
         && hasKeyboardFocus(true);
+}
+
+juce::Rectangle<int> WorkspacePanel::getViewportControlBounds() const
+{
+    auto content = getLocalBounds().reduced(16);
+    content.removeFromTop(24);
+    auto subtitleArea = content.removeFromTop(22);
+    return subtitleArea.removeFromRight(92).reduced(0, 1);
+}
+
+bool WorkspacePanel::shouldShowViewportControls() const
+{
+    return timelineResetStartRequested_
+        || timelineZoomOutControlRequested_
+        || timelineZoomInControlRequested_;
+}
+
+void WorkspacePanel::resized()
+{
+    const auto visible = shouldShowViewportControls();
+    resetViewportButton_.setVisible(visible);
+    zoomOutViewportButton_.setVisible(visible);
+    zoomInViewportButton_.setVisible(visible);
+
+    if (!visible)
+        return;
+
+    auto controls = getViewportControlBounds();
+    resetViewportButton_.setBounds(controls.removeFromLeft(28));
+    controls.removeFromLeft(4);
+    zoomOutViewportButton_.setBounds(controls.removeFromLeft(28));
+    controls.removeFromLeft(4);
+    zoomInViewportButton_.setBounds(controls.removeFromLeft(28));
 }
 
 void WorkspacePanel::mouseDown(const juce::MouseEvent& event)
@@ -408,6 +472,17 @@ void WorkspacePanel::setTimelineViewportKeyboardCallbacks(std::function<void()> 
     timelinePanRightRequested_ = std::move(panRightCallback);
     timelineZoomInRequested_ = std::move(zoomInCallback);
     timelineZoomOutRequested_ = std::move(zoomOutCallback);
+}
+
+void WorkspacePanel::setTimelineViewportControlCallbacks(std::function<void()> resetStartCallback,
+                                                         std::function<void()> zoomOutCallback,
+                                                         std::function<void()> zoomInCallback)
+{
+    timelineResetStartRequested_ = std::move(resetStartCallback);
+    timelineZoomOutControlRequested_ = std::move(zoomOutCallback);
+    timelineZoomInControlRequested_ = std::move(zoomInCallback);
+    resized();
+    repaint();
 }
 
 int WorkspacePanel::getTimelineClipViewportWidthPixels() const
@@ -580,6 +655,19 @@ MainComponent::MainComponent()
         [this]()
         {
             zoomTimelineViewport(2.0);
+        });
+    workspacePanel_.setTimelineViewportControlCallbacks(
+        [this]()
+        {
+            resetTimelineViewportStart();
+        },
+        [this]()
+        {
+            zoomTimelineViewport(2.0);
+        },
+        [this]()
+        {
+            zoomTimelineViewport(0.5);
         });
     refreshWorkspaceTimelineLane();
     refreshMixerControls();
@@ -1498,6 +1586,13 @@ void MainComponent::zoomTimelineViewport(double multiplier)
 
     const auto& viewport = session_.getTimelineViewport();
     setStatus("Timeline zoom: " + juce::String(viewport.beatsPerPixel, 4) + " beats/pixel");
+}
+
+void MainComponent::resetTimelineViewportStart()
+{
+    session_.setTimelineViewStartBeats(0.0);
+    refreshWorkspaceTimelineLane();
+    setStatus("Timeline start: beat 0.00");
 }
 
 void MainComponent::refreshMixerControls()

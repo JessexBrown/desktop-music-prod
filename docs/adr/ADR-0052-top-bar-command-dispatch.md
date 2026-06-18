@@ -63,7 +63,7 @@ audio-thread work into command handlers.
 
 ## Follow-Ups
 
-- Add compact visible timeline viewport controls.
+- Add compact left/right timeline pan controls.
 - Add command palette and shortcut editor UI only after text-entry/focus
   ownership is covered by tests.
 - Add undo boundaries before editable inspector or timeline clip operations.

@@ -37,15 +37,24 @@ public:
                                               std::function<void()> panRightCallback,
                                               std::function<void()> zoomInCallback,
                                               std::function<void()> zoomOutCallback);
+    void setTimelineViewportControlCallbacks(std::function<void()> resetStartCallback,
+                                             std::function<void()> zoomOutCallback,
+                                             std::function<void()> zoomInCallback);
     [[nodiscard]] int getTimelineClipViewportWidthPixels() const;
     void setSubtitle(juce::String subtitle);
     void setLines(juce::StringArray lines);
+    void resized() override;
 
 private:
     [[nodiscard]] juce::Rectangle<int> getTimelineContentBounds() const;
+    [[nodiscard]] juce::Rectangle<int> getViewportControlBounds() const;
+    [[nodiscard]] bool shouldShowViewportControls() const;
     [[nodiscard]] bool shouldPaintKeyboardFocus() const;
     void paintTimelineClipLane(juce::Graphics& graphics, juce::Rectangle<int> bounds);
 
+    juce::TextButton resetViewportButton_ { "0" };
+    juce::TextButton zoomOutViewportButton_ { "-" };
+    juce::TextButton zoomInViewportButton_ { "+" };
     juce::String title_;
     juce::String subtitle_;
     juce::StringArray lines_;
@@ -57,6 +66,9 @@ private:
     std::function<void()> timelinePanRightRequested_;
     std::function<void()> timelineZoomInRequested_;
     std::function<void()> timelineZoomOutRequested_;
+    std::function<void()> timelineResetStartRequested_;
+    std::function<void()> timelineZoomOutControlRequested_;
+    std::function<void()> timelineZoomInControlRequested_;
 };
 
 class MainComponent final : public juce::Component,
@@ -105,6 +117,7 @@ private:
     void selectAdjacentTimelineClip(projectname::ImportedAudioClipSelectionDirection direction);
     void panTimelineViewport(double deltaBeats);
     void zoomTimelineViewport(double multiplier);
+    void resetTimelineViewportStart();
     void refreshMixerControls();
     void applyMixerControlChange();
     void showAudioSettings();
