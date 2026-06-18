@@ -87,4 +87,4 @@ shortcut editor UI.
 
 ## Follow-Ups
 
-- Add imported clip edit undo command routing.
+- Design the imported clip inspector editing flow.

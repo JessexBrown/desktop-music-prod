@@ -820,44 +820,92 @@ bool AppSession::setImportedAudioClipStartBeats(const std::string& clipId,
     return true;
 }
 
+ImportedClipEditKind AppSession::getNextImportedClipUndoEditKind() const noexcept
+{
+    return importedClipUndoStack_.empty() ? ImportedClipEditKind::none : importedClipUndoStack_.back().kind;
+}
+
+ImportedClipEditKind AppSession::getNextImportedClipRedoEditKind() const noexcept
+{
+    return importedClipRedoStack_.empty() ? ImportedClipEditKind::none : importedClipRedoStack_.back().kind;
+}
+
+bool AppSession::canUndoImportedClipEdit() const noexcept
+{
+    return getNextImportedClipUndoEditKind() != ImportedClipEditKind::none;
+}
+
+bool AppSession::canRedoImportedClipEdit() const noexcept
+{
+    return getNextImportedClipRedoEditKind() != ImportedClipEditKind::none;
+}
+
+bool AppSession::undoImportedClipEdit(std::string& error)
+{
+    error.clear();
+
+    const auto kind = getNextImportedClipUndoEditKind();
+    if (kind == ImportedClipEditKind::none)
+    {
+        error = "No imported clip edit is available to undo.";
+        return false;
+    }
+
+    return undoImportedClipEditOfKind(kind, error);
+}
+
+bool AppSession::redoImportedClipEdit(std::string& error)
+{
+    error.clear();
+
+    const auto kind = getNextImportedClipRedoEditKind();
+    if (kind == ImportedClipEditKind::none)
+    {
+        error = "No imported clip edit is available to redo.";
+        return false;
+    }
+
+    return redoImportedClipEditOfKind(kind, error);
+}
+
 bool AppSession::canUndoImportedClipPlacementEdit() const noexcept
 {
-    return canUndoImportedClipEdit(ImportedClipEditKind::placement);
+    return canUndoImportedClipEditOfKind(ImportedClipEditKind::placement);
 }
 
 bool AppSession::canRedoImportedClipPlacementEdit() const noexcept
 {
-    return canRedoImportedClipEdit(ImportedClipEditKind::placement);
+    return canRedoImportedClipEditOfKind(ImportedClipEditKind::placement);
 }
 
 bool AppSession::undoImportedClipPlacementEdit(std::string& error)
 {
-    return undoImportedClipEdit(ImportedClipEditKind::placement, error);
+    return undoImportedClipEditOfKind(ImportedClipEditKind::placement, error);
 }
 
 bool AppSession::redoImportedClipPlacementEdit(std::string& error)
 {
-    return redoImportedClipEdit(ImportedClipEditKind::placement, error);
+    return redoImportedClipEditOfKind(ImportedClipEditKind::placement, error);
 }
 
 bool AppSession::canUndoImportedClipMediaReplacementEdit() const noexcept
 {
-    return canUndoImportedClipEdit(ImportedClipEditKind::mediaReplacement);
+    return canUndoImportedClipEditOfKind(ImportedClipEditKind::mediaReplacement);
 }
 
 bool AppSession::canRedoImportedClipMediaReplacementEdit() const noexcept
 {
-    return canRedoImportedClipEdit(ImportedClipEditKind::mediaReplacement);
+    return canRedoImportedClipEditOfKind(ImportedClipEditKind::mediaReplacement);
 }
 
 bool AppSession::undoImportedClipMediaReplacementEdit(std::string& error)
 {
-    return undoImportedClipEdit(ImportedClipEditKind::mediaReplacement, error);
+    return undoImportedClipEditOfKind(ImportedClipEditKind::mediaReplacement, error);
 }
 
 bool AppSession::redoImportedClipMediaReplacementEdit(std::string& error)
 {
-    return redoImportedClipEdit(ImportedClipEditKind::mediaReplacement, error);
+    return redoImportedClipEditOfKind(ImportedClipEditKind::mediaReplacement, error);
 }
 
 bool AppSession::replaceImportedAudioClipMedia(const std::string& clipId,
@@ -964,17 +1012,21 @@ std::size_t AppSession::importedTimelineClipCacheSampleBytes() const noexcept
     return totalBytes;
 }
 
-bool AppSession::canUndoImportedClipEdit(ImportedClipEditKind kind) const noexcept
+bool AppSession::canUndoImportedClipEditOfKind(ImportedClipEditKind kind) const noexcept
 {
-    return !importedClipUndoStack_.empty() && importedClipUndoStack_.back().kind == kind;
+    return kind != ImportedClipEditKind::none
+        && !importedClipUndoStack_.empty()
+        && importedClipUndoStack_.back().kind == kind;
 }
 
-bool AppSession::canRedoImportedClipEdit(ImportedClipEditKind kind) const noexcept
+bool AppSession::canRedoImportedClipEditOfKind(ImportedClipEditKind kind) const noexcept
 {
-    return !importedClipRedoStack_.empty() && importedClipRedoStack_.back().kind == kind;
+    return kind != ImportedClipEditKind::none
+        && !importedClipRedoStack_.empty()
+        && importedClipRedoStack_.back().kind == kind;
 }
 
-bool AppSession::undoImportedClipEdit(ImportedClipEditKind kind, std::string& error)
+bool AppSession::undoImportedClipEditOfKind(ImportedClipEditKind kind, std::string& error)
 {
     error.clear();
 
@@ -999,7 +1051,7 @@ bool AppSession::undoImportedClipEdit(ImportedClipEditKind kind, std::string& er
     return true;
 }
 
-bool AppSession::redoImportedClipEdit(ImportedClipEditKind kind, std::string& error)
+bool AppSession::redoImportedClipEditOfKind(ImportedClipEditKind kind, std::string& error)
 {
     error.clear();
 

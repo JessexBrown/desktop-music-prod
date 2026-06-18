@@ -112,6 +112,8 @@ private:
     void startTimelinePlaybackPreparation(double outputSampleRateHz, std::int64_t minimumRenderFrameCount);
     void saveProject();
     void openProject();
+    [[nodiscard]] projectname::AppCommandResult undoImportedClipEdit();
+    [[nodiscard]] projectname::AppCommandResult redoImportedClipEdit();
     void importAudio();
     void cancelAudioImport();
     void cancelTimelinePlaybackPreparation();

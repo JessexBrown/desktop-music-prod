@@ -34,11 +34,11 @@ Acceptance:
 - Add a non-modal path back to the Audio/MIDI setup dialog.
 - Keep the first implementation separate from plugin scanning.
 
-## 5. Add Imported Clip Edit Undo Command Routing
+## 5. Design Imported Clip Inspector Editing Flow
 
 Acceptance:
-- Add plain C++ command routing for imported clip edit undo/redo enablement and
-  dispatch.
-- Cover placement and media replacement top-of-stack cases in tests.
-- Keep visible undo/redo buttons, global shortcuts, editable inspector fields,
-  package file restoration, and drag/drop clip operations out of this task.
+- Add a short UX/architecture note for editable imported clip inspector fields.
+- Define text-entry focus ownership, commit/cancel behavior, validation errors,
+  and undo grouping for placement and media replacement edits.
+- Keep visible controls, global shortcuts, package file restoration, and
+  drag/drop clip operations out of this task.

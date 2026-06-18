@@ -42,6 +42,6 @@ selected clip.
 
 ## Follow-Ups
 
-- Add imported clip edit undo command routing.
+- Design the imported clip inspector editing flow.
 - Add clip movement and resizing only after explicit edit previews and undo are
   defined.

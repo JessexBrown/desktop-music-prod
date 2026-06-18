@@ -55,7 +55,6 @@ drag/drop.
 
 ## Follow-Ups
 
-- Add imported clip edit undo/redo command routing once top-of-stack edit type
-  and focus ownership are covered by tests.
+- Design the imported clip inspector editing flow.
 - Add visible undo/redo commands only after focus ownership and text-entry
   behavior are covered by tests.

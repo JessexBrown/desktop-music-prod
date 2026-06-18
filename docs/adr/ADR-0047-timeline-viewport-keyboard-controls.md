@@ -44,4 +44,4 @@ updates the status line with the new view start or zoom scale.
 
 ## Follow-Ups
 
-- Add imported clip edit undo command routing.
+- Design the imported clip inspector editing flow.

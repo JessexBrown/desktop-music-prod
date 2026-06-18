@@ -45,6 +45,6 @@ command-palette entries.
 
 ## Follow-Ups
 
-- Add imported clip edit undo command routing.
+- Design the imported clip inspector editing flow.
 - Keep global shortcuts and command palette work behind the command registry
   focus policy.

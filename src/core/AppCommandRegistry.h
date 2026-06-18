@@ -16,6 +16,8 @@ inline constexpr std::string_view transportPlay = "transport.play";
 inline constexpr std::string_view transportStop = "transport.stop";
 inline constexpr std::string_view projectSave = "project.save";
 inline constexpr std::string_view projectOpen = "project.open";
+inline constexpr std::string_view editUndo = "edit.undo";
+inline constexpr std::string_view editRedo = "edit.redo";
 inline constexpr std::string_view audioImport = "audio.import";
 inline constexpr std::string_view audioImportCancel = "audio.import.cancel";
 inline constexpr std::string_view timelinePreparationCancel = "timeline.preparation.cancel";
@@ -52,6 +54,8 @@ struct AppCommandAvailability
     bool canStop = true;
     bool canSave = true;
     bool canOpen = true;
+    bool canUndoImportedClipEdit = false;
+    bool canRedoImportedClipEdit = false;
     bool canImportAudio = true;
     bool canCancelImport = false;
     bool canCancelTimelinePreparation = false;

@@ -46,4 +46,4 @@ the returned command. Current behavior is preserved:
 
 ## Follow-Ups
 
-- Add imported clip edit undo command routing.
+- Design the imported clip inspector editing flow.

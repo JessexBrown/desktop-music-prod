@@ -65,4 +65,4 @@ audio-thread work into command handlers.
 
 - Add command palette and shortcut editor UI only after text-entry/focus
   ownership is covered by tests.
-- Add imported clip edit undo command routing.
+- Design the imported clip inspector editing flow.

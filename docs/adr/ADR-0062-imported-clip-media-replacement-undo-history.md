@@ -61,7 +61,7 @@ global shortcuts, editable inspector fields, or timeline drag/drop.
 
 ## Follow-Ups
 
-- Add imported clip edit undo/redo command routing once the command layer can
-  describe top-of-stack edit type and focus ownership.
+- Design the imported clip inspector editing flow, including text-entry focus
+  ownership and undo grouping.
 - Add editable inspector or timeline gesture commits only after visible commands
   and text-entry behavior are covered by tests.

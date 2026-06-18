@@ -66,4 +66,4 @@ they affect user-visible workflow. Do not add global shortcuts by scattering
 
 ## Follow-Ups
 
-- Add imported clip edit undo command routing.
+- Design the imported clip inspector editing flow.

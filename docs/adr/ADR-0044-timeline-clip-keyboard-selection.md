@@ -46,4 +46,4 @@ session command so keyboard and mouse selection share the same visible state.
 
 ## Follow-Ups
 
-- Add imported clip edit undo command routing.
+- Design the imported clip inspector editing flow.

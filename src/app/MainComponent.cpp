@@ -1001,6 +1001,8 @@ void MainComponent::configureControls()
 projectname::AppCommandRegistry MainComponent::buildAppCommandRegistry() const
 {
     projectname::AppCommandAvailability availability;
+    availability.canUndoImportedClipEdit = session_.canUndoImportedClipEdit();
+    availability.canRedoImportedClipEdit = session_.canRedoImportedClipEdit();
     availability.canImportAudio = audioImportChooser_ == nullptr && audioImportJob_ == nullptr;
     availability.canCancelImport = audioImportJob_ != nullptr && canCancelAudioImport_;
     availability.canCancelTimelinePreparation =
@@ -1061,6 +1063,16 @@ projectname::AppCommandResult MainComponent::dispatchAppCommand(std::string_view
                     {
                         openProject();
                         return projectname::AppCommandResult::handled();
+                    });
+    registerHandler(projectname::AppCommandIds::editUndo,
+                    [this]()
+                    {
+                        return undoImportedClipEdit();
+                    });
+    registerHandler(projectname::AppCommandIds::editRedo,
+                    [this]()
+                    {
+                        return redoImportedClipEdit();
                     });
     registerHandler(projectname::AppCommandIds::audioImport,
                     [this]()
@@ -1284,6 +1296,36 @@ void MainComponent::openProject()
     }
 
     updateTransportLabels();
+}
+
+projectname::AppCommandResult MainComponent::undoImportedClipEdit()
+{
+    std::string error;
+    if (!session_.undoImportedClipEdit(error))
+    {
+        refreshAppCommandEnabledState();
+        return projectname::AppCommandResult::failed("Undo failed: " + error);
+    }
+
+    refreshWorkspaceTimelineLane();
+    refreshInspectorPanel();
+    refreshAppCommandEnabledState();
+    return projectname::AppCommandResult::handledWithStatus("Undid imported clip edit");
+}
+
+projectname::AppCommandResult MainComponent::redoImportedClipEdit()
+{
+    std::string error;
+    if (!session_.redoImportedClipEdit(error))
+    {
+        refreshAppCommandEnabledState();
+        return projectname::AppCommandResult::failed("Redo failed: " + error);
+    }
+
+    refreshWorkspaceTimelineLane();
+    refreshInspectorPanel();
+    refreshAppCommandEnabledState();
+    return projectname::AppCommandResult::handledWithStatus("Redid imported clip edit");
 }
 
 void MainComponent::importAudio()

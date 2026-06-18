@@ -119,6 +119,9 @@ Third-party dependencies remain under their own licenses as recorded in
 - App/session imported clip media replacement edits now undo and redo
   `relativePath`, `analysisPath`, and `lengthBeats` while invalidating prepared
   playback cache entries in both directions.
+- App command metadata now includes imported clip edit undo/redo routing for the
+  top undo or redo stack entry; visible controls and shortcuts are still future
+  work.
 - A plain C++ track voice scheduler turns timeline clip plans, render windows,
   and track gain/pan/mute/solo snapshots into mixer-ready voice descriptors.
 - Project track volume, pan, mute, and solo state is persisted and fed into
@@ -148,9 +151,10 @@ Third-party dependencies remain under their own licenses as recorded in
   sample-rate mismatch metadata propagation, static track mix command updates,
   background timeline voice-window preparation and cancelled/stale completion
   handling, timeline viewport state, fit-to-clips and selected-clip centering
-  helpers, imported clip placement and media replacement undo/redo, indicator
-  formatting, and keyboard commands, workspace command routing, app command
-  registry metadata, enablement, and dispatch results, timeline lane
+  helpers, imported clip placement and media replacement undo/redo, imported
+  clip edit undo/redo command routing, indicator formatting, and keyboard
+  commands, workspace command routing, app command registry metadata,
+  enablement, and dispatch results, timeline lane
   layout/hit-testing/placement/loop-range scaling, track voice scheduling
   policy, persisted track mix state, stereo prepared voice summing, loop-region
   persistence/advance behavior, and background import success, failure,
@@ -365,4 +369,6 @@ or use `ctest --preset dev --output-on-failure`.
   first app-session placement undo/redo history skeleton.
 - `docs/adr/ADR-0062-imported-clip-media-replacement-undo-history.md` records
   the media replacement undo/redo history and cache invalidation behavior.
+- `docs/adr/ADR-0063-imported-clip-edit-undo-command-routing.md` records the
+  command routing path for top-of-stack imported clip edit undo/redo.
 - `docs/issues/NEXT-ISSUES.md` lists the next five small tasks.

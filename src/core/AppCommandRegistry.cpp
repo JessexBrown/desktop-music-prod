@@ -179,6 +179,20 @@ AppCommandRegistry makePrototypeAppCommandRegistry(AppCommandAvailability availa
                              availability.canOpen,
                              "Project opening is unavailable.");
     registerPrototypeCommand(registry,
+                             AppCommandIds::editUndo,
+                             "Undo",
+                             "Undo the latest imported clip edit.",
+                             AppCommandScope::project,
+                             availability.canUndoImportedClipEdit,
+                             "No imported clip edit is available to undo.");
+    registerPrototypeCommand(registry,
+                             AppCommandIds::editRedo,
+                             "Redo",
+                             "Redo the latest imported clip edit.",
+                             AppCommandScope::project,
+                             availability.canRedoImportedClipEdit,
+                             "No imported clip edit is available to redo.");
+    registerPrototypeCommand(registry,
                              AppCommandIds::audioImport,
                              "Import Audio",
                              "Import a PCM16 WAV file into the project package.",

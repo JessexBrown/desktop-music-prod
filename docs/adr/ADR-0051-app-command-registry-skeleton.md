@@ -60,7 +60,7 @@ shortcut editor.
 
 ## Follow-Ups
 
-- Add imported clip edit undo command routing.
+- Design the imported clip inspector editing flow.
 - Move toward a longer-lived app command table when global shortcuts or command
   palette UI need it.
 - Add command palette and shortcut editor UI only after focus and text-entry

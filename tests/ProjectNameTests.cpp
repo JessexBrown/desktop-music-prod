@@ -3037,7 +3037,7 @@ void workspaceCommandRouterPreservesFocusedWorkspaceShortcuts()
 void appCommandRegistryDescribesPrototypeTopBarCommands()
 {
     const auto registry = projectname::makePrototypeAppCommandRegistry();
-    expect(registry.size() == 8, "App command registry exposes the prototype top-bar actions");
+    expect(registry.size() == 10, "App command registry exposes the prototype app actions");
 
     auto expectCommand = [&registry](std::string_view id,
                                      std::string_view label,
@@ -3079,6 +3079,16 @@ void appCommandRegistryDescribesPrototypeTopBarCommands()
                   projectname::AppCommandScope::project,
                   true,
                   "App command registry contains Open");
+    expectCommand(projectname::AppCommandIds::editUndo,
+                  "Undo",
+                  projectname::AppCommandScope::project,
+                  false,
+                  "App command registry contains Undo");
+    expectCommand(projectname::AppCommandIds::editRedo,
+                  "Redo",
+                  projectname::AppCommandScope::project,
+                  false,
+                  "App command registry contains Redo");
     expectCommand(projectname::AppCommandIds::audioImport,
                   "Import Audio",
                   projectname::AppCommandScope::project,
@@ -3106,11 +3116,17 @@ void appCommandRegistryDescribesPrototypeTopBarCommands()
            "App command registry reports unknown commands unavailable");
 
     projectname::AppCommandAvailability availability;
+    availability.canUndoImportedClipEdit = true;
+    availability.canRedoImportedClipEdit = true;
     availability.canImportAudio = false;
     availability.canCancelImport = true;
     availability.canCancelTimelinePreparation = true;
 
     const auto busyRegistry = projectname::makePrototypeAppCommandRegistry(availability);
+    expect(busyRegistry.isEnabled(projectname::AppCommandIds::editUndo),
+           "App command registry enables undo from imported clip edit availability");
+    expect(busyRegistry.isEnabled(projectname::AppCommandIds::editRedo),
+           "App command registry enables redo from imported clip edit availability");
     expect(!busyRegistry.isEnabled(projectname::AppCommandIds::audioImport),
            "App command registry disables import while import UI or job is active");
     expect(busyRegistry.isEnabled(projectname::AppCommandIds::audioImportCancel),
@@ -3121,6 +3137,10 @@ void appCommandRegistryDescribesPrototypeTopBarCommands()
     const auto* disabledImport = busyRegistry.findCommand(projectname::AppCommandIds::audioImport);
     expect(disabledImport != nullptr && !disabledImport->disabledReason.empty(),
            "Disabled import command keeps a status reason");
+
+    const auto* enabledUndo = busyRegistry.findCommand(projectname::AppCommandIds::editUndo);
+    expect(enabledUndo != nullptr && enabledUndo->disabledReason.empty(),
+           "Enabled undo command clears stale disabled status text");
 
     const auto* enabledCancel = busyRegistry.findCommand(projectname::AppCommandIds::audioImportCancel);
     expect(enabledCancel != nullptr && enabledCancel->disabledReason.empty(),
@@ -3181,6 +3201,125 @@ void appCommandRegistryDescribesPrototypeTopBarCommands()
     const auto unknownCommand = dispatcher.dispatch(registry, "app.unknown");
     expect(unknownCommand.status == projectname::AppCommandResultStatus::failed,
            "App command dispatcher reports unknown command ids");
+}
+
+void appCommandRoutesImportedClipEditUndoRedo()
+{
+    constexpr auto clipId = "clip-imported-playback";
+
+    auto project = makeProjectWithImportedTimelineClip(4.0, 2.0);
+    projectname::AppSession session(std::move(project));
+
+    auto makeRegistry = [&session]()
+    {
+        projectname::AppCommandAvailability availability;
+        availability.canUndoImportedClipEdit = session.canUndoImportedClipEdit();
+        availability.canRedoImportedClipEdit = session.canRedoImportedClipEdit();
+        return projectname::makePrototypeAppCommandRegistry(availability);
+    };
+
+    projectname::AppCommandDispatcher dispatcher;
+    expect(dispatcher.registerHandler(std::string(projectname::AppCommandIds::editUndo),
+                                      [&session]()
+                                      {
+                                          std::string error;
+                                          if (!session.undoImportedClipEdit(error))
+                                              return projectname::AppCommandResult::failed(error);
+
+                                          return projectname::AppCommandResult::handledWithStatus("Undo");
+                                      }),
+           "App command dispatcher accepts imported clip edit undo handler");
+    expect(dispatcher.registerHandler(std::string(projectname::AppCommandIds::editRedo),
+                                      [&session]()
+                                      {
+                                          std::string error;
+                                          if (!session.redoImportedClipEdit(error))
+                                              return projectname::AppCommandResult::failed(error);
+
+                                          return projectname::AppCommandResult::handledWithStatus("Redo");
+                                      }),
+           "App command dispatcher accepts imported clip edit redo handler");
+
+    auto registry = makeRegistry();
+    expect(!registry.isEnabled(projectname::AppCommandIds::editUndo),
+           "App command registry disables imported clip undo with empty history");
+    expect(!registry.isEnabled(projectname::AppCommandIds::editRedo),
+           "App command registry disables imported clip redo with empty history");
+    auto disabledUndo = dispatcher.dispatch(registry, projectname::AppCommandIds::editUndo);
+    expect(disabledUndo.status == projectname::AppCommandResultStatus::disabled,
+           "App command dispatcher blocks disabled imported clip undo command");
+
+    std::string error;
+    expect(session.setImportedAudioClipStartBeats(clipId, 8.0, error),
+           "App command undo test records imported clip placement edit");
+    expect(session.getNextImportedClipUndoEditKind() == projectname::ImportedClipEditKind::placement,
+           "App command undo test sees placement edit on undo stack");
+
+    registry = makeRegistry();
+    expect(registry.isEnabled(projectname::AppCommandIds::editUndo),
+           "App command registry enables imported clip undo for placement edit");
+    expect(!registry.isEnabled(projectname::AppCommandIds::editRedo),
+           "App command registry leaves redo disabled before undo");
+    auto undoPlacement = dispatcher.dispatch(registry, projectname::AppCommandIds::editUndo);
+    expect(undoPlacement.status == projectname::AppCommandResultStatus::handledWithStatus,
+           "App command dispatcher routes imported clip placement undo");
+    auto* clip = findClipById(session.getProject(), clipId);
+    expect(clip != nullptr && std::abs(clip->startBeats - 4.0) < 0.0001,
+           "App command placement undo restores start beat");
+    expect(session.getNextImportedClipRedoEditKind() == projectname::ImportedClipEditKind::placement,
+           "App command undo test sees placement edit on redo stack");
+
+    registry = makeRegistry();
+    expect(!registry.isEnabled(projectname::AppCommandIds::editUndo),
+           "App command registry disables undo after the only placement edit is undone");
+    expect(registry.isEnabled(projectname::AppCommandIds::editRedo),
+           "App command registry enables redo after placement undo");
+    auto redoPlacement = dispatcher.dispatch(registry, projectname::AppCommandIds::editRedo);
+    expect(redoPlacement.status == projectname::AppCommandResultStatus::handledWithStatus,
+           "App command dispatcher routes imported clip placement redo");
+    clip = findClipById(session.getProject(), clipId);
+    expect(clip != nullptr && std::abs(clip->startBeats - 8.0) < 0.0001,
+           "App command placement redo reapplies start beat");
+
+    expect(session.replaceImportedAudioClipMedia(clipId,
+                                                 "audio/command-relinked.wav",
+                                                 "analysis/command-relinked.waveform.json",
+                                                 3.25,
+                                                 error),
+           "App command undo test records imported clip media replacement edit");
+    expect(session.getNextImportedClipUndoEditKind() == projectname::ImportedClipEditKind::mediaReplacement,
+           "App command undo test sees media replacement edit on top of undo stack");
+    expect(!session.canUndoImportedClipPlacementEdit()
+               && session.canUndoImportedClipMediaReplacementEdit(),
+           "App command undo test keeps top-of-stack type-specific enablement precise");
+
+    registry = makeRegistry();
+    auto undoMedia = dispatcher.dispatch(registry, projectname::AppCommandIds::editUndo);
+    expect(undoMedia.status == projectname::AppCommandResultStatus::handledWithStatus,
+           "App command dispatcher routes imported clip media replacement undo");
+    clip = findClipById(session.getProject(), clipId);
+    expect(clip != nullptr && clip->relativePath == "audio/timeline-clip.wav",
+           "App command media undo restores media path");
+    expect(clip != nullptr && clip->analysisPath == "analysis/timeline-clip.waveform.json",
+           "App command media undo restores analysis path");
+    expect(clip != nullptr && std::abs(clip->lengthBeats - 2.0) < 0.0001,
+           "App command media undo restores clip length");
+    expect(session.getNextImportedClipUndoEditKind() == projectname::ImportedClipEditKind::placement,
+           "App command media undo reveals previous placement edit on undo stack");
+    expect(session.getNextImportedClipRedoEditKind() == projectname::ImportedClipEditKind::mediaReplacement,
+           "App command media undo moves media replacement edit to redo stack");
+
+    registry = makeRegistry();
+    auto redoMedia = dispatcher.dispatch(registry, projectname::AppCommandIds::editRedo);
+    expect(redoMedia.status == projectname::AppCommandResultStatus::handledWithStatus,
+           "App command dispatcher routes imported clip media replacement redo");
+    clip = findClipById(session.getProject(), clipId);
+    expect(clip != nullptr && clip->relativePath == "audio/command-relinked.wav",
+           "App command media redo reapplies media path");
+    expect(clip != nullptr && clip->analysisPath == "analysis/command-relinked.waveform.json",
+           "App command media redo reapplies analysis path");
+    expect(clip != nullptr && std::abs(clip->lengthBeats - 3.25) < 0.0001,
+           "App command media redo reapplies clip length");
 }
 
 void appSessionSelectsImportedAudioClips()
@@ -4818,6 +4957,7 @@ int main()
     timelineViewportCenterHelperFramesSelectedImportedAudioClip();
     workspaceCommandRouterPreservesFocusedWorkspaceShortcuts();
     appCommandRegistryDescribesPrototypeTopBarCommands();
+    appCommandRoutesImportedClipEditUndoRedo();
     appSessionSelectsImportedAudioClips();
     appSessionTracksImportedClipPlacementUndoHistory();
     appSessionTracksImportedClipMediaReplacementUndoHistory();
