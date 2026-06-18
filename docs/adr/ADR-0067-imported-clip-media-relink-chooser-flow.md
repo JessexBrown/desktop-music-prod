@@ -69,7 +69,8 @@ Failure and cancellation rules:
 - successful relink does not delete old audio or analysis files;
 - undo/redo changes manifest references only and relies on old files remaining
   available;
-- unreferenced package cleanup/restoration is a later explicit feature.
+- unreferenced package cleanup/restoration remains a later explicit feature
+  after ADR-0071 inventory and restoration boundaries.
 
 The first relink commit does not automatically save the project manifest. It
 changes the in-memory project and package assets, and the existing Save command
@@ -91,5 +92,6 @@ AIFF/FLAC/MP3 support, resampling, or time-stretching.
 
 ## Follow-Ups
 
-- Design imported media package cleanup and restoration.
-- Design unreferenced package asset cleanup/restoration separately.
+- Add imported media package inventory model.
+- Design package-local media quarantine and restore commands after inventory is
+  tested.

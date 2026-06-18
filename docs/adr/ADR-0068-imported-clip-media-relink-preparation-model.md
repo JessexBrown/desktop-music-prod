@@ -70,7 +70,8 @@ cleanup/restoration UI, AIFF/FLAC/MP3 support, resampling, or time-stretching.
 
 ## Follow-Ups
 
-- Design imported media package cleanup and restoration.
+- Add imported media package inventory model.
 - Add a background relink preparation job if chooser wiring needs progress and
   cancellation before committing.
-- Design unreferenced package asset cleanup/restoration separately.
+- Design package-local media quarantine and restore commands after inventory is
+  tested.

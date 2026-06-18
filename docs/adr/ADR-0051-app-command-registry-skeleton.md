@@ -60,7 +60,7 @@ shortcut editor.
 
 ## Follow-Ups
 
-- Design imported media package cleanup and restoration.
+- Add imported media package inventory model.
 - Move toward a longer-lived app command table when global shortcuts or command
   palette UI need it.
 - Add command palette and shortcut editor UI only after focus and text-entry

@@ -55,6 +55,6 @@ drag/drop.
 
 ## Follow-Ups
 
-- Design imported media package cleanup and restoration.
+- Add imported media package inventory model.
 - Add visible undo/redo commands only after focus ownership and text-entry
   behavior are covered by tests.

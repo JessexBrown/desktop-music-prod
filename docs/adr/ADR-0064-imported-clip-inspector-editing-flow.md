@@ -87,4 +87,4 @@ file chooser for relink.
 
 ## Follow-Ups
 
-- Design imported media package cleanup and restoration.
+- Add imported media package inventory model.

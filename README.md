@@ -141,6 +141,9 @@ Third-party dependencies remain under their own licenses as recorded in
   a native WAV chooser, prepares staged media replacement on a cancellable
   background job, commits current-selection results, refreshes the
   timeline/inspector/undo state, and previews the refreshed clip cache.
+- ADR-0071 defines imported media cleanup/restoration boundaries so package
+  maintenance can protect undo/redo history, previous manifest backups, and
+  in-flight staging before any destructive cleanup exists.
 - A plain C++ track voice scheduler turns timeline clip plans, render windows,
   and track gain/pan/mute/solo snapshots into mixer-ready voice descriptors.
 - Project track volume, pan, mute, and solo state is persisted and fed into
@@ -189,8 +192,9 @@ Third-party dependencies remain under their own licenses as recorded in
 ## What Does Not Exist Yet
 
 - AIFF/FLAC/MP3 import, automatic resampling, interactive waveform editing,
-  imported clip media relink controls, timeline zoom/scroll, loop-region
-  editing controls, or drag/drop clip placement.
+  imported-media cleanup/restoration UI, command-palette relink entries,
+  timeline zoom/scroll, loop-region editing controls, or drag/drop clip
+  placement.
 - Resampling, time-stretching, streaming, multi-track mixer strips, metering,
   and automation.
 - MIDI clips or piano roll editing.
@@ -406,4 +410,6 @@ or use `ctest --preset dev --output-on-failure`.
   the visible selected-clip-only inspector relink control.
 - `docs/adr/ADR-0070-background-media-relink-preparation-job.md` records the
   cancellable background media relink preparation boundary.
+- `docs/adr/ADR-0071-imported-media-package-cleanup-restoration-design.md`
+  records the non-destructive cleanup inventory and restoration policy.
 - `docs/issues/NEXT-ISSUES.md` lists the next five small tasks.

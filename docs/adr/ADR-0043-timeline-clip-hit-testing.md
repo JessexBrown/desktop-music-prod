@@ -42,6 +42,6 @@ selected clip.
 
 ## Follow-Ups
 
-- Design imported media package cleanup and restoration.
+- Add imported media package inventory model.
 - Add clip movement and resizing only after explicit edit previews and undo are
   defined.

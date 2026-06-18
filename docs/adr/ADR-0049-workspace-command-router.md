@@ -46,4 +46,4 @@ the returned command. Current behavior is preserved:
 
 ## Follow-Ups
 
-- Design imported media package cleanup and restoration.
+- Add imported media package inventory model.

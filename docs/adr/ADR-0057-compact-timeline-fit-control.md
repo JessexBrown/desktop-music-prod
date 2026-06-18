@@ -42,6 +42,6 @@ entry, plugin action, or audio-thread behavior.
 
 ## Follow-Ups
 
-- Design imported media package cleanup and restoration.
+- Add imported media package inventory model.
 - Keep global shortcuts and command palette work behind the command registry
   focus policy.

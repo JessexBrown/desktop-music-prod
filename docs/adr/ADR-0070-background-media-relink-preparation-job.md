@@ -50,10 +50,11 @@ results through `commitPreparedImportedClipMediaRelink`.
 - Stale selection is still rejected by the existing commit helper.
 - App-session media replacement remains the only place that records undo
   history and clears stale prepared playback cache entries.
-- Relink package cleanup/restoration remains a separate design task.
+- Package media inventory remains a separate implementation task before any
+  cleanup/restoration UI or destructive package maintenance exists.
 - No dependency is added.
 
 ## Follow-Ups
 
-- Design imported media package cleanup and restoration.
+- Add imported media package inventory model.
 - Add command-palette and shortcut entries only after command UX is designed.

@@ -34,14 +34,16 @@ Acceptance:
 - Add a non-modal path back to the Audio/MIDI setup dialog.
 - Keep the first implementation separate from plugin scanning.
 
-## 5. Design Imported Media Package Cleanup and Restoration
+## 5. Add Imported Media Package Inventory Model
 
 Acceptance:
-- Create an ADR for how imported audio, waveform summaries, and staged relink
-  files become unreferenced.
-- Define restoration/undo expectations for media replacement history before any
-  destructive cleanup exists.
-- Specify when cleanup can run safely relative to save/open, undo/redo, and
-  background import/relink jobs.
-- Keep actual deletion UI, command-palette entries, and drag/drop clip
-  operations out of this task.
+- Add a plain C++ package inventory/dry-run model that walks current manifest
+  references, previous-manifest backup references, imported audio assets,
+  waveform summaries, and staging folders without deleting files.
+- Report referenced assets, unreferenced candidates, protected backup/session
+  references when available, and stale staging candidates with safe
+  package-relative paths.
+- Cover unsafe paths, missing files, backup manifest references, and stale
+  staging classification with tests.
+- Keep actual deletion/restoration UI, command-palette entries, and drag/drop
+  clip operations out of this task.

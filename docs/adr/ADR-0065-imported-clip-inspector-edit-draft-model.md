@@ -68,5 +68,5 @@ palette entries.
 
 ## Follow-Ups
 
-- Design imported media package cleanup and restoration.
+- Add imported media package inventory model.
 - Add inspector focus tests when visible text entry exists.

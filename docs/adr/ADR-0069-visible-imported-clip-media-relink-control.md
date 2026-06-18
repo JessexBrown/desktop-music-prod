@@ -61,5 +61,5 @@ shortcut, and menu behavior.
 
 ## Follow-Ups
 
-- Design imported media package cleanup and restoration.
+- Add imported media package inventory model.
 - Add command-palette and shortcut entries only after command UX is designed.

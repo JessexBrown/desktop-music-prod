@@ -55,6 +55,6 @@ operations, or automated GUI interaction tests.
 
 ## Follow-Ups
 
-- Design imported media package cleanup and restoration.
+- Add imported media package inventory model.
 - Add automated GUI interaction coverage when a stable JUCE UI test approach is
   available.
