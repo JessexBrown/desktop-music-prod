@@ -87,5 +87,5 @@ shortcut editor UI.
 
 ## Follow-Ups
 
-- Add a fit-to-imported-clips viewport helper after the persistent indicator.
+- Add a compact fit-to-imported-clips control beside the viewport controls.
 - Add undo boundaries before editable inspector or timeline clip operations.

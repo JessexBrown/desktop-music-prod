@@ -2745,6 +2745,103 @@ void appSessionTimelineViewportStateClampsValues()
            "Session timeline viewport indicator normalizes invalid view state");
 }
 
+void timelineViewportFitHelperFramesImportedAudioClips()
+{
+    auto emptyProject = projectname::ProjectModel::createDefault();
+    expect(!projectname::fitTimelineViewportToImportedAudioClips(emptyProject, 120).has_value(),
+           "Timeline viewport fit helper ignores projects without imported audio");
+    expect(!projectname::fitTimelineViewportToImportedAudioClips(emptyProject, 0).has_value(),
+           "Timeline viewport fit helper rejects invalid viewport width");
+
+    projectname::ProjectClip invalidImportedClip;
+    invalidImportedClip.id = "clip-fit-invalid";
+    invalidImportedClip.name = "Invalid Fit Clip";
+    invalidImportedClip.type = "audio-file";
+    invalidImportedClip.relativePath = "audio/invalid-fit.wav";
+    invalidImportedClip.analysisPath = "analysis/invalid-fit.waveform.json";
+    invalidImportedClip.startBeats = 4.0;
+    invalidImportedClip.lengthBeats = -1.0;
+    expect(emptyProject.addClipToTrack("track-1", invalidImportedClip),
+           "Timeline viewport fit test attaches invalid imported clip");
+    expect(!projectname::fitTimelineViewportToImportedAudioClips(emptyProject, 120).has_value(),
+           "Timeline viewport fit helper ignores invalid imported audio clips");
+
+    auto oneClipProject = projectname::ProjectModel::createDefault();
+    projectname::ProjectClip single;
+    single.id = "clip-fit-single";
+    single.name = "Single Fit Clip";
+    single.type = "audio-file";
+    single.relativePath = "audio/single-fit.wav";
+    single.analysisPath = "analysis/single-fit.waveform.json";
+    single.startBeats = 8.0;
+    single.lengthBeats = 2.0;
+    expect(oneClipProject.addClipToTrack("track-1", single),
+           "Timeline viewport fit test attaches single imported clip");
+
+    auto singleFit = projectname::fitTimelineViewportToImportedAudioClips(oneClipProject, 100);
+    expect(singleFit.has_value(), "Timeline viewport fit helper frames one imported clip");
+    expect(singleFit.has_value() && std::abs(singleFit->viewStartBeats - 7.0) < 0.0001,
+           "Timeline viewport fit helper applies left padding for one clip");
+    expect(singleFit.has_value() && std::abs(singleFit->beatsPerPixel - 0.04) < 0.0001,
+           "Timeline viewport fit helper scales one clip and padding to lane width");
+
+    auto spacedProject = projectname::ProjectModel::createDefault();
+    projectname::ProjectClip early;
+    early.id = "clip-fit-early";
+    early.name = "Early Fit Clip";
+    early.type = "audio-file";
+    early.relativePath = "audio/early-fit.wav";
+    early.analysisPath = "analysis/early-fit.waveform.json";
+    early.startBeats = 4.0;
+    early.lengthBeats = 2.0;
+
+    projectname::ProjectClip late;
+    late.id = "clip-fit-late";
+    late.name = "Late Fit Clip";
+    late.type = "audio-file";
+    late.relativePath = "audio/late-fit.wav";
+    late.analysisPath = "analysis/late-fit.waveform.json";
+    late.startBeats = 18.0;
+    late.lengthBeats = 6.0;
+
+    expect(spacedProject.addClipToTrack("track-1", late),
+           "Timeline viewport fit test attaches late imported clip");
+    expect(spacedProject.addClipToTrack("track-1", early),
+           "Timeline viewport fit test attaches early imported clip");
+
+    auto spacedFit = projectname::fitTimelineViewportToImportedAudioClips(spacedProject, 200);
+    expect(spacedFit.has_value(), "Timeline viewport fit helper frames multiple imported clips");
+    expect(spacedFit.has_value() && std::abs(spacedFit->viewStartBeats - 3.0) < 0.0001,
+           "Timeline viewport fit helper uses earliest imported clip start");
+    expect(spacedFit.has_value() && std::abs(spacedFit->beatsPerPixel - 0.11) < 0.0001,
+           "Timeline viewport fit helper scales multiple spaced clips to lane width");
+
+    if (spacedFit.has_value())
+    {
+        projectname::TimelineClipLaneOptions options;
+        options.viewStartBeats = spacedFit->viewStartBeats;
+        options.beatsPerPixel = spacedFit->beatsPerPixel;
+        options.viewportWidthPixels = 200;
+
+        const auto layout = projectname::buildImportedAudioTimelineClipLane(spacedProject,
+                                                                            makeTemporaryPackagePath("fit-unused"),
+                                                                            options);
+        expect(layout.clips.size() == 2,
+               "Timeline viewport fit helper lane proof includes both imported clips");
+
+        const auto allVisible = std::all_of(layout.clips.begin(),
+                                            layout.clips.end(),
+                                            [&options](const projectname::TimelineClipLaneItem& item)
+                                            {
+                                                return item.visible
+                                                    && item.x >= 0
+                                                    && item.x + item.width <= options.viewportWidthPixels;
+                                            });
+        expect(allVisible,
+               "Timeline viewport fit helper makes imported clip rectangles visible in lane bounds");
+    }
+}
+
 void workspaceCommandRouterPreservesFocusedWorkspaceShortcuts()
 {
     const projectname::WorkspaceCommandAvailability allAvailable {
@@ -4291,6 +4388,7 @@ int main()
 {
     appSessionKeepsTransportInsideProjectModel();
     appSessionTimelineViewportStateClampsValues();
+    timelineViewportFitHelperFramesImportedAudioClips();
     workspaceCommandRouterPreservesFocusedWorkspaceShortcuts();
     appCommandRegistryDescribesPrototypeTopBarCommands();
     appSessionSelectsImportedAudioClips();

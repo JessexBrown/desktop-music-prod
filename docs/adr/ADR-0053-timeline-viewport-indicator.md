@@ -43,7 +43,7 @@ timeline control buttons.
 
 ## Follow-Ups
 
-- Add a fit-to-imported-clips viewport helper and optional compact control.
+- Add a compact fit-to-imported-clips control beside the viewport controls.
 - Add undo boundaries before editable inspector or timeline clip operations.
 - Keep global shortcuts and command palette work behind the command registry
   focus policy.

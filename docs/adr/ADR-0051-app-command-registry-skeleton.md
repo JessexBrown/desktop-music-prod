@@ -60,7 +60,7 @@ shortcut editor.
 
 ## Follow-Ups
 
-- Add a fit-to-imported-clips viewport helper and optional compact control.
+- Add a compact fit-to-imported-clips control beside the viewport controls.
 - Move toward a longer-lived app command table when global shortcuts or command
   palette UI need it.
 - Add command palette and shortcut editor UI only after focus and text-entry

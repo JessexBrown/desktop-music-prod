@@ -135,6 +135,16 @@ void sanitizePreparedSamples(std::vector<float>& samples)
     return std::clamp(beatsPerPixel, minBeatsPerPixel, maxBeatsPerPixel);
 }
 
+[[nodiscard]] bool isUsableImportedTimelineClip(const ProjectClip& clip) noexcept
+{
+    const auto endBeats = clip.startBeats + clip.lengthBeats;
+    return clip.type == "audio-file"
+        && std::isfinite(clip.startBeats)
+        && std::isfinite(clip.lengthBeats)
+        && std::isfinite(endBeats)
+        && clip.lengthBeats > 0.0;
+}
+
 [[nodiscard]] TimelinePlaybackSampleRateMismatch makeSampleRateMismatch(
     const TimelinePlaybackClipPlan& clip,
     double sourceSampleRateHz,
@@ -182,6 +192,46 @@ std::string formatTimelineViewportIndicator(const TimelineViewportState& viewpor
            << normalizeTimelineBeatsPerPixel(viewport.beatsPerPixel)
            << " beats/px";
     return stream.str();
+}
+
+std::optional<TimelineViewportState> fitTimelineViewportToImportedAudioClips(
+    const ProjectModel& project,
+    int viewportWidthPixels,
+    double paddingBeats)
+{
+    if (viewportWidthPixels <= 0)
+        return std::nullopt;
+
+    const auto safePaddingBeats =
+        std::isfinite(paddingBeats) && paddingBeats > 0.0 ? paddingBeats : 0.0;
+
+    auto firstStartBeats = std::numeric_limits<double>::infinity();
+    auto lastEndBeats = -std::numeric_limits<double>::infinity();
+    auto foundImportedClip = false;
+
+    for (const auto& track : project.getTracks())
+    {
+        for (const auto& clip : track.clips)
+        {
+            if (!isUsableImportedTimelineClip(clip))
+                continue;
+
+            firstStartBeats = std::min(firstStartBeats, clip.startBeats);
+            lastEndBeats = std::max(lastEndBeats, clip.startBeats + clip.lengthBeats);
+            foundImportedClip = true;
+        }
+    }
+
+    if (!foundImportedClip)
+        return std::nullopt;
+
+    const auto viewStartBeats = normalizeTimelineViewStartBeats(firstStartBeats - safePaddingBeats);
+    const auto viewEndBeats = std::max(lastEndBeats + safePaddingBeats,
+                                       viewStartBeats + TimelineViewportState {}.beatsPerPixel);
+    const auto beatsPerPixel = normalizeTimelineBeatsPerPixel(
+        (viewEndBeats - viewStartBeats) / static_cast<double>(viewportWidthPixels));
+
+    return TimelineViewportState { viewStartBeats, beatsPerPixel };
 }
 
 AppSession::AppSession()

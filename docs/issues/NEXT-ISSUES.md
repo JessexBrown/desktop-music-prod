@@ -34,11 +34,12 @@ Acceptance:
 - Add a non-modal path back to the Audio/MIDI setup dialog.
 - Keep the first implementation separate from plugin scanning.
 
-## 5. Add a Timeline Fit-to-Clips View Helper
+## 5. Add a Compact Timeline Fit-to-Clips Control
 
 Acceptance:
-- Add a plain C++ helper that computes a viewport start/scale capable of showing
-  all imported timeline clips within the current lane width.
-- Add focused tests for empty projects, one clip, and multiple spaced clips.
-- Do not add a visible button until the helper behavior is proven.
+- Add a small visible fit-to-clips control beside the existing workspace
+  viewport controls.
+- Route it through `fitTimelineViewportToImportedAudioClips`, update the session
+  viewport, and refresh the lane plus indicator.
+- Surface a non-disruptive status message when no imported clips can be fit.
 - Keep clip editing, drag/drop behavior, and global shortcuts out of this task.

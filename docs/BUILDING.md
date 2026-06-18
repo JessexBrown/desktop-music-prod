@@ -174,10 +174,10 @@ voice-window preparation tests, track voice scheduling tests, cached prepared
 voice-window playback tests, imported clip inspector metadata tests,
 deterministic imported clip selection and keyboard traversal tests, sample-rate
 mismatch metadata propagation tests, timeline viewport state/command tests,
-workspace command routing tests, app command registry metadata/enablement/
-dispatch-result tests, timeline viewport indicator formatting tests, persisted
-track mix state/static mix command tests, stereo prepared voice summing tests,
-and previous-manifest backup tests.
+timeline fit-to-clips helper tests, workspace command routing tests, app command
+registry metadata/enablement/dispatch-result tests, timeline viewport indicator
+formatting tests, persisted track mix state/static mix command tests, stereo
+prepared voice summing tests, and previous-manifest backup tests.
 It also
 configured, built, launched, audio-smoke-tested,
 project-save/load-smoke-tested, and audio-import-smoke-tested the Windows-only

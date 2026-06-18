@@ -78,6 +78,10 @@ struct TimelineViewportState
 };
 
 [[nodiscard]] std::string formatTimelineViewportIndicator(const TimelineViewportState& viewport);
+[[nodiscard]] std::optional<TimelineViewportState> fitTimelineViewportToImportedAudioClips(
+    const ProjectModel& project,
+    int viewportWidthPixels,
+    double paddingBeats = 1.0);
 
 class AppSession
 {

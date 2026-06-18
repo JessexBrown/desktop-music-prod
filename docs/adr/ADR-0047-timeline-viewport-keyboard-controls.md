@@ -46,5 +46,5 @@ updates the status line with the new view start or zoom scale.
 
 - Add visible viewport controls or a compact zoom indicator after the command
   routing layer is clearer.
-- Add a fit-to-imported-clips viewport helper and optional compact control.
+- Add a compact fit-to-imported-clips control beside the viewport controls.
 - Add undo boundaries before editable inspector or timeline clip operations.
