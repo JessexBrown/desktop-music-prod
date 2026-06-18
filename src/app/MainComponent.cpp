@@ -19,6 +19,7 @@
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <system_error>
 #include <utility>
 #include <vector>
 
@@ -116,6 +117,32 @@ void setButtonEnabledFromCommand(juce::Button& button,
 [[nodiscard]] std::string toCommandString(std::string_view commandId)
 {
     return std::string(commandId);
+}
+
+[[nodiscard]] juce::File toJuceFile(const std::filesystem::path& path)
+{
+    return juce::File(juce::String(path.string()));
+}
+
+[[nodiscard]] std::filesystem::path projectPackagePathFromChooserResult(juce::File file,
+                                                                        bool appendProjectExtension)
+{
+    if (appendProjectExtension && !file.hasFileExtension(".project"))
+        file = file.withFileExtension(".project");
+
+    return std::filesystem::path(file.getFullPathName().toStdString());
+}
+
+[[nodiscard]] bool projectManifestExists(const std::filesystem::path& packageDirectory)
+{
+    std::error_code error;
+    return std::filesystem::is_regular_file(packageDirectory / "manifest.json", error);
+}
+
+[[nodiscard]] std::string projectNameFromPackagePath(const std::filesystem::path& packageDirectory)
+{
+    auto name = packageDirectory.stem().string();
+    return name.empty() ? std::string("Untitled Song") : std::move(name);
 }
 
 [[nodiscard]] const projectname::ProjectTrack* findFirstAudioTrack(
@@ -1053,6 +1080,8 @@ MainComponent::MainComponent()
                   "Track and master controls",
                   { "Track mix", "Master" })
 {
+    currentProjectPackagePath_ = getDefaultProjectPackagePath();
+    session_.getProject().setName(projectname::demoProjectName);
     configureControls();
     browserPanel_.setSelectableRowCallback(
         [this](std::string cleanupId)
@@ -1202,9 +1231,7 @@ void MainComponent::resized()
     topBar.removeFromRight(8);
     importButton_.setBounds(topBar.removeFromRight(82).reduced(0, 10));
     topBar.removeFromRight(8);
-    openButton_.setBounds(topBar.removeFromRight(76).reduced(0, 10));
-    topBar.removeFromRight(8);
-    saveButton_.setBounds(topBar.removeFromRight(76).reduced(0, 10));
+    projectButton_.setBounds(topBar.removeFromRight(92).reduced(0, 10));
     topBar.removeFromRight(12);
     statusLabel_.setBounds(topBar.reduced(0, 12));
 
@@ -1269,13 +1296,9 @@ void MainComponent::buttonClicked(juce::Button* button)
     {
         dispatchAppCommand(projectname::AppCommandIds::transportStop);
     }
-    else if (button == &saveButton_)
+    else if (button == &projectButton_)
     {
-        dispatchAppCommand(projectname::AppCommandIds::projectSave);
-    }
-    else if (button == &openButton_)
-    {
-        dispatchAppCommand(projectname::AppCommandIds::projectOpen);
+        showProjectMenu();
     }
     else if (button == &importButton_)
     {
@@ -1341,8 +1364,7 @@ void MainComponent::configureControls()
 {
     addAndMakeVisible(playButton_);
     addAndMakeVisible(stopButton_);
-    addAndMakeVisible(saveButton_);
-    addAndMakeVisible(openButton_);
+    addAndMakeVisible(projectButton_);
     addAndMakeVisible(importButton_);
     addAndMakeVisible(cancelImportButton_);
     addAndMakeVisible(cancelTimelinePreparationButton_);
@@ -1371,8 +1393,7 @@ void MainComponent::configureControls()
 
     configureButton(playButton_, accent);
     configureButton(stopButton_, accentWarm);
-    configureButton(saveButton_, juce::Colour(0xffc6ccd5));
-    configureButton(openButton_, juce::Colour(0xffc6ccd5));
+    configureButton(projectButton_, juce::Colour(0xffc6ccd5));
     configureButton(importButton_, juce::Colour(0xffc6ccd5));
     configureButton(inspectorRelinkButton_, juce::Colour(0xffc6ccd5));
     configureButton(inspectorCancelRelinkButton_, accentWarm);
@@ -1382,8 +1403,7 @@ void MainComponent::configureControls()
 
     playButton_.addListener(this);
     stopButton_.addListener(this);
-    saveButton_.addListener(this);
-    openButton_.addListener(this);
+    projectButton_.addListener(this);
     importButton_.addListener(this);
     inspectorRelinkButton_.addListener(this);
     inspectorCancelRelinkButton_.addListener(this);
@@ -1454,14 +1474,25 @@ void MainComponent::configureControls()
 projectname::AppCommandRegistry MainComponent::buildAppCommandRegistry() const
 {
     projectname::AppCommandAvailability availability;
+    const auto projectChooserOpen = hasProjectChooserOpen();
+    const auto projectFileWorkActive =
+        audioImportJob_ != nullptr
+        || mediaRelinkPreparationJob_ != nullptr
+        || timelinePlaybackPreparationJob_ != nullptr
+        || packageMediaCleanupJob_ != nullptr;
+    const auto projectChooserAvailable =
+        !projectChooserOpen
+        && audioImportChooser_ == nullptr
+        && mediaRelinkChooser_ == nullptr
+        && !projectFileWorkActive;
+
+    availability.canNewProject = projectChooserAvailable;
+    availability.canSave = !projectChooserOpen && !projectFileWorkActive;
+    availability.canSaveAs = projectChooserAvailable;
+    availability.canOpen = projectChooserAvailable;
     availability.canUndoImportedClipEdit = session_.canUndoImportedClipEdit();
     availability.canRedoImportedClipEdit = session_.canRedoImportedClipEdit();
-    availability.canImportAudio =
-        audioImportChooser_ == nullptr
-        && mediaRelinkChooser_ == nullptr
-        && audioImportJob_ == nullptr
-        && mediaRelinkPreparationJob_ == nullptr
-        && packageMediaCleanupJob_ == nullptr;
+    availability.canImportAudio = projectChooserAvailable;
     availability.canCancelImport = audioImportJob_ != nullptr && canCancelAudioImport_;
     availability.canCancelTimelinePreparation =
         timelinePlaybackPreparationJob_ != nullptr && canCancelTimelinePlaybackPreparation_;
@@ -1475,8 +1506,10 @@ void MainComponent::refreshAppCommandEnabledState()
 
     setButtonEnabledFromCommand(playButton_, registry, projectname::AppCommandIds::transportPlay);
     setButtonEnabledFromCommand(stopButton_, registry, projectname::AppCommandIds::transportStop);
-    setButtonEnabledFromCommand(saveButton_, registry, projectname::AppCommandIds::projectSave);
-    setButtonEnabledFromCommand(openButton_, registry, projectname::AppCommandIds::projectOpen);
+    projectButton_.setEnabled(registry.isEnabled(projectname::AppCommandIds::projectSave)
+                              || registry.isEnabled(projectname::AppCommandIds::projectOpen)
+                              || registry.isEnabled(projectname::AppCommandIds::projectNew)
+                              || registry.isEnabled(projectname::AppCommandIds::projectSaveAs));
     setButtonEnabledFromCommand(importButton_, registry, projectname::AppCommandIds::audioImport);
     setButtonEnabledFromCommand(cancelImportButton_, registry, projectname::AppCommandIds::audioImportCancel);
     setButtonEnabledFromCommand(cancelTimelinePreparationButton_,
@@ -1511,10 +1544,22 @@ projectname::AppCommandResult MainComponent::dispatchAppCommand(std::string_view
                         audioService_.setTestToneEnabled(session_.shouldPlayGeneratedTone());
                         return projectname::AppCommandResult::handled();
                     });
+    registerHandler(projectname::AppCommandIds::projectNew,
+                    [this]()
+                    {
+                        newProject();
+                        return projectname::AppCommandResult::handled();
+                    });
     registerHandler(projectname::AppCommandIds::projectSave,
                     [this]()
                     {
                         saveProject();
+                        return projectname::AppCommandResult::handled();
+                    });
+    registerHandler(projectname::AppCommandIds::projectSaveAs,
+                    [this]()
+                    {
+                        saveProjectAs();
                         return projectname::AppCommandResult::handled();
                     });
     registerHandler(projectname::AppCommandIds::projectOpen,
@@ -1705,7 +1750,7 @@ void MainComponent::startTimelinePlaybackPreparation(double outputSampleRateHz,
 
     projectname::BackgroundTimelinePlaybackPreparationRequest request;
     request.project = session_.getProject();
-    request.packageDirectory = getDefaultProjectPackagePath();
+    request.packageDirectory = getCurrentProjectPackagePath();
     request.outputSampleRateHz = outputSampleRateHz;
     request.minimumRenderFrameCount = minimumRenderFrameCount;
 
@@ -1718,12 +1763,78 @@ void MainComponent::startTimelinePlaybackPreparation(double outputSampleRateHz,
     setStatus("Preparing timeline audio - 5%");
 }
 
+void MainComponent::showProjectMenu()
+{
+    const auto registry = buildAppCommandRegistry();
+
+    juce::PopupMenu menu;
+    menu.addItem(1, "New...", registry.isEnabled(projectname::AppCommandIds::projectNew));
+    menu.addItem(2, "Save", registry.isEnabled(projectname::AppCommandIds::projectSave));
+    menu.addItem(3, "Save As...", registry.isEnabled(projectname::AppCommandIds::projectSaveAs));
+    menu.addSeparator();
+    menu.addItem(4, "Open...", registry.isEnabled(projectname::AppCommandIds::projectOpen));
+
+    const auto safeThis = juce::Component::SafePointer<MainComponent>(this);
+    menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&projectButton_),
+                       [safeThis](int result) mutable
+                       {
+                           if (safeThis == nullptr)
+                               return;
+
+                           switch (result)
+                           {
+                               case 1:
+                                   safeThis->dispatchAppCommand(projectname::AppCommandIds::projectNew);
+                                   break;
+                               case 2:
+                                   safeThis->dispatchAppCommand(projectname::AppCommandIds::projectSave);
+                                   break;
+                               case 3:
+                                   safeThis->dispatchAppCommand(projectname::AppCommandIds::projectSaveAs);
+                                   break;
+                               case 4:
+                                   safeThis->dispatchAppCommand(projectname::AppCommandIds::projectOpen);
+                                   break;
+                               default:
+                                   break;
+                           }
+                       });
+}
+
+void MainComponent::newProject()
+{
+    if (hasProjectChooserOpen())
+    {
+        setStatus("Finish the current project chooser first");
+        return;
+    }
+
+    const auto initialPackage = toJuceFile(getCurrentProjectPackagePath());
+    projectNewChooser_ = std::make_unique<juce::FileChooser>("Create a Rabbington Studio project package",
+                                                             initialPackage,
+                                                             "*.project",
+                                                             true,
+                                                             false,
+                                                             this);
+    refreshAppCommandEnabledState();
+
+    const auto chooserFlags =
+        juce::FileBrowserComponent::saveMode
+        | juce::FileBrowserComponent::canSelectFiles
+        | juce::FileBrowserComponent::warnAboutOverwriting;
+    const auto safeThis = juce::Component::SafePointer<MainComponent>(this);
+    projectNewChooser_->launchAsync(chooserFlags,
+                                    [safeThis](const juce::FileChooser& chooser) mutable
+                                    {
+                                        if (safeThis != nullptr)
+                                            safeThis->handleProjectNewResult(chooser);
+                                    });
+}
+
 void MainComponent::saveProject()
 {
-    session_.getProject().setName(projectname::demoProjectName);
-
     std::string error;
-    const auto packagePath = getDefaultProjectPackagePath();
+    const auto packagePath = getCurrentProjectPackagePath();
 
     if (session_.saveProjectPackage(packagePath, error))
         setStatus("Saved project package: " + juce::String(packagePath.string()));
@@ -1736,26 +1847,175 @@ void MainComponent::saveProject()
     updateTransportLabels();
 }
 
+void MainComponent::saveProjectAs()
+{
+    if (hasProjectChooserOpen())
+    {
+        setStatus("Finish the current project chooser first");
+        return;
+    }
+
+    const auto initialPackage = toJuceFile(getCurrentProjectPackagePath());
+    projectSaveAsChooser_ = std::make_unique<juce::FileChooser>("Save Rabbington Studio project as",
+                                                                initialPackage,
+                                                                "*.project",
+                                                                true,
+                                                                false,
+                                                                this);
+    refreshAppCommandEnabledState();
+
+    const auto chooserFlags =
+        juce::FileBrowserComponent::saveMode
+        | juce::FileBrowserComponent::canSelectFiles
+        | juce::FileBrowserComponent::warnAboutOverwriting;
+    const auto safeThis = juce::Component::SafePointer<MainComponent>(this);
+    projectSaveAsChooser_->launchAsync(chooserFlags,
+                                       [safeThis](const juce::FileChooser& chooser) mutable
+                                       {
+                                           if (safeThis != nullptr)
+                                               safeThis->handleProjectSaveAsResult(chooser);
+                                       });
+}
+
 void MainComponent::openProject()
 {
-    std::string error;
-    const auto packagePath = getDefaultProjectPackagePath();
-
-    if (session_.loadProjectPackage(packagePath, error))
+    if (hasProjectChooserOpen())
     {
-        tempoSlider_.setValue(session_.getTransport().getTempoBpm(), juce::dontSendNotification);
-        audioService_.setTestToneEnabled(session_.shouldPlayGeneratedTone());
-        refreshWorkspaceTimelineLane();
-        refreshInspectorPanel();
-        refreshMixerControls();
-        requestPackageMediaMaintenanceRefresh();
-        setStatus("Opened project package: " + juce::String(packagePath.string()));
+        setStatus("Finish the current project chooser first");
+        return;
+    }
+
+    const auto initialPackage = toJuceFile(getCurrentProjectPackagePath());
+    projectOpenChooser_ = std::make_unique<juce::FileChooser>("Open a Rabbington Studio project package",
+                                                              initialPackage,
+                                                              "*.project",
+                                                              true,
+                                                              false,
+                                                              this);
+    refreshAppCommandEnabledState();
+
+    const auto chooserFlags =
+        juce::FileBrowserComponent::openMode
+        | juce::FileBrowserComponent::canSelectDirectories
+        | juce::FileBrowserComponent::canSelectFiles;
+    const auto safeThis = juce::Component::SafePointer<MainComponent>(this);
+    projectOpenChooser_->launchAsync(chooserFlags,
+                                     [safeThis](const juce::FileChooser& chooser) mutable
+                                     {
+                                         if (safeThis != nullptr)
+                                             safeThis->handleProjectOpenResult(chooser);
+                                     });
+}
+
+void MainComponent::handleProjectNewResult(const juce::FileChooser& chooser)
+{
+    const auto selectedFile = chooser.getResult();
+    projectNewChooser_.reset();
+
+    if (selectedFile == juce::File {})
+    {
+        setStatus("New project cancelled");
+        refreshAppCommandEnabledState();
+        return;
+    }
+
+    const auto packagePath = projectPackagePathFromChooserResult(selectedFile, true);
+    if (projectManifestExists(packagePath))
+    {
+        setStatus("New project cancelled: package already contains a manifest");
+        refreshAppCommandEnabledState();
+        return;
+    }
+
+    auto project = projectname::ProjectModel::createDefault();
+    project.setName(projectNameFromPackagePath(packagePath));
+
+    std::string error;
+    if (!project.savePackage(packagePath, error))
+    {
+        setStatus("New project failed: " + juce::String(error));
+        refreshAppCommandEnabledState();
+        return;
+    }
+
+    session_.stop();
+    session_.replaceProject(std::move(project));
+    currentProjectPackagePath_ = packagePath;
+    selectedPackageMediaCleanupId_.clear();
+    refreshAfterProjectPackageChange("Created project package: " + juce::String(packagePath.string()));
+}
+
+void MainComponent::handleProjectSaveAsResult(const juce::FileChooser& chooser)
+{
+    const auto selectedFile = chooser.getResult();
+    projectSaveAsChooser_.reset();
+
+    if (selectedFile == juce::File {})
+    {
+        setStatus("Save As cancelled");
+        refreshAppCommandEnabledState();
+        return;
+    }
+
+    const auto packagePath = projectPackagePathFromChooserResult(selectedFile, true);
+
+    std::string error;
+    if (session_.saveProjectPackage(packagePath, error))
+    {
+        currentProjectPackagePath_ = packagePath;
+        selectedPackageMediaCleanupId_.clear();
+        refreshAfterProjectPackageChange("Saved project package as: " + juce::String(packagePath.string()));
     }
     else
     {
-        setStatus("Open failed: " + juce::String(error));
+        setStatus("Save As failed: " + juce::String(error));
+        refreshAppCommandEnabledState();
+    }
+}
+
+void MainComponent::handleProjectOpenResult(const juce::FileChooser& chooser)
+{
+    const auto selectedFile = chooser.getResult();
+    projectOpenChooser_.reset();
+
+    if (selectedFile == juce::File {})
+    {
+        setStatus("Open cancelled");
+        refreshAppCommandEnabledState();
+        return;
     }
 
+    const auto packagePath = projectPackagePathFromChooserResult(selectedFile, false);
+
+    std::string error;
+    auto project = projectname::ProjectModel::loadPackage(packagePath, error);
+    if (!project.has_value())
+    {
+        setStatus("Open failed: " + juce::String(error));
+        refreshAppCommandEnabledState();
+        updateTransportLabels();
+        return;
+    }
+
+    session_.stop();
+    session_.replaceProject(std::move(*project));
+    currentProjectPackagePath_ = packagePath;
+    selectedPackageMediaCleanupId_.clear();
+    refreshAfterProjectPackageChange("Opened project package: " + juce::String(packagePath.string()));
+}
+
+void MainComponent::refreshAfterProjectPackageChange(juce::String status)
+{
+    tempoSlider_.setValue(session_.getTransport().getTempoBpm(), juce::dontSendNotification);
+    audioService_.setTestToneEnabled(session_.shouldPlayGeneratedTone());
+    hasPackageMediaMaintenanceSnapshot_ = false;
+    packageMediaMaintenanceViewModel_ = {};
+    refreshWorkspaceTimelineLane();
+    refreshInspectorPanel();
+    refreshMixerControls();
+    requestPackageMediaMaintenanceRefresh();
+    refreshAppCommandEnabledState();
+    setStatus(std::move(status));
     updateTransportLabels();
 }
 
@@ -1952,11 +2212,10 @@ void MainComponent::handleAudioImportResult(const juce::FileChooser& chooser)
     }
 
     auto projectSnapshot = session_.getProject();
-    projectSnapshot.setName(projectname::demoProjectName);
 
     projectname::BackgroundAudioImportRequest request;
     request.project = std::move(projectSnapshot);
-    request.packageDirectory = getDefaultProjectPackagePath();
+    request.packageDirectory = getCurrentProjectPackagePath();
     request.sourceWavPath = std::filesystem::path(selectedFile.getFullPathName().toStdString());
 
     audioImportJob_ = std::make_unique<projectname::BackgroundAudioImportJob>(std::move(request));
@@ -1993,7 +2252,7 @@ void MainComponent::handleMediaRelinkResult(const juce::FileChooser& chooser)
 
     projectname::BackgroundMediaRelinkPreparationRequest request;
     request.project = session_.getProject();
-    request.packageDirectory = getDefaultProjectPackagePath();
+    request.packageDirectory = getCurrentProjectPackagePath();
     request.sourceWavPath = std::filesystem::path(selectedFile.getFullPathName().toStdString());
     request.selectedClipId = session_.getSelectedClipId();
 
@@ -2452,7 +2711,7 @@ void MainComponent::requestPackageMediaMaintenanceRefresh()
 
     packageMediaMaintenanceRefreshPending_ = false;
     const auto generation = ++packageMediaMaintenanceScanGeneration_;
-    const auto packageDirectory = getDefaultProjectPackagePath();
+    const auto packageDirectory = getCurrentProjectPackagePath();
     const auto selectedCleanupId = selectedPackageMediaCleanupId_;
     const auto packageWorkInProgress = hasActivePackageFileWork();
 
@@ -2650,10 +2909,10 @@ void MainComponent::startPackageMediaCleanup()
     const auto timestamp = makePackageMediaCleanupTimestamp();
     projectname::BackgroundPackageMediaCleanupRequest request;
     request.operation = projectname::BackgroundPackageMediaCleanupOperation::quarantine;
-    request.packageDirectory = getDefaultProjectPackagePath();
+    request.packageDirectory = getCurrentProjectPackagePath();
     request.cleanupId = timestamp.cleanupId;
     request.createdAtUtc = timestamp.createdAtUtc;
-    request.packageDisplayPath = getDefaultProjectPackagePath().filename().string();
+    request.packageDisplayPath = getCurrentProjectPackagePath().filename().string();
     request.manifestMarker = "rabbington-studio-ui";
     request.packageWorkInProgress = false;
 
@@ -2724,7 +2983,7 @@ void MainComponent::startPackageMediaRestore()
 
     projectname::BackgroundPackageMediaCleanupRequest request;
     request.operation = projectname::BackgroundPackageMediaCleanupOperation::restore;
-    request.packageDirectory = getDefaultProjectPackagePath();
+    request.packageDirectory = getCurrentProjectPackagePath();
     request.restoreManifestPath = selectedBatch.manifestPath;
 
     packageMediaCleanupJob_ =
@@ -2745,7 +3004,7 @@ void MainComponent::refreshWorkspaceTimelineLane()
 
     workspacePanel_.setSubtitle(juce::String(projectname::formatTimelineViewportIndicator(viewport)));
     workspacePanel_.setTimelineClipLane(projectname::buildImportedAudioTimelineClipLane(session_.getProject(),
-                                                                                        getDefaultProjectPackagePath(),
+                                                                                        getCurrentProjectPackagePath(),
                                                                                         options));
 }
 
@@ -2756,7 +3015,7 @@ void MainComponent::refreshInspectorPanel()
     lastInspectorOutputSampleRateHz_ = outputSampleRate;
 
     auto inspector = projectname::buildFirstImportedAudioClipInspector(session_.getProject(),
-                                                                       getDefaultProjectPackagePath(),
+                                                                       getCurrentProjectPackagePath(),
                                                                        outputSampleRate);
     inspectorPanel_.setSubtitle(
         inspector.status == projectname::ImportedClipInspectorStatus::noImportedAudio
@@ -3063,4 +3322,16 @@ std::filesystem::path MainComponent::getDefaultProjectPackagePath() const
     return std::filesystem::path(documentsDirectory.getChildFile(projectname::demoProjectPackageName)
                                      .getFullPathName()
                                      .toStdString());
+}
+
+const std::filesystem::path& MainComponent::getCurrentProjectPackagePath() const noexcept
+{
+    return currentProjectPackagePath_;
+}
+
+bool MainComponent::hasProjectChooserOpen() const noexcept
+{
+    return projectNewChooser_ != nullptr
+        || projectSaveAsChooser_ != nullptr
+        || projectOpenChooser_ != nullptr;
 }

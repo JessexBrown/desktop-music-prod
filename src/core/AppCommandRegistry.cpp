@@ -165,6 +165,13 @@ AppCommandRegistry makePrototypeAppCommandRegistry(AppCommandAvailability availa
                              availability.canStop,
                              "Stopping is unavailable.");
     registerPrototypeCommand(registry,
+                             AppCommandIds::projectNew,
+                             "New Project",
+                             "Create a new project package with a native chooser.",
+                             AppCommandScope::project,
+                             availability.canNewProject,
+                             "Project creation is unavailable.");
+    registerPrototypeCommand(registry,
                              AppCommandIds::projectSave,
                              "Save",
                              "Save the current project package.",
@@ -172,9 +179,16 @@ AppCommandRegistry makePrototypeAppCommandRegistry(AppCommandAvailability availa
                              availability.canSave,
                              "Project saving is unavailable.");
     registerPrototypeCommand(registry,
+                             AppCommandIds::projectSaveAs,
+                             "Save As",
+                             "Save the current project package to a chosen package.",
+                             AppCommandScope::project,
+                             availability.canSaveAs,
+                             "Project Save As is unavailable.");
+    registerPrototypeCommand(registry,
                              AppCommandIds::projectOpen,
                              "Open",
-                             "Open the current project package.",
+                             "Open a project package with a native chooser.",
                              AppCommandScope::project,
                              availability.canOpen,
                              "Project opening is unavailable.");

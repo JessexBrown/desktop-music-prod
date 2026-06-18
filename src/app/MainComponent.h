@@ -157,8 +157,15 @@ private:
     void schedulePreparedTimelinePlayback(projectname::TimelinePlaybackPreparation playback);
     void schedulePreparedTimelineVoicePlayback(projectname::TimelineVoicePlaybackPreparation playback);
     void startTimelinePlaybackPreparation(double outputSampleRateHz, std::int64_t minimumRenderFrameCount);
+    void showProjectMenu();
+    void newProject();
     void saveProject();
+    void saveProjectAs();
     void openProject();
+    void handleProjectNewResult(const juce::FileChooser& chooser);
+    void handleProjectSaveAsResult(const juce::FileChooser& chooser);
+    void handleProjectOpenResult(const juce::FileChooser& chooser);
+    void refreshAfterProjectPackageChange(juce::String status);
     [[nodiscard]] projectname::AppCommandResult undoImportedClipEdit();
     [[nodiscard]] projectname::AppCommandResult redoImportedClipEdit();
     void importAudio();
@@ -212,14 +219,15 @@ private:
     void showAudioSettings();
     void setStatus(juce::String status);
     [[nodiscard]] std::filesystem::path getDefaultProjectPackagePath() const;
+    [[nodiscard]] const std::filesystem::path& getCurrentProjectPackagePath() const noexcept;
+    [[nodiscard]] bool hasProjectChooserOpen() const noexcept;
 
     projectname::AudioDeviceService audioService_;
     projectname::AppSession session_;
 
     juce::TextButton playButton_ { "Play" };
     juce::TextButton stopButton_ { "Stop" };
-    juce::TextButton saveButton_ { "Save" };
-    juce::TextButton openButton_ { "Open" };
+    juce::TextButton projectButton_ { "Project" };
     juce::TextButton importButton_ { "Import" };
     juce::TextButton cancelImportButton_ { "Cancel" };
     juce::TextButton cancelTimelinePreparationButton_ { "Cancel Prep" };
@@ -241,6 +249,10 @@ private:
     juce::ToggleButton muteToggle_ { "Mute" };
     juce::ToggleButton soloToggle_ { "Solo" };
     juce::String statusText_;
+    std::filesystem::path currentProjectPackagePath_;
+    std::unique_ptr<juce::FileChooser> projectNewChooser_;
+    std::unique_ptr<juce::FileChooser> projectSaveAsChooser_;
+    std::unique_ptr<juce::FileChooser> projectOpenChooser_;
     std::unique_ptr<juce::FileChooser> audioImportChooser_;
     std::unique_ptr<juce::FileChooser> mediaRelinkChooser_;
     std::unique_ptr<projectname::BackgroundAudioImportJob> audioImportJob_;

@@ -187,6 +187,10 @@ Third-party dependencies remain under their own licenses as recorded in
 - Package media maintenance cleanup batch rows are mouse selectable and
   keyboard selectable from the browser panel while cleanup/restore execution
   remains out of scope.
+- The top bar has a compact Project menu with native New, Save As, and Open
+  project-package choosers. The deterministic demo package remains the initial
+  Save target for smoke tests, and failed Open attempts keep the current
+  project loaded.
 - The Package Maintenance browser surface has a guarded Restore affordance for
   selected restorable cleanup batches. Restore runs through the background
   package media cleanup job and stays disabled with visible reasons for
@@ -250,7 +254,8 @@ Third-party dependencies remain under their own licenses as recorded in
 ## What Does Not Exist Yet
 
 - AIFF/FLAC/MP3 import, automatic resampling, interactive waveform editing,
-  imported-media cleanup/restoration UI, command-palette relink entries,
+  full Save As asset-package cloning, imported-media cleanup/restoration UI,
+  command-palette relink entries,
   timeline zoom/scroll, loop-region editing controls, or drag/drop clip
   placement.
 - Resampling, time-stretching, streaming, multi-track mixer strips, metering,
@@ -511,4 +516,6 @@ or use `ctest --preset dev --output-on-failure`.
   records the read-only selected cleanup batch detail surface.
 - `docs/adr/ADR-0088-ci-fetchcontent-cache-and-core-host-coverage.md` records
   CI FetchContent caching and second-host core verification.
+- `docs/adr/ADR-0089-native-project-package-choosers.md` records the native
+  project package chooser workflow and Save As asset-copy boundary.
 - `docs/issues/NEXT-ISSUES.md` lists the next five small tasks.

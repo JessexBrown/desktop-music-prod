@@ -5699,7 +5699,7 @@ void workspaceCommandRouterPreservesFocusedWorkspaceShortcuts()
 void appCommandRegistryDescribesPrototypeTopBarCommands()
 {
     const auto registry = projectname::makePrototypeAppCommandRegistry();
-    expect(registry.size() == 10, "App command registry exposes the prototype app actions");
+    expect(registry.size() == 12, "App command registry exposes the prototype app actions");
 
     auto expectCommand = [&registry](std::string_view id,
                                      std::string_view label,
@@ -5731,11 +5731,21 @@ void appCommandRegistryDescribesPrototypeTopBarCommands()
                   projectname::AppCommandScope::transport,
                   true,
                   "App command registry contains Stop");
+    expectCommand(projectname::AppCommandIds::projectNew,
+                  "New Project",
+                  projectname::AppCommandScope::project,
+                  true,
+                  "App command registry contains New Project");
     expectCommand(projectname::AppCommandIds::projectSave,
                   "Save",
                   projectname::AppCommandScope::project,
                   true,
                   "App command registry contains Save");
+    expectCommand(projectname::AppCommandIds::projectSaveAs,
+                  "Save As",
+                  projectname::AppCommandScope::project,
+                  true,
+                  "App command registry contains Save As");
     expectCommand(projectname::AppCommandIds::projectOpen,
                   "Open",
                   projectname::AppCommandScope::project,
@@ -5778,6 +5788,9 @@ void appCommandRegistryDescribesPrototypeTopBarCommands()
            "App command registry reports unknown commands unavailable");
 
     projectname::AppCommandAvailability availability;
+    availability.canNewProject = false;
+    availability.canSaveAs = false;
+    availability.canOpen = false;
     availability.canUndoImportedClipEdit = true;
     availability.canRedoImportedClipEdit = true;
     availability.canImportAudio = false;
@@ -5789,6 +5802,12 @@ void appCommandRegistryDescribesPrototypeTopBarCommands()
            "App command registry enables undo from imported clip edit availability");
     expect(busyRegistry.isEnabled(projectname::AppCommandIds::editRedo),
            "App command registry enables redo from imported clip edit availability");
+    expect(!busyRegistry.isEnabled(projectname::AppCommandIds::projectNew),
+           "App command registry disables New Project from project availability");
+    expect(!busyRegistry.isEnabled(projectname::AppCommandIds::projectSaveAs),
+           "App command registry disables Save As from project availability");
+    expect(!busyRegistry.isEnabled(projectname::AppCommandIds::projectOpen),
+           "App command registry disables Open from project availability");
     expect(!busyRegistry.isEnabled(projectname::AppCommandIds::audioImport),
            "App command registry disables import while import UI or job is active");
     expect(busyRegistry.isEnabled(projectname::AppCommandIds::audioImportCancel),
