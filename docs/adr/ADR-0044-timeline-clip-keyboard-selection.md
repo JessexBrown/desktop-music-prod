@@ -46,4 +46,4 @@ session command so keyboard and mouse selection share the same visible state.
 
 ## Follow-Ups
 
-- Add package media quarantine preflight plan model.
+- Add package media quarantine file-moving command.

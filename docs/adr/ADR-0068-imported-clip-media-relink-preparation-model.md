@@ -70,4 +70,4 @@ cleanup/restoration UI, AIFF/FLAC/MP3 support, resampling, or time-stretching.
 
 ## Follow-Ups
 
-- Add package media quarantine preflight plan model.
+- Add package media quarantine file-moving command.

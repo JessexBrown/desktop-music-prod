@@ -68,5 +68,5 @@ palette entries.
 
 ## Follow-Ups
 
-- Add package media quarantine preflight plan model.
+- Add package media quarantine file-moving command.
 - Add inspector focus tests when visible text entry exists.

@@ -56,5 +56,5 @@ results through `commitPreparedImportedClipMediaRelink`.
 
 ## Follow-Ups
 
-- Add package media quarantine preflight plan model.
+- Add package media quarantine file-moving command.
 - Add command-palette and shortcut entries only after command UX is designed.

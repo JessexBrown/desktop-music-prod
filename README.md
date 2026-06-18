@@ -154,6 +154,10 @@ Third-party dependencies remain under their own licenses as recorded in
 - A plain C++ package media quarantine restore-manifest model serializes,
   loads, and validates human-readable JSON for moved entries, skipped entries,
   partial-failure state, and restore-conflict state without moving files.
+- A plain C++ package media quarantine preflight model turns safe inventory
+  candidates into restore-manifest drafts and rejects active package work,
+  unsafe or missing references, protected requested assets, empty plans, and
+  duplicate destinations without moving files.
 - A plain C++ track voice scheduler turns timeline clip plans, render windows,
   and track gain/pan/mute/solo snapshots into mixer-ready voice descriptors.
 - Project track volume, pan, mute, and solo state is persisted and fed into
@@ -188,9 +192,9 @@ Third-party dependencies remain under their own licenses as recorded in
   commands, imported clip inspector edit draft validation and cancel behavior,
   imported clip media relink preparation and cleanup behavior, background media
   relink preparation jobs, imported media package inventory classification,
-  package media quarantine restore-manifest validation, workspace command
-  routing, app command registry metadata, enablement, and dispatch results,
-  timeline lane
+  package media quarantine restore-manifest validation and preflight planning,
+  workspace command routing, app command registry metadata, enablement, and
+  dispatch results, timeline lane
   layout/hit-testing/placement/loop-range scaling, track voice scheduling
   policy, persisted track mix state, stereo prepared voice summing, loop-region
   persistence/advance behavior, and background import success, failure,
@@ -430,4 +434,6 @@ or use `ctest --preset dev --output-on-failure`.
   records package-local media quarantine and restore command design.
 - `docs/adr/ADR-0074-package-media-quarantine-restore-manifest-model.md`
   records the package media quarantine restore-manifest model.
+- `docs/adr/ADR-0075-package-media-quarantine-preflight-plan-model.md`
+  records the package media quarantine preflight plan model.
 - `docs/issues/NEXT-ISSUES.md` lists the next five small tasks.

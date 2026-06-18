@@ -53,7 +53,7 @@ state.
 
 ## Follow-Ups
 
-- Add package media quarantine preflight plan model.
+- Add package media quarantine file-moving command.
 - Define backup-manifest retention before any permanent media deletion task.
 - Expose inventory results in a future package maintenance UI after quarantine
   behavior is designed.

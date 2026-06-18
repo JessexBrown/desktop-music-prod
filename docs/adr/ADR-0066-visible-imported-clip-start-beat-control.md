@@ -55,6 +55,6 @@ operations, or automated GUI interaction tests.
 
 ## Follow-Ups
 
-- Add package media quarantine preflight plan model.
+- Add package media quarantine file-moving command.
 - Add automated GUI interaction coverage when a stable JUCE UI test approach is
   available.

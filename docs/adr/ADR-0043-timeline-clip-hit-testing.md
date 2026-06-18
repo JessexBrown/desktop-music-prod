@@ -42,6 +42,6 @@ selected clip.
 
 ## Follow-Ups
 
-- Add package media quarantine preflight plan model.
+- Add package media quarantine file-moving command.
 - Add clip movement and resizing only after explicit edit previews and undo are
   defined.

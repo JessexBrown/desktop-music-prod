@@ -66,4 +66,4 @@ they affect user-visible workflow. Do not add global shortcuts by scattering
 
 ## Follow-Ups
 
-- Add package media quarantine preflight plan model.
+- Add package media quarantine file-moving command.

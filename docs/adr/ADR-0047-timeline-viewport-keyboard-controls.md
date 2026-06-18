@@ -44,4 +44,4 @@ updates the status line with the new view start or zoom scale.
 
 ## Follow-Ups
 
-- Add package media quarantine preflight plan model.
+- Add package media quarantine file-moving command.

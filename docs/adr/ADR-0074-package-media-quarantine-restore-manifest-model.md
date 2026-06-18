@@ -69,7 +69,7 @@ delete files, touch UI state, or run on the audio callback.
 
 ## Follow-Ups
 
-- Add package media quarantine preflight plan model.
+- Add package media quarantine file-moving command.
 - Define backup-manifest retention before any permanent media deletion task.
 - Design user-facing package maintenance UI after quarantine and restore
   commands are implemented and tested.

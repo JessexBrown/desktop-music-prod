@@ -9,6 +9,7 @@
 #include "core/ImportedClipMediaRelink.h"
 #include "core/ImportedClipInspector.h"
 #include "core/ImportedMediaPackageInventory.h"
+#include "core/PackageMediaQuarantinePreflightPlan.h"
 #include "core/PackageMediaQuarantineRestoreManifest.h"
 #include "core/ProjectAudioImport.h"
 #include "core/ProjectModel.h"
@@ -184,6 +185,87 @@ projectname::PackageMediaQuarantineRestoreManifest makeTestQuarantineRestoreMani
     manifest.skippedEntries.push_back(std::move(skipped));
 
     return manifest;
+}
+
+const projectname::PackageMediaQuarantineMovedEntry* findQuarantineMovedEntry(
+    const projectname::PackageMediaQuarantineRestoreManifest& manifest,
+    projectname::PackageMediaQuarantineEntryKind kind,
+    const std::string& originalPath)
+{
+    for (const auto& entry : manifest.movedEntries)
+    {
+        if (entry.kind == kind && entry.originalRelativePath == originalPath)
+            return &entry;
+    }
+
+    return nullptr;
+}
+
+const projectname::PackageMediaQuarantineSkippedEntry* findQuarantineSkippedEntry(
+    const projectname::PackageMediaQuarantineRestoreManifest& manifest,
+    const std::string& originalPath)
+{
+    for (const auto& entry : manifest.skippedEntries)
+    {
+        if (entry.originalRelativePath == originalPath)
+            return &entry;
+    }
+
+    return nullptr;
+}
+
+projectname::ImportedMediaPackageInventory makePreflightInventoryWithCandidates(
+    const std::filesystem::path& package)
+{
+    writeTextFile(package / "audio" / "orphan.wav", "orphan-audio");
+    writeTextFile(package / "analysis" / "orphan.waveform.json", "{}");
+    writeTextFile(package / ".projectname-staging" / "audio-import-a" / "staged.wav", "staged");
+
+    projectname::ImportedMediaPackageInventory inventory;
+
+    projectname::ImportedMediaPackageAsset audio;
+    audio.kind = projectname::ImportedMediaPackageAssetKind::audio;
+    audio.relativePath = "audio/orphan.wav";
+    audio.absolutePath = package / "audio" / "orphan.wav";
+    audio.unreferencedCandidate = true;
+    inventory.assets.push_back(std::move(audio));
+
+    projectname::ImportedMediaPackageAsset analysis;
+    analysis.kind = projectname::ImportedMediaPackageAssetKind::analysis;
+    analysis.relativePath = "analysis/orphan.waveform.json";
+    analysis.absolutePath = package / "analysis" / "orphan.waveform.json";
+    analysis.unreferencedCandidate = true;
+    inventory.assets.push_back(std::move(analysis));
+
+    projectname::ImportedMediaPackageAsset protectedAudio;
+    protectedAudio.kind = projectname::ImportedMediaPackageAssetKind::audio;
+    protectedAudio.relativePath = "audio/current.wav";
+    protectedAudio.absolutePath = package / "audio" / "current.wav";
+    protectedAudio.referenceSources.push_back(
+        projectname::ImportedMediaPackageReferenceSource::currentManifest);
+    protectedAudio.unreferencedCandidate = false;
+    inventory.assets.push_back(std::move(protectedAudio));
+
+    projectname::ImportedMediaPackageStagingDirectory staging;
+    staging.relativePath = ".projectname-staging/audio-import-a";
+    staging.absolutePath = package / ".projectname-staging" / "audio-import-a";
+    staging.staleCandidate = true;
+    inventory.stagingDirectories.push_back(std::move(staging));
+
+    return inventory;
+}
+
+projectname::PackageMediaQuarantinePreflightRequest makePreflightRequest(
+    projectname::ImportedMediaPackageInventory inventory,
+    std::string cleanupId = "2026-06-18T19-00-00Z-test")
+{
+    projectname::PackageMediaQuarantinePreflightRequest request;
+    request.inventory = std::move(inventory);
+    request.cleanupId = std::move(cleanupId);
+    request.createdAtUtc = "2026-06-18T19-00-00Z";
+    request.packageDisplayPath = "Display Only.project";
+    request.manifestMarker = "manifest-save-2";
+    return request;
 }
 
 projectname::ProjectModel makeProjectWithImportedTimelineClip(double startBeats, double lengthBeats)
@@ -2107,6 +2189,146 @@ void packageMediaQuarantineRestoreManifestLoadsPartialFailureState()
            "Partial failure quarantine restore manifest preserves entry error");
 
     expect(std::filesystem::remove_all(package) > 0, "Temporary partial quarantine manifest package deleted");
+}
+
+void packageMediaQuarantinePreflightPlansCandidates()
+{
+    const auto package = makeTemporaryPackagePath("projectname-quarantine-preflight-test");
+    const auto cleanupId = std::string("2026-06-18T19-00-00Z-test");
+    auto inventory = makePreflightInventoryWithCandidates(package);
+    auto request = makePreflightRequest(std::move(inventory), cleanupId);
+
+    const auto result = projectname::buildPackageMediaQuarantinePreflightPlan(std::move(request));
+    expect(result.status == projectname::PackageMediaQuarantinePreflightStatus::planned,
+           "Quarantine preflight plans valid candidates");
+    expect(result.restoreManifest.has_value(),
+           "Quarantine preflight returns restore manifest draft");
+    if (result.restoreManifest.has_value())
+    {
+        const auto& manifest = *result.restoreManifest;
+        expect(manifest.cleanupId == cleanupId,
+               "Quarantine preflight preserves cleanup id");
+        expect(manifest.movedEntries.size() == 3,
+               "Quarantine preflight plans audio, analysis, and staging moves");
+        expect(findQuarantineMovedEntry(manifest,
+                                        projectname::PackageMediaQuarantineEntryKind::audio,
+                                        "audio/orphan.wav") != nullptr,
+               "Quarantine preflight plans audio asset");
+        const auto* audio = findQuarantineMovedEntry(manifest,
+                                                     projectname::PackageMediaQuarantineEntryKind::audio,
+                                                     "audio/orphan.wav");
+        expect(audio != nullptr
+                   && audio->quarantineRelativePath
+                       == "backups/media-trash/" + cleanupId + "/audio/orphan.wav"
+                   && audio->byteSize.has_value(),
+               "Quarantine preflight creates audio quarantine path and byte size");
+        expect(findQuarantineMovedEntry(manifest,
+                                        projectname::PackageMediaQuarantineEntryKind::analysis,
+                                        "analysis/orphan.waveform.json") != nullptr,
+               "Quarantine preflight plans analysis asset");
+        expect(findQuarantineMovedEntry(manifest,
+                                        projectname::PackageMediaQuarantineEntryKind::stagingDirectory,
+                                        ".projectname-staging/audio-import-a") != nullptr,
+               "Quarantine preflight plans stale staging directory");
+        const auto* skipped = findQuarantineSkippedEntry(manifest, "audio/current.wav");
+        expect(skipped != nullptr && skipped->reason == "protected-reference",
+               "Quarantine preflight records protected asset as skipped");
+
+        std::string error;
+        expect(projectname::validatePackageMediaQuarantineRestoreManifest(manifest, error),
+               "Quarantine preflight draft validates as restore manifest");
+    }
+
+    expect(std::filesystem::remove_all(package) > 0, "Temporary quarantine preflight package deleted");
+}
+
+void packageMediaQuarantinePreflightRejectsBlockedInventory()
+{
+    const auto package = makeTemporaryPackagePath("projectname-quarantine-preflight-blocked-test");
+
+    {
+        auto request = makePreflightRequest(makePreflightInventoryWithCandidates(package), "bad/id");
+        const auto result = projectname::buildPackageMediaQuarantinePreflightPlan(std::move(request));
+        expect(result.status == projectname::PackageMediaQuarantinePreflightStatus::invalidCleanupId,
+               "Quarantine preflight rejects invalid cleanup id");
+    }
+
+    {
+        auto request = makePreflightRequest(makePreflightInventoryWithCandidates(package));
+        request.packageWorkInProgress = true;
+        const auto result = projectname::buildPackageMediaQuarantinePreflightPlan(std::move(request));
+        expect(result.status == projectname::PackageMediaQuarantinePreflightStatus::activePackageWork,
+               "Quarantine preflight rejects active package work");
+    }
+
+    {
+        auto inventory = makePreflightInventoryWithCandidates(package);
+        inventory.stagingDirectories.front().staleCandidate = false;
+        auto request = makePreflightRequest(std::move(inventory));
+        const auto result = projectname::buildPackageMediaQuarantinePreflightPlan(std::move(request));
+        expect(result.status == projectname::PackageMediaQuarantinePreflightStatus::activePackageWork,
+               "Quarantine preflight rejects active staging directory");
+    }
+
+    {
+        auto inventory = makePreflightInventoryWithCandidates(package);
+        projectname::ImportedMediaPackageUnsafeReference unsafe;
+        unsafe.kind = projectname::ImportedMediaPackageAssetKind::audio;
+        unsafe.relativePath = "../outside.wav";
+        unsafe.reason = "Escapes package";
+        inventory.unsafeReferences.push_back(std::move(unsafe));
+        auto request = makePreflightRequest(std::move(inventory));
+        const auto result = projectname::buildPackageMediaQuarantinePreflightPlan(std::move(request));
+        expect(result.status == projectname::PackageMediaQuarantinePreflightStatus::unsafeReferences,
+               "Quarantine preflight rejects unsafe inventory references");
+    }
+
+    {
+        auto inventory = makePreflightInventoryWithCandidates(package);
+        projectname::ImportedMediaPackageMissingReference missing;
+        missing.kind = projectname::ImportedMediaPackageAssetKind::analysis;
+        missing.relativePath = "analysis/missing.waveform.json";
+        inventory.missingReferences.push_back(std::move(missing));
+        auto request = makePreflightRequest(std::move(inventory));
+        const auto result = projectname::buildPackageMediaQuarantinePreflightPlan(std::move(request));
+        expect(result.status == projectname::PackageMediaQuarantinePreflightStatus::missingReferences,
+               "Quarantine preflight rejects missing inventory references");
+    }
+
+    {
+        auto request = makePreflightRequest(makePreflightInventoryWithCandidates(package));
+        request.requestedOriginalRelativePaths.push_back("audio/current.wav");
+        const auto result = projectname::buildPackageMediaQuarantinePreflightPlan(std::move(request));
+        expect(result.status == projectname::PackageMediaQuarantinePreflightStatus::protectedReference,
+               "Quarantine preflight rejects requested protected asset");
+    }
+
+    expect(std::filesystem::remove_all(package) > 0, "Temporary blocked preflight package deleted");
+}
+
+void packageMediaQuarantinePreflightRejectsEmptyAndDuplicatePlans()
+{
+    {
+        projectname::ImportedMediaPackageInventory emptyInventory;
+        auto request = makePreflightRequest(std::move(emptyInventory));
+        const auto result = projectname::buildPackageMediaQuarantinePreflightPlan(std::move(request));
+        expect(result.status == projectname::PackageMediaQuarantinePreflightStatus::noMovableCandidates,
+               "Quarantine preflight rejects empty plans");
+    }
+
+    {
+        const auto package = makeTemporaryPackagePath("projectname-quarantine-preflight-duplicate-test");
+        auto request = makePreflightRequest(makePreflightInventoryWithCandidates(package));
+        request.requestedOriginalRelativePaths.push_back("audio/orphan.wav");
+        request.requestedOriginalRelativePaths.push_back("audio/orphan.wav");
+
+        const auto result = projectname::buildPackageMediaQuarantinePreflightPlan(std::move(request));
+        expect(result.status
+                   == projectname::PackageMediaQuarantinePreflightStatus::duplicateQuarantineDestination,
+               "Quarantine preflight rejects duplicate requested paths");
+
+        expect(std::filesystem::remove_all(package) > 0, "Temporary duplicate preflight package deleted");
+    }
 }
 
 void importedClipInspectorReportsSelectedOrFirstImportedClipMetadata()
@@ -5979,6 +6201,9 @@ int main()
     packageMediaQuarantineRestoreManifestRejectsUnsafePaths();
     packageMediaQuarantineRestoreManifestRejectsDuplicateDestinations();
     packageMediaQuarantineRestoreManifestLoadsPartialFailureState();
+    packageMediaQuarantinePreflightPlansCandidates();
+    packageMediaQuarantinePreflightRejectsBlockedInventory();
+    packageMediaQuarantinePreflightRejectsEmptyAndDuplicatePlans();
     importedClipInspectorReportsSelectedOrFirstImportedClipMetadata();
     waveformThumbnailLoaderReportsInvalidAnalysis();
     projectModelPlacesImportedAudioClips();

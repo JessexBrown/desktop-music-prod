@@ -178,8 +178,8 @@ timeline fit-to-clips and selected-clip centering helper tests, imported clip
 placement and media replacement undo/redo tests, imported clip edit undo/redo
 command routing tests, imported clip media relink preparation/background job
 tests, imported media package inventory tests, package media quarantine
-restore-manifest tests, workspace command routing tests, app command registry
-metadata/enablement/dispatch-result tests, timeline viewport indicator
+restore-manifest/preflight tests, workspace command routing tests, app command
+registry metadata/enablement/dispatch-result tests, timeline viewport indicator
 formatting tests, persisted track mix state/static mix command tests, stereo
 prepared voice summing tests, and previous-manifest backup tests.
 It also
