@@ -2,7 +2,7 @@
 
 # Source Header Policy
 
-ProjectName is licensed under `AGPL-3.0-or-later`.
+Rabbington Studio is licensed under `AGPL-3.0-or-later`.
 
 ## Policy
 

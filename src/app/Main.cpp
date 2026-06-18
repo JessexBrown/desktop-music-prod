@@ -1,17 +1,19 @@
 #include "MainComponent.h"
 
+#include "core/ProductIdentity.h"
+
 #include <juce_gui_extra/juce_gui_extra.h>
 
 #include <memory>
 
-class ProjectNameApplication final : public juce::JUCEApplication
+class RabbingtonStudioApplication final : public juce::JUCEApplication
 {
 public:
-    ProjectNameApplication() = default;
+    RabbingtonStudioApplication() = default;
 
     const juce::String getApplicationName() override
     {
-        return "ProjectName";
+        return projectname::productName;
     }
 
     const juce::String getApplicationVersion() override
@@ -79,4 +81,4 @@ private:
     bool smokeTestMode_ = false;
 };
 
-START_JUCE_APPLICATION(ProjectNameApplication)
+START_JUCE_APPLICATION(RabbingtonStudioApplication)

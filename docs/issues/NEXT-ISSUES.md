@@ -19,7 +19,7 @@ Acceptance:
 
 Acceptance:
 - Add native file chooser actions for New, Save As, and Open.
-- Keep the deterministic `ProjectName Demo.project` path available for smoke
+- Keep the deterministic `Rabbington Studio Demo.project` path available for smoke
   tests or replace it with an equally deterministic test hook.
 - Save the current transport/project model to a chosen `.project` package.
 - Load a chosen package and refresh visible project metadata.

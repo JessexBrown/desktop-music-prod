@@ -4,7 +4,7 @@ Codex must update this file whenever adding, removing, or changing a dependency.
 
 ## Project License
 
-Original ProjectName source, documentation, and build scripts are licensed under
+Original Rabbington Studio source, documentation, and build scripts are licensed under
 `AGPL-3.0-or-later`. Third-party dependencies retain their own licenses.
 
 | Dependency | Version/Commit | Source | License | Used For | Notes |

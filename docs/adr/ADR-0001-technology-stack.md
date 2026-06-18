@@ -47,7 +47,7 @@ project has reviewed its long-term fit.
 ## License Notes
 
 JUCE 8.0.13 is dual-licensed under AGPLv3 or a commercial JUCE license. This
-prototype uses the open-source AGPL path for original ProjectName code, as
+prototype uses the open-source AGPL path for original Rabbington Studio code, as
 recorded in ADR-0008.
 
 Tracktion Engine was reviewed but not added. Its repository license states a

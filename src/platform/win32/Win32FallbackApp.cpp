@@ -9,6 +9,7 @@
 #include "core/AudioEngineStub.h"
 #include "core/BackgroundAudioImportJob.h"
 #include "core/BackgroundWaveformAnalysisJob.h"
+#include "core/ProductIdentity.h"
 #include "core/TimelineClipLane.h"
 #include "core/WaveformAnalysisRegenerator.h"
 
@@ -49,17 +50,17 @@ std::string narrow(const std::wstring& value)
 
 std::filesystem::path fallbackProjectPath()
 {
-    return std::filesystem::temp_directory_path() / "ProjectNameFallback.project";
+    return std::filesystem::temp_directory_path() / "RabbingtonStudioFallback.project";
 }
 
 std::filesystem::path fallbackImportSourcePath()
 {
-    return std::filesystem::temp_directory_path() / "ProjectNameFallbackImport.wav";
+    return std::filesystem::temp_directory_path() / "RabbingtonStudioFallbackImport.wav";
 }
 
 std::filesystem::path fallbackImportProjectPath()
 {
-    return std::filesystem::temp_directory_path() / "ProjectNameFallbackImport.project";
+    return std::filesystem::temp_directory_path() / "RabbingtonStudioFallbackImport.project";
 }
 
 std::wstring describeProjectPath(const std::filesystem::path& path)
@@ -429,7 +430,7 @@ bool openFallbackProject(AppState& state, const std::filesystem::path& packageDi
 
 bool runProjectSmoke(AppState& state)
 {
-    const auto packageDirectory = std::filesystem::temp_directory_path() / "ProjectNameFallbackSmoke.project";
+    const auto packageDirectory = std::filesystem::temp_directory_path() / "RabbingtonStudioFallbackSmoke.project";
     std::error_code ignored;
     std::filesystem::remove_all(packageDirectory, ignored);
 
@@ -777,7 +778,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR, int showCommand)
     WNDCLASSW windowClass {};
     windowClass.lpfnWndProc = windowProc;
     windowClass.hInstance = instance;
-    windowClass.lpszClassName = L"ProjectNameWin32FallbackWindow";
+    windowClass.lpszClassName = L"RabbingtonStudioWin32FallbackWindow";
     windowClass.hCursor = LoadCursorW(nullptr, MAKEINTRESOURCEW(32512));
     windowClass.hbrBackground = reinterpret_cast<HBRUSH>(GetStockObject(BLACK_BRUSH));
 
@@ -786,7 +787,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR, int showCommand)
 
     auto* window = CreateWindowExW(0,
                                    windowClass.lpszClassName,
-                                   L"ProjectName - Native Fallback",
+                                   L"Rabbington Studio - Native Fallback",
                                    WS_OVERLAPPEDWINDOW,
                                    CW_USEDEFAULT,
                                    CW_USEDEFAULT,

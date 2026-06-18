@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include "ProductIdentity.h"
+
 #include <cstdint>
 #include <filesystem>
 #include <optional>
@@ -49,7 +51,7 @@ struct PackageMediaQuarantineSkippedEntry
 struct PackageMediaQuarantineRestoreManifest
 {
     int schemaVersion = 1;
-    std::string application = "ProjectName";
+    std::string application = productName;
     std::string cleanupId;
     std::string createdAtUtc;
     std::string packageDisplayPath;

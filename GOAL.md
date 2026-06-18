@@ -1,4 +1,4 @@
-# <ProjectName> GOAL.md
+# Rabbington Studio GOAL.md
 
 ## Product Vision
 

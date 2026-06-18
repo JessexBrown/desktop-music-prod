@@ -1,6 +1,7 @@
 #include "MainComponent.h"
 
 #include "core/AppCommandRegistry.h"
+#include "core/ProductIdentity.h"
 #include "core/WorkspaceCommandRouter.h"
 
 #include <algorithm>
@@ -1389,7 +1390,7 @@ void MainComponent::startTimelinePlaybackPreparation(double outputSampleRateHz,
 
 void MainComponent::saveProject()
 {
-    session_.getProject().setName("ProjectName Demo");
+    session_.getProject().setName(projectname::demoProjectName);
 
     std::string error;
     const auto packagePath = getDefaultProjectPackagePath();
@@ -1617,7 +1618,7 @@ void MainComponent::handleAudioImportResult(const juce::FileChooser& chooser)
     }
 
     auto projectSnapshot = session_.getProject();
-    projectSnapshot.setName("ProjectName Demo");
+    projectSnapshot.setName(projectname::demoProjectName);
 
     projectname::BackgroundAudioImportRequest request;
     request.project = std::move(projectSnapshot);
@@ -2309,7 +2310,7 @@ void MainComponent::setStatus(juce::String status)
 std::filesystem::path MainComponent::getDefaultProjectPackagePath() const
 {
     const auto documentsDirectory = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory);
-    return std::filesystem::path(documentsDirectory.getChildFile("ProjectName Demo.project")
+    return std::filesystem::path(documentsDirectory.getChildFile(projectname::demoProjectPackageName)
                                      .getFullPathName()
                                      .toStdString());
 }

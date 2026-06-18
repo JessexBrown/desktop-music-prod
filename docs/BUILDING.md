@@ -192,7 +192,7 @@ combination. Use the `dev` preset for the JUCE desktop app on Windows and the
 `core-dev` or `win32-fallback` presets for dependency-light verification.
 
 When the JUCE app is built, its first-slice project controls save/open a
-deterministic package named `ProjectName Demo.project` in the current user's
+deterministic package named `Rabbington Studio Demo.project` in the current user's
 documents folder. Import Audio uses a native WAV file chooser and a background
 import job with frame-level decode progress, byte-level staged-copy progress,
 and cancel state, but still writes to that deterministic package until full

@@ -4,7 +4,7 @@ Codex must follow these instructions for this repository.
 
 ## Mission
 
-Build <ProjectName>, a free/open-source, native desktop DAW for Windows, macOS, and Linux. Optimize for reliable audio, inspiring UX, legal cleanliness, and incremental delivery.
+Build Rabbington Studio, a free/open-source, native desktop DAW for Windows, macOS, and Linux. Optimize for reliable audio, inspiring UX, legal cleanliness, and incremental delivery.
 
 ## Repository Rules
 

@@ -1,15 +1,15 @@
-# ProjectName
+# Rabbington Studio
 
-ProjectName is the working codename for a free/open-source native desktop music
-production app. The goal is a cross-platform DAW for Windows, macOS, and Linux
-with clip-based and arrangement-based workflows, original built-in devices, and
-safe third-party plugin hosting over time.
+Rabbington Studio is a free/open-source native desktop music production app. The
+goal is a cross-platform DAW for Windows, macOS, and Linux with clip-based and
+arrangement-based workflows, original built-in devices, and safe third-party
+plugin hosting over time.
 
 This repository currently contains the first vertical slice, not a complete DAW.
 
 ## License
 
-Original ProjectName source, documentation, and build scripts are licensed under
+Original Rabbington Studio source, documentation, and build scripts are licensed under
 `AGPL-3.0-or-later`; see `LICENSE` and `docs/SOURCE_HEADER_POLICY.md`.
 Third-party dependencies remain under their own licenses as recorded in
 `docs/DEPENDENCIES.md`.
@@ -172,7 +172,7 @@ Third-party dependencies remain under their own licenses as recorded in
 - Shared app session that keeps UI playback state tied to the project-backed
   transport.
 - Save/Open/Import controls in the app shell for a deterministic
-  `ProjectName Demo.project` package in the user's documents folder.
+  `Rabbington Studio Demo.project` package in the user's documents folder.
 - Import uses a native file chooser in the JUCE shell, runs project-package WAV
   import on a background job with frame-level decode progress, byte-level copy
   progress, and cancel state, then hands the prepared mono buffer to audio
@@ -436,4 +436,6 @@ or use `ctest --preset dev --output-on-failure`.
   records the package media quarantine restore-manifest model.
 - `docs/adr/ADR-0075-package-media-quarantine-preflight-plan-model.md`
   records the package media quarantine preflight plan model.
+- `docs/adr/ADR-0076-product-name-rabbington-studio.md` records the public
+  product-name decision and internal rename boundary.
 - `docs/issues/NEXT-ISSUES.md` lists the next five small tasks.

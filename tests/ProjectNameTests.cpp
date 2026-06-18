@@ -11,6 +11,7 @@
 #include "core/ImportedMediaPackageInventory.h"
 #include "core/PackageMediaQuarantinePreflightPlan.h"
 #include "core/PackageMediaQuarantineRestoreManifest.h"
+#include "core/ProductIdentity.h"
 #include "core/ProjectAudioImport.h"
 #include "core/ProjectModel.h"
 #include "core/TimelineClipLane.h"
@@ -466,6 +467,10 @@ void projectManifestRoundTrips()
     expect(project.savePackage(package, error), "Project package saves");
     expect(error.empty(), "Save leaves error empty");
     expect(std::filesystem::is_regular_file(package / "manifest.json"), "Manifest exists");
+    const auto manifestText = readTextFile(package / "manifest.json");
+    const auto expectedApplication = std::string("\"application\": \"") + projectname::productName + "\"";
+    expect(manifestText.find(expectedApplication) != std::string::npos,
+           "Project manifest records the Rabbington Studio application marker");
     expect(!std::filesystem::exists(package / "manifest.json.tmp"), "Temporary manifest is cleaned up after save");
     expect(std::filesystem::is_directory(package / "audio"), "Audio asset folder exists");
     expect(std::filesystem::is_directory(package / "samples"), "Samples asset folder exists");
@@ -2152,7 +2157,7 @@ void packageMediaQuarantineRestoreManifestLoadsPartialFailureState()
     writeTextFile(manifestPath,
                   R"({
                     "schemaVersion": 1,
-                    "application": "ProjectName",
+                    "application": "Rabbington Studio",
                     "cleanupId": "2026-06-18T18-33-00Z-test",
                     "createdAtUtc": "2026-06-18T18-33-00Z",
                     "packageDisplayPath": "Display Only.project",
@@ -6231,10 +6236,10 @@ int main()
 
     if (failures == 0)
     {
-        std::cout << "All ProjectName tests passed.\n";
+        std::cout << "All Rabbington Studio tests passed.\n";
         return 0;
     }
 
-    std::cerr << failures << " ProjectName test(s) failed.\n";
+    std::cerr << failures << " Rabbington Studio test(s) failed.\n";
     return 1;
 }

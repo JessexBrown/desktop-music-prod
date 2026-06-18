@@ -17,7 +17,7 @@ The repository did not yet have a root license file or a source-header policy.
 
 ## Decision
 
-License original ProjectName source, documentation, and build scripts under:
+License original Rabbington Studio source, documentation, and build scripts under:
 
 ```text
 AGPL-3.0-or-later

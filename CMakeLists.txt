@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.24)
 
-project(ProjectName
+project(RabbingtonStudio
     VERSION 0.1.0
-    DESCRIPTION "A free/open-source native desktop music production app prototype"
+    DESCRIPTION "Rabbington Studio native desktop music production app prototype"
     LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -71,6 +71,7 @@ add_library(projectname_core
     src/core/PackageMediaQuarantinePreflightPlan.h
     src/core/PackageMediaQuarantineRestoreManifest.cpp
     src/core/PackageMediaQuarantineRestoreManifest.h
+    src/core/ProductIdentity.h
     src/core/ProjectAudioImport.cpp
     src/core/ProjectAudioImport.h
     src/core/ProjectModel.cpp
@@ -111,9 +112,9 @@ target_link_libraries(projectname_core
 if(PROJECTNAME_BUILD_APP)
     juce_add_gui_app(projectname
         VERSION ${PROJECT_VERSION}
-        COMPANY_NAME "ProjectName Contributors"
-        PRODUCT_NAME "ProjectName"
-        BUNDLE_ID "org.projectname.daw")
+        COMPANY_NAME "Rabbington Studio Contributors"
+        PRODUCT_NAME "Rabbington Studio"
+        BUNDLE_ID "org.rabbingtonstudio.daw")
 
     target_sources(projectname
         PRIVATE

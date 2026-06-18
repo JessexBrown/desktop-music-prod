@@ -1,5 +1,7 @@
 #include "ProjectModel.h"
 
+#include "ProductIdentity.h"
+
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -763,7 +765,7 @@ nlohmann::json ProjectModel::toManifestJson() const
 
     return {
         { "manifestVersion", currentManifestVersion },
-        { "application", "ProjectName" },
+        { "application", productName },
         { "name", name_ },
         { "transport",
           {
