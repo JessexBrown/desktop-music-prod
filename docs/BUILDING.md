@@ -93,6 +93,26 @@ ctest --preset dev --output-on-failure
   `docs/SPDX_EXCEPTIONS.txt`.
 - `projectname_tests` runs the current unit tests.
 
+## Continuous Integration
+
+GitHub Actions currently runs two jobs on pushes and pull requests:
+
+- `Windows MSVC App` configures, builds, and tests the `dev` preset on
+  `windows-latest`. Its CTest run includes `projectname_app_smoke`, the SPDX
+  check, and the core unit tests.
+- `Linux Core` configures, builds, and tests the `core-dev` preset on
+  `ubuntu-latest` for second-host coverage before Linux app packaging work is
+  ready.
+
+Both jobs set `FETCHCONTENT_BASE_DIR` to a job-specific directory under
+`.cache/fetchcontent` and cache that directory with `actions/cache`. This
+reuses JUCE and nlohmann/json FetchContent downloads without committing
+dependency sources, build trees, or generated artifacts. Keeping separate
+cache directories for Windows MSVC and Linux core builds avoids CMake subbuild
+generator collisions. The SPDX check ignores local/generated roots such as
+`.cache/`, `out/`, and `build/` so restored third-party dependency sources do
+not become part of the first-party license-header baseline.
+
 ## Platform Notes
 
 ### Windows

@@ -297,6 +297,11 @@ cmake --build --preset core-dev
 ctest --preset core-dev --output-on-failure
 ```
 
+GitHub Actions runs the Windows MSVC desktop app build and
+`projectname_app_smoke`, plus a Linux `core-dev` build/test job for second-host
+coverage. CI caches CMake FetchContent downloads for JUCE and nlohmann/json
+outside the build tree; generated build outputs remain untracked.
+
 On Windows machines with MinGW but without a JUCE-supported compiler, the
 fallback launcher can be verified with the non-JUCE fallback preset:
 
@@ -504,4 +509,6 @@ or use `ctest --preset dev --output-on-failure`.
   guarded Package Maintenance cleanup/quarantine affordance.
 - `docs/adr/ADR-0087-package-media-maintenance-batch-detail-surface.md`
   records the read-only selected cleanup batch detail surface.
+- `docs/adr/ADR-0088-ci-fetchcontent-cache-and-core-host-coverage.md` records
+  CI FetchContent caching and second-host core verification.
 - `docs/issues/NEXT-ISSUES.md` lists the next five small tasks.

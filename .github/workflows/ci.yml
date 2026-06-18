@@ -6,18 +6,55 @@ on:
 
 jobs:
   windows:
-    name: Windows MSVC
+    name: Windows MSVC App
     runs-on: windows-latest
+    env:
+      FETCHCONTENT_BASE_DIR: ${{ github.workspace }}/.cache/fetchcontent/windows-msvc
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Cache FetchContent downloads
+        uses: actions/cache@v4
+        with:
+          path: .cache/fetchcontent/windows-msvc
+          key: windows-fetchcontent-${{ hashFiles('CMakeLists.txt', 'CMakePresets.json') }}
+          restore-keys: |
+            windows-fetchcontent-
+
       - name: Configure
-        run: cmake --preset dev
+        run: cmake --preset dev -DFETCHCONTENT_BASE_DIR="${env:FETCHCONTENT_BASE_DIR}"
 
       - name: Build
         run: cmake --build --preset dev
 
       - name: Test
         run: ctest --preset dev --output-on-failure
+
+  linux-core:
+    name: Linux Core
+    runs-on: ubuntu-latest
+    env:
+      FETCHCONTENT_BASE_DIR: ${{ github.workspace }}/.cache/fetchcontent/linux-core
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Cache FetchContent downloads
+        uses: actions/cache@v4
+        with:
+          path: .cache/fetchcontent/linux-core
+          key: linux-core-fetchcontent-${{ hashFiles('CMakeLists.txt', 'CMakePresets.json') }}
+          restore-keys: |
+            linux-core-fetchcontent-
+
+      - name: Configure core
+        run: cmake --preset core-dev -DFETCHCONTENT_BASE_DIR="${FETCHCONTENT_BASE_DIR}"
+
+      - name: Build core
+        run: cmake --build --preset core-dev
+
+      - name: Test core
+        run: ctest --preset core-dev --output-on-failure

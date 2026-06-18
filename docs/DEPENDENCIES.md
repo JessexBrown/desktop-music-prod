@@ -12,6 +12,13 @@ Original Rabbington Studio source, documentation, and build scripts are licensed
 | nlohmann/json | 3.12.0 | https://github.com/nlohmann/json | MIT | Human-readable project manifest JSON serialization in the domain core | Header-only library fetched by CMake. Keeps model save/load testable without JUCE. |
 | JUCE | 8.0.13 | https://github.com/juce-framework/JUCE | AGPLv3 or commercial JUCE license | Native app shell, audio/MIDI device management, GUI | Fetched by CMake from the official repository when `PROJECTNAME_BUILD_APP=ON`. The prototype assumes the AGPLv3 path unless maintainers choose a commercial JUCE license before distribution. |
 
+## CI Actions
+
+| Dependency | Version/Commit | Source | License | Used For | Notes |
+|---|---:|---|---|---|---|
+| actions/checkout | v4 | https://github.com/actions/checkout | MIT | GitHub Actions repository checkout | CI-only workflow action; not bundled with the app. |
+| actions/cache | v4 | https://github.com/actions/cache | MIT | GitHub Actions FetchContent dependency cache | CI-only workflow action; caches `.cache/fetchcontent/*` directories without committing generated artifacts. |
+
 ## Reviewed But Not Added
 
 | Dependency | Version/Commit | Source | License | Why Not Added Yet |

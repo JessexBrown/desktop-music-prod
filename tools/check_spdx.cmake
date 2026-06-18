@@ -70,7 +70,13 @@ foreach(first_party_file IN LISTS first_party_files)
     file(RELATIVE_PATH relative_file "${project_source_dir}" "${first_party_file}")
     file(TO_CMAKE_PATH "${relative_file}" relative_file)
 
-    if(relative_file MATCHES "^out/" OR relative_file MATCHES "^foss_daw_codex_starter_pack/")
+    if(relative_file MATCHES "^\\.cache/"
+        OR relative_file MATCHES "^\\.git/"
+        OR relative_file MATCHES "^\\.vs/"
+        OR relative_file MATCHES "^build/"
+        OR relative_file MATCHES "^out/"
+        OR relative_file MATCHES "^Testing/"
+        OR relative_file MATCHES "^foss_daw_codex_starter_pack/")
         continue()
     endif()
 
