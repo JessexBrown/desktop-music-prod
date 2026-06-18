@@ -13,6 +13,15 @@
 
 namespace projectname
 {
+struct PackageMediaMaintenanceBatchEntryPreview
+{
+    std::string originalRelativePath;
+    std::string quarantineRelativePath;
+    bool restored = false;
+    bool restoreConflict = false;
+    bool hasError = false;
+};
+
 struct PackageMediaMaintenanceBatchRow
 {
     std::string cleanupId;
@@ -25,6 +34,7 @@ struct PackageMediaMaintenanceBatchRow
     std::size_t conflictCount = 0;
     std::size_t errorCount = 0;
     std::size_t restorableEntryCount = 0;
+    std::vector<PackageMediaMaintenanceBatchEntryPreview> entryPreviews;
     bool selected = false;
     bool restoreActionEnabled = false;
     std::string restoreUnavailableReason;

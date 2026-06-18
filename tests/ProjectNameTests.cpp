@@ -264,6 +264,33 @@ const projectname::PackageMediaMaintenanceBrowserRow* findMaintenanceBrowserBatc
     return nullptr;
 }
 
+std::size_t countMaintenanceBrowserRows(
+    const projectname::PackageMediaMaintenanceBrowserRows& rows,
+    projectname::PackageMediaMaintenanceBrowserRowKind kind)
+{
+    return static_cast<std::size_t>(
+        std::count_if(rows.rows.begin(),
+                      rows.rows.end(),
+                      [kind](const projectname::PackageMediaMaintenanceBrowserRow& row)
+                      {
+                          return row.kind == kind;
+                      }));
+}
+
+bool hasMaintenanceBrowserRowText(
+    const projectname::PackageMediaMaintenanceBrowserRows& rows,
+    projectname::PackageMediaMaintenanceBrowserRowKind kind,
+    const std::string& needle)
+{
+    for (const auto& row : rows.rows)
+    {
+        if (row.kind == kind && row.text.find(needle) != std::string::npos)
+            return true;
+    }
+
+    return false;
+}
+
 std::size_t countSelectableMaintenanceBrowserRows(
     const projectname::PackageMediaMaintenanceBrowserRows& rows)
 {
@@ -3378,6 +3405,12 @@ void packageMediaMaintenanceViewModelCombinesBatchRowsAndRestoreEnablement()
                "Maintenance view model enables restore for completed batch");
         expect(model.batches[static_cast<std::size_t>(model.selectedBatchIndex)].restoreActionEnabled,
                "Maintenance view model marks completed row restorable");
+        const auto& selected = model.batches[static_cast<std::size_t>(model.selectedBatchIndex)];
+        expect(selected.movedEntryCount == 2 && selected.restorableEntryCount == 2,
+               "Maintenance view model counts completed batch restorable entries");
+        expect(selected.entryPreviews.size() == 2
+                   && selected.entryPreviews.front().originalRelativePath == "audio/orphan.wav",
+               "Maintenance view model carries completed batch entry preview paths");
     }
 
     {
@@ -3391,6 +3424,11 @@ void packageMediaMaintenanceViewModelCombinesBatchRowsAndRestoreEnablement()
                "Maintenance view model disables restore for restored batch");
         expect(model.restoreUnavailableReason.find("already been restored") != std::string::npos,
                "Maintenance view model explains restored batch disablement");
+        const auto& selected = model.batches[static_cast<std::size_t>(model.selectedBatchIndex)];
+        expect(selected.restoredEntryCount == 2 && selected.restorableEntryCount == 0,
+               "Maintenance view model counts restored batch entries");
+        expect(selected.entryPreviews.size() == 2 && selected.entryPreviews.front().restored,
+               "Maintenance view model marks restored entry previews");
     }
 
     {
@@ -3404,6 +3442,11 @@ void packageMediaMaintenanceViewModelCombinesBatchRowsAndRestoreEnablement()
                "Maintenance view model disables restore for conflicted batch");
         expect(model.restoreUnavailableReason.find("conflicts") != std::string::npos,
                "Maintenance view model explains conflicted batch disablement");
+        const auto& selected = model.batches[static_cast<std::size_t>(model.selectedBatchIndex)];
+        expect(selected.conflictCount == 1 && selected.restorableEntryCount == 1,
+               "Maintenance view model counts conflict batch entries");
+        expect(selected.entryPreviews.size() == 2 && selected.entryPreviews.front().restoreConflict,
+               "Maintenance view model marks conflict entry previews");
     }
 
     {
@@ -3417,6 +3460,11 @@ void packageMediaMaintenanceViewModelCombinesBatchRowsAndRestoreEnablement()
                "Maintenance view model disables restore for partial-failure batch");
         expect(model.restoreUnavailableReason.find("partial restore failures") != std::string::npos,
                "Maintenance view model explains partial-failure disablement");
+        const auto& selected = model.batches[static_cast<std::size_t>(model.selectedBatchIndex)];
+        expect(selected.errorCount == 1 && selected.restorableEntryCount == 1,
+               "Maintenance view model counts partial-failure entries");
+        expect(selected.entryPreviews.size() == 2 && selected.entryPreviews.front().hasError,
+               "Maintenance view model marks partial-failure entry previews");
     }
 
     {
@@ -3504,6 +3552,17 @@ void packageMediaMaintenanceBrowserRowsRenderSelectableBatchState()
             projectname::PackageMediaMaintenanceBrowserRowKind::selectedBatch);
         expect(selected != nullptr && selected->text == "Selected: none",
                "Maintenance browser rows render empty batch selection state");
+        const auto* entrySummary = findMaintenanceBrowserRow(
+            rows,
+            projectname::PackageMediaMaintenanceBrowserRowKind::selectedBatchEntrySummary);
+        expect(entrySummary != nullptr
+                   && entrySummary->text == "Entries: no cleanup batch selected",
+               "Maintenance browser rows render empty detail state");
+        expect(hasMaintenanceBrowserRowText(
+                   rows,
+                   projectname::PackageMediaMaintenanceBrowserRowKind::selectedBatchEntryPath,
+                   "no cleanup batch selected"),
+               "Maintenance browser rows render empty path detail state");
         expect(countSelectableMaintenanceBrowserRows(rows) == 0,
                "Maintenance browser rows expose no selectable rows for empty batches");
         expect(rows.restoreAction.visible && !rows.restoreAction.enabled,
@@ -3628,6 +3687,31 @@ void packageMediaMaintenanceBrowserRowsRenderSelectableBatchState()
            "Maintenance browser restore action enables for restorable selected batch");
     expect(oldestSelectedRows.restoreAction.disabledReason.empty(),
            "Maintenance browser restore action has no disabled reason when enabled");
+    const auto* completedEntrySummary = findMaintenanceBrowserRow(
+        oldestSelectedRows,
+        projectname::PackageMediaMaintenanceBrowserRowKind::selectedBatchEntrySummary);
+    expect(completedEntrySummary != nullptr
+               && completedEntrySummary->text == "Entries: 2 moved / 0 restored / 2 restorable",
+           "Maintenance browser rows show completed batch entry counts");
+    const auto* completedReviewSummary = findMaintenanceBrowserRow(
+        oldestSelectedRows,
+        projectname::PackageMediaMaintenanceBrowserRowKind::selectedBatchReviewSummary);
+    expect(completedReviewSummary != nullptr
+               && completedReviewSummary->text == "Review: 0 conflicts / 0 errors",
+           "Maintenance browser rows show completed batch review counts");
+    expect(countMaintenanceBrowserRows(
+               oldestSelectedRows,
+               projectname::PackageMediaMaintenanceBrowserRowKind::selectedBatchEntryPath) == 2,
+           "Maintenance browser rows show package-relative paths for selected batch entries");
+    expect(hasMaintenanceBrowserRowText(
+               oldestSelectedRows,
+               projectname::PackageMediaMaintenanceBrowserRowKind::selectedBatchEntryPath,
+               "audio/orphan.wav")
+               && hasMaintenanceBrowserRowText(
+                   oldestSelectedRows,
+                   projectname::PackageMediaMaintenanceBrowserRowKind::selectedBatchEntryPath,
+                   "analysis/orphan.waveform.json"),
+           "Maintenance browser rows include selected batch original paths");
 
     auto staleSelectionModel =
         projectname::selectPackageMediaMaintenanceBatch(oldestSelectedModel, "missing-selection");
@@ -3644,6 +3728,23 @@ void packageMediaMaintenanceBrowserRowsRenderSelectableBatchState()
     expect(staleSelectionRows.restoreAction.disabledReason.find("partial restore failures")
                != std::string::npos,
            "Maintenance browser restore action carries partial-failure disabled reason");
+    const auto* partialEntrySummary = findMaintenanceBrowserRow(
+        staleSelectionRows,
+        projectname::PackageMediaMaintenanceBrowserRowKind::selectedBatchEntrySummary);
+    expect(partialEntrySummary != nullptr
+               && partialEntrySummary->text == "Entries: 2 moved / 0 restored / 1 restorable",
+           "Maintenance browser rows show partial-failure entry counts");
+    const auto* partialReviewSummary = findMaintenanceBrowserRow(
+        staleSelectionRows,
+        projectname::PackageMediaMaintenanceBrowserRowKind::selectedBatchReviewSummary);
+    expect(partialReviewSummary != nullptr
+               && partialReviewSummary->text == "Review: 0 conflicts / 1 errors",
+           "Maintenance browser rows show partial-failure review counts");
+    expect(hasMaintenanceBrowserRowText(
+               staleSelectionRows,
+               projectname::PackageMediaMaintenanceBrowserRowKind::selectedBatchEntryPath,
+               "error | audio/orphan.wav"),
+           "Maintenance browser rows mark partial-failure entry path state");
 
     auto conflictSelectionModel =
         projectname::selectPackageMediaMaintenanceBatch(staleSelectionModel, conflictId);
@@ -3654,6 +3755,17 @@ void packageMediaMaintenanceBrowserRowsRenderSelectableBatchState()
            "Maintenance browser restore action disables for conflict batch");
     expect(conflictRows.restoreAction.disabledReason.find("conflicts") != std::string::npos,
            "Maintenance browser restore action carries conflict disabled reason");
+    const auto* conflictReviewSummary = findMaintenanceBrowserRow(
+        conflictRows,
+        projectname::PackageMediaMaintenanceBrowserRowKind::selectedBatchReviewSummary);
+    expect(conflictReviewSummary != nullptr
+               && conflictReviewSummary->text == "Review: 1 conflicts / 0 errors",
+           "Maintenance browser rows show conflict review counts");
+    expect(hasMaintenanceBrowserRowText(
+               conflictRows,
+               projectname::PackageMediaMaintenanceBrowserRowKind::selectedBatchEntryPath,
+               "conflict | audio/orphan.wav"),
+           "Maintenance browser rows mark conflict entry path state");
 
     const auto restoredSelectionModel =
         projectname::selectPackageMediaMaintenanceBatch(conflictSelectionModel, restoredId);
@@ -3665,6 +3777,17 @@ void packageMediaMaintenanceBrowserRowsRenderSelectableBatchState()
     expect(restoredRows.restoreAction.disabledReason.find("already been restored")
                != std::string::npos,
            "Maintenance browser restore action carries restored-batch disabled reason");
+    const auto* restoredEntrySummary = findMaintenanceBrowserRow(
+        restoredRows,
+        projectname::PackageMediaMaintenanceBrowserRowKind::selectedBatchEntrySummary);
+    expect(restoredEntrySummary != nullptr
+               && restoredEntrySummary->text == "Entries: 2 moved / 2 restored / 0 restorable",
+           "Maintenance browser rows show restored entry counts");
+    expect(hasMaintenanceBrowserRowText(
+               restoredRows,
+               projectname::PackageMediaMaintenanceBrowserRowKind::selectedBatchEntryPath,
+               "restored | audio/orphan.wav"),
+           "Maintenance browser rows mark restored entry path state");
 
     expect(projectname::selectAdjacentPackageMediaCleanupId(
                conflictSelectionModel,

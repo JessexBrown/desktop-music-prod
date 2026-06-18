@@ -154,6 +154,57 @@ namespace
     return line;
 }
 
+[[nodiscard]] std::string entryStateLabel(
+    const PackageMediaMaintenanceBatchEntryPreview& entry)
+{
+    if (entry.restoreConflict)
+        return "conflict";
+
+    if (entry.hasError)
+        return "error";
+
+    if (entry.restored)
+        return "restored";
+
+    return "restorable";
+}
+
+[[nodiscard]] std::string selectedBatchEntrySummary(
+    const PackageMediaMaintenanceBatchRow& row)
+{
+    return "Entries: "
+        + std::to_string(row.movedEntryCount)
+        + " moved / "
+        + std::to_string(row.restoredEntryCount)
+        + " restored / "
+        + std::to_string(row.restorableEntryCount)
+        + " restorable";
+}
+
+[[nodiscard]] std::string selectedBatchReviewSummary(
+    const PackageMediaMaintenanceBatchRow& row)
+{
+    return "Review: "
+        + std::to_string(row.conflictCount)
+        + " conflicts / "
+        + std::to_string(row.errorCount)
+        + " errors";
+}
+
+[[nodiscard]] std::string selectedBatchEntryPath(
+    const PackageMediaMaintenanceBatchEntryPreview& entry,
+    std::size_t entryIndex)
+{
+    return "Entry "
+        + std::to_string(entryIndex + 1)
+        + ": "
+        + entryStateLabel(entry)
+        + " | "
+        + entry.originalRelativePath
+        + " -> "
+        + entry.quarantineRelativePath;
+}
+
 [[nodiscard]] std::vector<std::size_t> makeVisibleBatchIndexes(
     const PackageMediaMaintenanceViewModel& model,
     std::size_t maxBatchRows)
@@ -186,6 +237,58 @@ void addRow(PackageMediaMaintenanceBrowserRows& rows,
     row.kind = kind;
     row.text = std::move(text);
     rows.rows.push_back(std::move(row));
+}
+
+void addSelectedBatchDetailRows(PackageMediaMaintenanceBrowserRows& rows,
+                                const PackageMediaMaintenanceViewModel& model,
+                                std::size_t maxEntryPreviewRows)
+{
+    if (!model.hasSelectedBatch)
+    {
+        addRow(rows,
+               PackageMediaMaintenanceBrowserRowKind::selectedBatchEntrySummary,
+               "Entries: no cleanup batch selected");
+        addRow(rows,
+               PackageMediaMaintenanceBrowserRowKind::selectedBatchReviewSummary,
+               "Review: no cleanup batch selected");
+        addRow(rows,
+               PackageMediaMaintenanceBrowserRowKind::selectedBatchEntryPath,
+               "Entry paths: no cleanup batch selected");
+        return;
+    }
+
+    const auto& selected = model.batches[static_cast<std::size_t>(model.selectedBatchIndex)];
+    addRow(rows,
+           PackageMediaMaintenanceBrowserRowKind::selectedBatchEntrySummary,
+           selectedBatchEntrySummary(selected));
+    addRow(rows,
+           PackageMediaMaintenanceBrowserRowKind::selectedBatchReviewSummary,
+           selectedBatchReviewSummary(selected));
+
+    if (selected.entryPreviews.empty() || maxEntryPreviewRows == 0)
+    {
+        addRow(rows,
+               PackageMediaMaintenanceBrowserRowKind::selectedBatchEntryPath,
+               "Entry paths: no moved entries");
+        return;
+    }
+
+    const auto previewCount = std::min(maxEntryPreviewRows, selected.entryPreviews.size());
+    for (std::size_t index = 0; index < previewCount; ++index)
+    {
+        addRow(rows,
+               PackageMediaMaintenanceBrowserRowKind::selectedBatchEntryPath,
+               selectedBatchEntryPath(selected.entryPreviews[index], index));
+    }
+
+    if (selected.entryPreviews.size() > previewCount)
+    {
+        addRow(rows,
+               PackageMediaMaintenanceBrowserRowKind::selectedBatchEntryPath,
+               "Entry paths: +"
+                   + std::to_string(selected.entryPreviews.size() - previewCount)
+                   + " more");
+    }
 }
 } // namespace
 
@@ -257,6 +360,7 @@ PackageMediaMaintenanceBrowserRows buildPackageMediaMaintenanceBrowserRows(
     }
 
     addRow(rows, PackageMediaMaintenanceBrowserRowKind::restoreSummary, restoreSummary(model));
+    addSelectedBatchDetailRows(rows, model, options.maxEntryPreviewRows);
 
     for (const auto index : makeVisibleBatchIndexes(model, options.maxBatchRows))
     {

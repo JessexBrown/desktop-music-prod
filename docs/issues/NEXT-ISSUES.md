@@ -34,14 +34,14 @@ Acceptance:
 - Add a non-modal path back to the Audio/MIDI setup dialog.
 - Keep the first implementation separate from plugin scanning.
 
-## 5. Add Package Media Maintenance Batch Detail Surface
+## 5. Add Package Media Restore Entry Selection Model
 
 Acceptance:
-- Add a non-mutating selected cleanup batch detail surface showing moved,
-  restored, conflict, error, and restorable entry counts.
-- Include enough package-relative path detail to support review without opening
-  a modal dialog.
-- Keep cleanup/restore execution, permanent deletion, and retention policy out
-  of this task.
-- Cover completed, restored, conflict, partial-failure, and empty/no-selection
-  detail states with model/UI tests where practical.
+- Add a plain C++ selection model for restorable entries in the selected cleanup
+  batch.
+- Support select all, clear selection, and toggle by original package-relative
+  path.
+- Keep existing restore execution unchanged until the UI can pass a selected
+  path set deliberately.
+- Cover restored, conflict, partial-failure, stale-path, and empty-selection
+  states with unit tests.

@@ -19,6 +19,9 @@ enum class PackageMediaMaintenanceBrowserRowKind
     cleanupSummary,
     batchCount,
     selectedBatch,
+    selectedBatchEntrySummary,
+    selectedBatchReviewSummary,
+    selectedBatchEntryPath,
     restoreSummary,
     batch,
     discoveryIssues,
@@ -39,6 +42,7 @@ struct PackageMediaMaintenanceBrowserRowsOptions
     bool scanRunning = false;
     std::size_t maxBatchRows = 2;
     bool packageWorkInProgress = false;
+    std::size_t maxEntryPreviewRows = 2;
 };
 
 struct PackageMediaMaintenanceBrowserAction

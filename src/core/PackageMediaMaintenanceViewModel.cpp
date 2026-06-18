@@ -121,6 +121,18 @@ namespace
     row.conflictCount = countConflictedEntries(batch.manifest);
     row.errorCount = countEntryErrors(batch.manifest);
     row.restorableEntryCount = countRestorableEntries(batch.manifest);
+    row.entryPreviews.reserve(batch.manifest.movedEntries.size());
+    for (const auto& entry : batch.manifest.movedEntries)
+    {
+        PackageMediaMaintenanceBatchEntryPreview preview;
+        preview.originalRelativePath = entry.originalRelativePath;
+        preview.quarantineRelativePath = entry.quarantineRelativePath;
+        preview.restored = entry.restored;
+        preview.restoreConflict = entry.restoreConflict;
+        preview.hasError = !entry.error.empty();
+        row.entryPreviews.push_back(std::move(preview));
+    }
+
     row.restoreActionEnabled = canRestoreFromBatch(row);
     if (!row.restoreActionEnabled)
         row.restoreUnavailableReason = restoreUnavailableReason(row);

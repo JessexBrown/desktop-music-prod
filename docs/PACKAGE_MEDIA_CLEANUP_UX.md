@@ -202,3 +202,10 @@ candidates, missing references, unsafe references, scan-waiting, and active
 package work. Activated cleanup/quarantine work runs through the background
 package media cleanup job and writes a restore manifest before any future
 retention or deletion feature exists.
+
+The selected cleanup batch now expands into non-mutating detail rows in the
+browser summary. The detail shows moved, restored, restorable, conflict, and
+error counts plus package-relative original and quarantine path previews copied
+from the restore manifest. Completed, restored, conflict, partial-failure, and
+no-selection states remain reviewable without opening a modal dialog or moving
+files.
