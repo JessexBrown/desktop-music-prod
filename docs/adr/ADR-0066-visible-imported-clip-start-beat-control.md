@@ -55,6 +55,6 @@ operations, or automated GUI interaction tests.
 
 ## Follow-Ups
 
-- Add imported media package inventory model.
+- Design package-local media quarantine and restore commands.
 - Add automated GUI interaction coverage when a stable JUCE UI test approach is
   available.

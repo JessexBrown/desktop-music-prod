@@ -55,6 +55,6 @@ drag/drop.
 
 ## Follow-Ups
 
-- Add imported media package inventory model.
+- Design package-local media quarantine and restore commands.
 - Add visible undo/redo commands only after focus ownership and text-entry
   behavior are covered by tests.

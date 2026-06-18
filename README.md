@@ -144,6 +144,10 @@ Third-party dependencies remain under their own licenses as recorded in
 - ADR-0071 defines imported media cleanup/restoration boundaries so package
   maintenance can protect undo/redo history, previous manifest backups, and
   in-flight staging before any destructive cleanup exists.
+- A plain C++ imported media package inventory model reports current-manifest,
+  previous-backup, and session-protected references, unreferenced candidates,
+  missing or unsafe references, and stale staging directories without deleting
+  files.
 - A plain C++ track voice scheduler turns timeline clip plans, render windows,
   and track gain/pan/mute/solo snapshots into mixer-ready voice descriptors.
 - Project track volume, pan, mute, and solo state is persisted and fed into
@@ -177,8 +181,9 @@ Third-party dependencies remain under their own licenses as recorded in
   clip edit undo/redo command routing, indicator formatting, and keyboard
   commands, imported clip inspector edit draft validation and cancel behavior,
   imported clip media relink preparation and cleanup behavior, background media
-  relink preparation jobs, workspace command routing, app command registry metadata,
-  enablement, and dispatch results, timeline lane
+  relink preparation jobs, imported media package inventory classification,
+  workspace command routing, app command registry metadata, enablement, and
+  dispatch results, timeline lane
   layout/hit-testing/placement/loop-range scaling, track voice scheduling
   policy, persisted track mix state, stereo prepared voice summing, loop-region
   persistence/advance behavior, and background import success, failure,
@@ -412,4 +417,6 @@ or use `ctest --preset dev --output-on-failure`.
   cancellable background media relink preparation boundary.
 - `docs/adr/ADR-0071-imported-media-package-cleanup-restoration-design.md`
   records the non-destructive cleanup inventory and restoration policy.
+- `docs/adr/ADR-0072-imported-media-package-inventory-model.md` records the
+  read-only imported media package inventory model.
 - `docs/issues/NEXT-ISSUES.md` lists the next five small tasks.

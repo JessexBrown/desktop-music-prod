@@ -45,4 +45,4 @@ recent import.
 
 ## Follow-Ups
 
-- Add imported media package inventory model.
+- Design package-local media quarantine and restore commands.

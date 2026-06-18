@@ -87,4 +87,4 @@ file chooser for relink.
 
 ## Follow-Ups
 
-- Add imported media package inventory model.
+- Design package-local media quarantine and restore commands.

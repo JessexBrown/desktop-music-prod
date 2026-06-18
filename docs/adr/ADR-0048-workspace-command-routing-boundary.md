@@ -66,4 +66,4 @@ they affect user-visible workflow. Do not add global shortcuts by scattering
 
 ## Follow-Ups
 
-- Add imported media package inventory model.
+- Design package-local media quarantine and restore commands.

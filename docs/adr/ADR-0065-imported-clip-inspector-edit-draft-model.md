@@ -68,5 +68,5 @@ palette entries.
 
 ## Follow-Ups
 
-- Add imported media package inventory model.
+- Design package-local media quarantine and restore commands.
 - Add inspector focus tests when visible text entry exists.

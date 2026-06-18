@@ -61,6 +61,6 @@ global shortcuts, editable inspector fields, or timeline drag/drop.
 
 ## Follow-Ups
 
-- Add imported media package inventory model.
+- Design package-local media quarantine and restore commands.
 - Add editable inspector or timeline gesture commits only after visible commands
   and text-entry behavior are covered by tests.

@@ -92,6 +92,4 @@ AIFF/FLAC/MP3 support, resampling, or time-stretching.
 
 ## Follow-Ups
 
-- Add imported media package inventory model.
-- Design package-local media quarantine and restore commands after inventory is
-  tested.
+- Design package-local media quarantine and restore commands.

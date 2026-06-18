@@ -86,7 +86,5 @@ drag/drop clip operations, or permanent package retention rules.
 
 ## Follow-Ups
 
-- Add imported media package inventory model.
-- Design package-local media quarantine and restore commands after inventory is
-  tested.
+- Design package-local media quarantine and restore commands.
 - Define backup-manifest retention before any permanent media deletion task.

@@ -34,16 +34,14 @@ Acceptance:
 - Add a non-modal path back to the Audio/MIDI setup dialog.
 - Keep the first implementation separate from plugin scanning.
 
-## 5. Add Imported Media Package Inventory Model
+## 5. Design Package-Local Media Quarantine and Restore Commands
 
 Acceptance:
-- Add a plain C++ package inventory/dry-run model that walks current manifest
-  references, previous-manifest backup references, imported audio assets,
-  waveform summaries, and staging folders without deleting files.
-- Report referenced assets, unreferenced candidates, protected backup/session
-  references when available, and stale staging candidates with safe
-  package-relative paths.
-- Cover unsafe paths, missing files, backup manifest references, and stale
-  staging classification with tests.
-- Keep actual deletion/restoration UI, command-palette entries, and drag/drop
-  clip operations out of this task.
+- Create an ADR for a package-local quarantine folder and restore manifest
+  format that can support undoable media cleanup later.
+- Define move-to-quarantine transaction, rollback, and restore expectations for
+  inventory candidates without adding permanent deletion.
+- Specify how restoration should interact with current manifests, previous
+  manifest backups, missing-media placeholders, and active package work.
+- Keep actual deletion/restoration implementation, command-palette entries, and
+  drag/drop clip operations out of this task.

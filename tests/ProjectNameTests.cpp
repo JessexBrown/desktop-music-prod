@@ -8,6 +8,7 @@
 #include "core/ImportedClipInspectorEditDraft.h"
 #include "core/ImportedClipMediaRelink.h"
 #include "core/ImportedClipInspector.h"
+#include "core/ImportedMediaPackageInventory.h"
 #include "core/ProjectAudioImport.h"
 #include "core/ProjectModel.h"
 #include "core/TimelineClipLane.h"
@@ -69,6 +70,13 @@ void writeManifestText(const std::filesystem::path& package, const std::string& 
     manifest << manifestText;
 }
 
+void writeTextFile(const std::filesystem::path& path, const std::string& text)
+{
+    std::filesystem::create_directories(path.parent_path());
+    std::ofstream file(path, std::ios::trunc);
+    file << text;
+}
+
 std::string readTextFile(const std::filesystem::path& path)
 {
     std::ifstream file(path);
@@ -93,6 +101,53 @@ const projectname::ProjectClip* findClipById(const projectname::ProjectModel& pr
     }
 
     return nullptr;
+}
+
+bool hasInventoryReferenceSource(const std::vector<projectname::ImportedMediaPackageReferenceSource>& sources,
+                                 projectname::ImportedMediaPackageReferenceSource source)
+{
+    return std::find(sources.begin(), sources.end(), source) != sources.end();
+}
+
+const projectname::ImportedMediaPackageAsset* findInventoryAsset(
+    const projectname::ImportedMediaPackageInventory& inventory,
+    projectname::ImportedMediaPackageAssetKind kind,
+    const std::string& relativePath)
+{
+    for (const auto& asset : inventory.assets)
+    {
+        if (asset.kind == kind && asset.relativePath == relativePath)
+            return &asset;
+    }
+
+    return nullptr;
+}
+
+const projectname::ImportedMediaPackageMissingReference* findInventoryMissingReference(
+    const projectname::ImportedMediaPackageInventory& inventory,
+    projectname::ImportedMediaPackageAssetKind kind,
+    const std::string& relativePath)
+{
+    for (const auto& reference : inventory.missingReferences)
+    {
+        if (reference.kind == kind && reference.relativePath == relativePath)
+            return &reference;
+    }
+
+    return nullptr;
+}
+
+bool hasUnsafeInventoryReference(const projectname::ImportedMediaPackageInventory& inventory,
+                                 projectname::ImportedMediaPackageAssetKind kind,
+                                 const std::string& relativePath)
+{
+    for (const auto& reference : inventory.unsafeReferences)
+    {
+        if (reference.kind == kind && reference.relativePath == relativePath)
+            return true;
+    }
+
+    return false;
 }
 
 projectname::ProjectModel makeProjectWithImportedTimelineClip(double startBeats, double lengthBeats)
@@ -1695,6 +1750,203 @@ void projectAudioImportCopiesWavIntoPackageAndPersistsClip()
 
     expect(std::filesystem::remove(wavPath), "Temporary import source WAV deleted");
     expect(std::filesystem::remove_all(package) > 0, "Temporary imported project package deleted");
+}
+
+void importedMediaPackageInventoryClassifiesReferencesAndCandidates()
+{
+    const auto package = makeTemporaryPackagePath("projectname-media-inventory-test");
+
+    writeManifestText(package,
+                      R"({
+                        "tracks": [
+                          {
+                            "clips": [
+                              {
+                                "type": "audio-file",
+                                "relativePath": "audio/current.wav",
+                                "analysisPath": "analysis/current.waveform.json"
+                              }
+                            ]
+                          }
+                        ]
+                      })");
+    writeTextFile(package / "backups" / "manifest.previous.json",
+                  R"({
+                    "tracks": [
+                      {
+                        "clips": [
+                          {
+                            "type": "audio-file",
+                            "relativePath": "audio/backup.wav",
+                            "analysisPath": "analysis/backup.waveform.json"
+                          }
+                        ]
+                      }
+                    ]
+                  })");
+
+    writeTextFile(package / "audio" / "current.wav", "current");
+    writeTextFile(package / "analysis" / "current.waveform.json", "{}");
+    writeTextFile(package / "audio" / "backup.wav", "backup");
+    writeTextFile(package / "analysis" / "backup.waveform.json", "{}");
+    writeTextFile(package / "audio" / "session.wav", "session");
+    writeTextFile(package / "analysis" / "session.waveform.json", "{}");
+    writeTextFile(package / "audio" / "orphan.wav", "orphan");
+    writeTextFile(package / "analysis" / "orphan.waveform.json", "{}");
+
+    projectname::ImportedMediaPackageInventoryOptions options;
+    options.protectedSessionReferences.push_back(
+        { projectname::ImportedMediaPackageAssetKind::audio, "audio/session.wav" });
+    options.protectedSessionReferences.push_back(
+        { projectname::ImportedMediaPackageAssetKind::analysis, "analysis/session.waveform.json" });
+
+    const auto inventory = projectname::buildImportedMediaPackageInventory(package, options);
+
+    expect(inventory.currentManifestRead, "Media inventory reads current manifest");
+    expect(inventory.previousManifestBackupRead, "Media inventory reads previous manifest backup");
+    expect(inventory.error.empty(), "Media inventory leaves error empty for valid package");
+    expect(inventory.missingReferences.empty(), "Media inventory does not report existing references as missing");
+    expect(inventory.unsafeReferences.empty(), "Media inventory does not report safe references as unsafe");
+
+    const auto* current = findInventoryAsset(inventory,
+                                             projectname::ImportedMediaPackageAssetKind::audio,
+                                             "audio/current.wav");
+    expect(current != nullptr
+               && hasInventoryReferenceSource(current->referenceSources,
+                                              projectname::ImportedMediaPackageReferenceSource::currentManifest)
+               && !current->unreferencedCandidate,
+           "Media inventory protects current manifest audio asset");
+
+    const auto* backup = findInventoryAsset(inventory,
+                                            projectname::ImportedMediaPackageAssetKind::audio,
+                                            "audio/backup.wav");
+    expect(backup != nullptr
+               && hasInventoryReferenceSource(backup->referenceSources,
+                                              projectname::ImportedMediaPackageReferenceSource::previousManifestBackup)
+               && !backup->unreferencedCandidate,
+           "Media inventory protects previous manifest backup audio asset");
+
+    const auto* session = findInventoryAsset(inventory,
+                                             projectname::ImportedMediaPackageAssetKind::audio,
+                                             "audio/session.wav");
+    expect(session != nullptr
+               && hasInventoryReferenceSource(session->referenceSources,
+                                              projectname::ImportedMediaPackageReferenceSource::sessionProtected)
+               && !session->unreferencedCandidate,
+           "Media inventory protects caller-provided session audio asset");
+
+    const auto* orphanAudio = findInventoryAsset(inventory,
+                                                 projectname::ImportedMediaPackageAssetKind::audio,
+                                                 "audio/orphan.wav");
+    expect(orphanAudio != nullptr && orphanAudio->unreferencedCandidate,
+           "Media inventory reports unreferenced package audio as candidate");
+
+    const auto* orphanAnalysis = findInventoryAsset(inventory,
+                                                    projectname::ImportedMediaPackageAssetKind::analysis,
+                                                    "analysis/orphan.waveform.json");
+    expect(orphanAnalysis != nullptr && orphanAnalysis->unreferencedCandidate,
+           "Media inventory reports unreferenced waveform summary as candidate");
+
+    expect(std::filesystem::remove_all(package) > 0, "Temporary media inventory package deleted");
+}
+
+void importedMediaPackageInventoryReportsUnsafeAndMissingReferences()
+{
+    const auto package = makeTemporaryPackagePath("projectname-media-inventory-invalid-test");
+
+    writeManifestText(package,
+                      R"({
+                        "tracks": [
+                          {
+                            "clips": [
+                              {
+                                "type": "audio-file",
+                                "relativePath": "audio/missing.wav",
+                                "analysisPath": "analysis/missing.waveform.json"
+                              },
+                              {
+                                "type": "audio-file",
+                                "relativePath": "../outside.wav",
+                                "analysisPath": "analysis/../outside.waveform.json"
+                              },
+                              {
+                                "type": "audio-file",
+                                "relativePath": "samples/not-owned.wav",
+                                "analysisPath": "audio/not-analysis.waveform.json"
+                              },
+                              {
+                                "type": "audio-file",
+                                "relativePath": "audio/./not-normal.wav"
+                              }
+                            ]
+                          }
+                        ]
+                      })");
+
+    const auto inventory = projectname::buildImportedMediaPackageInventory(package);
+
+    expect(inventory.currentManifestRead, "Invalid media inventory test still reads manifest");
+    expect(findInventoryMissingReference(inventory,
+                                         projectname::ImportedMediaPackageAssetKind::audio,
+                                         "audio/missing.wav") != nullptr,
+           "Media inventory reports missing referenced audio");
+    expect(findInventoryMissingReference(inventory,
+                                         projectname::ImportedMediaPackageAssetKind::analysis,
+                                         "analysis/missing.waveform.json") != nullptr,
+           "Media inventory reports missing referenced waveform summary");
+    expect(hasUnsafeInventoryReference(inventory,
+                                       projectname::ImportedMediaPackageAssetKind::audio,
+                                       "../outside.wav"),
+           "Media inventory rejects audio paths that escape the package");
+    expect(hasUnsafeInventoryReference(inventory,
+                                       projectname::ImportedMediaPackageAssetKind::analysis,
+                                       "analysis/../outside.waveform.json"),
+           "Media inventory rejects analysis paths that escape the package");
+    expect(hasUnsafeInventoryReference(inventory,
+                                       projectname::ImportedMediaPackageAssetKind::audio,
+                                       "samples/not-owned.wav"),
+           "Media inventory rejects imported audio outside the audio folder");
+    expect(hasUnsafeInventoryReference(inventory,
+                                       projectname::ImportedMediaPackageAssetKind::analysis,
+                                       "audio/not-analysis.waveform.json"),
+           "Media inventory rejects waveform summaries outside the analysis folder");
+    expect(hasUnsafeInventoryReference(inventory,
+                                       projectname::ImportedMediaPackageAssetKind::audio,
+                                       "audio/./not-normal.wav"),
+           "Media inventory rejects non-normalized package paths");
+
+    expect(std::filesystem::remove_all(package) > 0, "Temporary invalid media inventory package deleted");
+}
+
+void importedMediaPackageInventoryClassifiesStagingDirectories()
+{
+    const auto package = makeTemporaryPackagePath("projectname-media-inventory-staging-test");
+    writeManifestText(package, R"({ "tracks": [] })");
+    writeTextFile(package / ".projectname-staging" / "audio-import-a" / "staged.wav", "a");
+    writeTextFile(package / ".projectname-staging" / "media-relink-b" / "staged.wav", "b");
+
+    const auto idleInventory = projectname::buildImportedMediaPackageInventory(package);
+    expect(idleInventory.stagingDirectories.size() == 2,
+           "Media inventory reports direct staging directories");
+    expect(idleInventory.stagingDirectories.size() == 2
+               && idleInventory.stagingDirectories[0].staleCandidate
+               && idleInventory.stagingDirectories[1].staleCandidate,
+           "Media inventory marks staging stale when no package work is active");
+    expect(idleInventory.stagingDirectories.size() == 2
+               && idleInventory.stagingDirectories[0].relativePath.rfind(".projectname-staging/", 0) == 0,
+           "Media inventory reports staging with package-relative paths");
+
+    projectname::ImportedMediaPackageInventoryOptions activeOptions;
+    activeOptions.packageWorkInProgress = true;
+    const auto activeInventory = projectname::buildImportedMediaPackageInventory(package, activeOptions);
+    expect(activeInventory.stagingDirectories.size() == 2,
+           "Media inventory still reports staging while package work is active");
+    expect(activeInventory.stagingDirectories.size() == 2
+               && !activeInventory.stagingDirectories[0].staleCandidate
+               && !activeInventory.stagingDirectories[1].staleCandidate,
+           "Media inventory does not mark staging stale while package work is active");
+
+    expect(std::filesystem::remove_all(package) > 0, "Temporary staging inventory package deleted");
 }
 
 void importedClipInspectorReportsSelectedOrFirstImportedClipMetadata()
@@ -5560,6 +5812,9 @@ int main()
     wavImportedPreparedClipStopsAndRestarts();
     wavAudioImporterRejectsUnsupportedFiles();
     projectAudioImportCopiesWavIntoPackageAndPersistsClip();
+    importedMediaPackageInventoryClassifiesReferencesAndCandidates();
+    importedMediaPackageInventoryReportsUnsafeAndMissingReferences();
+    importedMediaPackageInventoryClassifiesStagingDirectories();
     importedClipInspectorReportsSelectedOrFirstImportedClipMetadata();
     waveformThumbnailLoaderReportsInvalidAnalysis();
     projectModelPlacesImportedAudioClips();

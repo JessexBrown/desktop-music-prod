@@ -48,6 +48,6 @@ or global shortcuts.
 
 ## Follow-Ups
 
-- Add imported media package inventory model.
+- Design package-local media quarantine and restore commands.
 - Keep global shortcuts and command palette work behind the command registry
   focus policy.

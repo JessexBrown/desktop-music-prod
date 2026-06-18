@@ -61,6 +61,8 @@ add_library(projectname_core
     src/core/ImportedClipInspectorEditDraft.h
     src/core/ImportedClipMediaRelink.cpp
     src/core/ImportedClipMediaRelink.h
+    src/core/ImportedMediaPackageInventory.cpp
+    src/core/ImportedMediaPackageInventory.h
     src/core/ImportedClipInspector.cpp
     src/core/ImportedClipInspector.h
     src/core/PackagePath.cpp

@@ -42,6 +42,6 @@ selected clip.
 
 ## Follow-Ups
 
-- Add imported media package inventory model.
+- Design package-local media quarantine and restore commands.
 - Add clip movement and resizing only after explicit edit previews and undo are
   defined.
