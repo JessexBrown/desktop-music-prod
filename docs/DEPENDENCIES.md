@@ -1,0 +1,35 @@
+# Dependencies
+
+Codex must update this file whenever adding, removing, or changing a dependency.
+
+## Project License
+
+Original ProjectName source, documentation, and build scripts are licensed under
+`AGPL-3.0-or-later`. Third-party dependencies retain their own licenses.
+
+| Dependency | Version/Commit | Source | License | Used For | Notes |
+|---|---:|---|---|---|---|
+| nlohmann/json | 3.12.0 | https://github.com/nlohmann/json | MIT | Human-readable project manifest JSON serialization in the domain core | Header-only library fetched by CMake. Keeps model save/load testable without JUCE. |
+| JUCE | 8.0.13 | https://github.com/juce-framework/JUCE | AGPLv3 or commercial JUCE license | Native app shell, audio/MIDI device management, GUI | Fetched by CMake from the official repository when `PROJECTNAME_BUILD_APP=ON`. The prototype assumes the AGPLv3 path unless maintainers choose a commercial JUCE license before distribution. |
+
+## Reviewed But Not Added
+
+| Dependency | Version/Commit | Source | License | Why Not Added Yet |
+|---|---:|---|---|---|
+| Tracktion Engine | develop branch reviewed at `2877b621f2fbee564d0696a616b86bf8ba8c8ab0` | https://github.com/Tracktion/tracktion_engine | GPLv3-or-later or commercial Tracktion license | Useful DAW engine candidate, but not required for the first app shell/audio/project round trip. Needs a separate architecture and license decision before becoming a dependency. |
+
+## Platform APIs
+
+| API | Version | Source | License | Used For | Notes |
+|---|---:|---|---|---|---|
+| Win32/GDI/WinMM | Host Windows SDK/toolchain | Windows platform SDK or MinGW-w64 import libraries | Platform SDK/toolchain terms | Windows-only fallback verification app | No proprietary assets, plugins, samples, or redistributable SDK binaries are bundled. |
+
+## Dependency Rules
+
+- Do not add dependencies casually.
+- Prefer maintained, cross-platform libraries.
+- Prefer permissive or clearly compatible open-source licenses.
+- Add exact versions or commits.
+- Include build flags and platform constraints.
+- Record binary assets separately from source dependencies.
+- Never add sample packs, presets, fonts, icons, logos, or plugin binaries without license review.

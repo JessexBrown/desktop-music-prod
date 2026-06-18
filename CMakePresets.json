@@ -1,0 +1,144 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 24,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "dev-common",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/out/build/dev",
+      "cacheVariables": {
+        "BUILD_TESTING": "ON",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "PROJECTNAME_FETCH_JUCE": "ON"
+      }
+    },
+    {
+      "name": "dev",
+      "inherits": "dev-common",
+      "displayName": "Developer build (Windows Visual Studio 2026)",
+      "description": "Configure the native desktop DAW prototype with tests enabled using Visual Studio 2026, MSVC, and x64.",
+      "generator": "Visual Studio 18 2026",
+      "binaryDir": "${sourceDir}/out/build/dev-vs2026",
+      "architecture": "x64",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "dev-host",
+      "inherits": "dev-common",
+      "displayName": "Developer build (host generator)",
+      "description": "Configure the native desktop DAW prototype with tests enabled using the host platform's default CMake generator.",
+      "condition": {
+        "type": "notEquals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "core-dev",
+      "displayName": "Core-only developer build",
+      "description": "Configure model/transport/audio-render tests without the JUCE desktop app.",
+      "binaryDir": "${sourceDir}/out/build/core-dev",
+      "cacheVariables": {
+        "BUILD_TESTING": "ON",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "PROJECTNAME_BUILD_APP": "OFF"
+      }
+    },
+    {
+      "name": "win32-fallback",
+      "displayName": "Win32 fallback verification build",
+      "description": "Configure the plain C++ core, tests, and a minimal native Win32 launcher for Windows toolchains without JUCE support.",
+      "binaryDir": "${sourceDir}/out/build/win32-fallback",
+      "cacheVariables": {
+        "BUILD_TESTING": "ON",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "PROJECTNAME_BUILD_APP": "OFF",
+        "PROJECTNAME_BUILD_WIN32_FALLBACK": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "dev",
+      "configurePreset": "dev",
+      "configuration": "Debug",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "dev-host",
+      "configurePreset": "dev-host",
+      "configuration": "Debug",
+      "condition": {
+        "type": "notEquals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "core-dev",
+      "configurePreset": "core-dev",
+      "configuration": "Debug"
+    },
+    {
+      "name": "win32-fallback",
+      "configurePreset": "win32-fallback",
+      "configuration": "Debug"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "dev",
+      "configurePreset": "dev",
+      "configuration": "Debug",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      },
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "dev-host",
+      "configurePreset": "dev-host",
+      "configuration": "Debug",
+      "condition": {
+        "type": "notEquals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      },
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "core-dev",
+      "configurePreset": "core-dev",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "win32-fallback",
+      "configurePreset": "win32-fallback",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}
