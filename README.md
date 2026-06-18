@@ -300,6 +300,8 @@ or use `ctest --preset dev --output-on-failure`.
 - `docs/MILESTONES.md` defines sequencing.
 - `docs/PLUGIN_POLICY.md` documents plugin/legal constraints.
 - `docs/UX_PRINCIPLES.md` defines UX direction.
+- `docs/PACKAGE_MEDIA_CLEANUP_UX.md` defines package media cleanup and restore
+  entry points, status copy, conflicts, and recovery behavior.
 - `docs/SOURCE_HEADER_POLICY.md` defines SPDX header expectations.
 - `docs/SPDX_EXCEPTIONS.txt` records the current SPDX enforcement baseline.
 - `docs/DEPENDENCIES.md` tracks dependency/license decisions.

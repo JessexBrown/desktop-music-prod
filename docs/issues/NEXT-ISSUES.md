@@ -34,14 +34,16 @@ Acceptance:
 - Add a non-modal path back to the Audio/MIDI setup dialog.
 - Keep the first implementation separate from plugin scanning.
 
-## 5. Design Package Media Cleanup UI Flow
+## 5. Add Package Media Cleanup Status Model
 
 Acceptance:
-- Create a short UX note for package media cleanup and restore entry points,
-  confirmation copy, progress states, conflict states, and recovery language.
-- Define how inventory, quarantine, restore, and restore-conflict statuses map
-  to non-modal app status messages and inspector/browser affordances.
-- Keep implementation, permanent deletion, and retention policy out of this
+- Add a plain C++ mapper that converts package media inventory, preflight,
+  quarantine, restore, conflict, partial-failure, and cancellation states into
+  stable status text, severity, and browser/inspector/status-bar affordance ids.
+- Cover active package work, unsafe references, missing references, no cleanup
+  candidates, quarantine success/failure, restore success/conflict, partial
+  failure, and cancellation with unit tests.
+- Keep visible JUCE UI, permanent deletion, and retention policy out of this
   task.
-- Update `docs/issues/NEXT-ISSUES.md` with the next small implementation task
-  after the design note lands.
+- Update `README.md` or `docs/PACKAGE_MEDIA_CLEANUP_UX.md` if the mapper names
+  differ from the documented UI states.
