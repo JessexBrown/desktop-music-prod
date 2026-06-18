@@ -78,8 +78,13 @@ namespace
     return "Restore: unavailable";
 }
 
-[[nodiscard]] std::string restoreDisabledReason(const PackageMediaMaintenanceViewModel& model)
+[[nodiscard]] std::string restoreDisabledReason(
+    const PackageMediaMaintenanceViewModel& model,
+    bool packageWorkInProgress)
 {
+    if (packageWorkInProgress)
+        return "Package files are busy.";
+
     if (model.restoreActionEnabled)
         return {};
 
@@ -89,6 +94,47 @@ namespace
     return model.hasSelectedBatch
         ? "Selected cleanup batch cannot be restored."
         : "Select a cleanup batch to restore.";
+}
+
+[[nodiscard]] std::string cleanupDisabledReason(
+    const PackageMediaMaintenanceViewModel& model,
+    bool packageWorkInProgress)
+{
+    if (packageWorkInProgress)
+        return "Package files are busy.";
+
+    if (model.cleanupReviewAvailable)
+        return {};
+
+    if (model.unsafeReferenceCount > 0)
+        return "Resolve unsafe package media references before cleanup.";
+
+    if (model.missingReferenceCount > 0)
+        return "Resolve missing package media references before cleanup.";
+
+    if (model.inventoryStatus.kind == PackageMediaCleanupStatusKind::activePackageWork)
+        return "Package files are busy.";
+
+    if (model.inventoryStatus.kind == PackageMediaCleanupStatusKind::inventoryRunning)
+        return "Package media scan is running.";
+
+    if (model.cleanupCandidateCount == 0 && model.staleStagingCandidateCount == 0)
+        return "No cleanup candidates.";
+
+    if (!model.inventoryStatus.statusText.empty())
+        return model.inventoryStatus.statusText;
+
+    return "Package media cleanup is unavailable.";
+}
+
+[[nodiscard]] std::string cleanupSummary(
+    const PackageMediaMaintenanceViewModel& model,
+    bool packageWorkInProgress)
+{
+    if (!packageWorkInProgress && model.cleanupReviewAvailable)
+        return "Cleanup: available";
+
+    return "Cleanup: " + cleanupDisabledReason(model, packageWorkInProgress);
 }
 
 [[nodiscard]] std::string makeBatchLine(
@@ -148,11 +194,20 @@ PackageMediaMaintenanceBrowserRows buildPackageMediaMaintenanceBrowserRows(
     PackageMediaMaintenanceBrowserRowsOptions options)
 {
     PackageMediaMaintenanceBrowserRows rows;
+    rows.cleanupAction.text = "Clean";
+    rows.cleanupAction.visible = options.hasSnapshot;
+    rows.cleanupAction.enabled =
+        options.hasSnapshot && model.cleanupReviewAvailable && !options.packageWorkInProgress;
+    rows.cleanupAction.disabledReason = options.hasSnapshot
+        ? cleanupDisabledReason(model, options.packageWorkInProgress)
+        : "Waiting for package media scan.";
+
     rows.restoreAction.text = "Restore";
     rows.restoreAction.visible = options.hasSnapshot;
-    rows.restoreAction.enabled = options.hasSnapshot && model.restoreActionEnabled;
+    rows.restoreAction.enabled =
+        options.hasSnapshot && model.restoreActionEnabled && !options.packageWorkInProgress;
     rows.restoreAction.disabledReason = options.hasSnapshot
-        ? restoreDisabledReason(model)
+        ? restoreDisabledReason(model, options.packageWorkInProgress)
         : "Waiting for package media scan.";
 
     addRow(rows,
@@ -179,6 +234,9 @@ PackageMediaMaintenanceBrowserRows buildPackageMediaMaintenanceBrowserRows(
                + " media / "
                + std::to_string(model.staleStagingCandidateCount)
                + " staging");
+    addRow(rows,
+           PackageMediaMaintenanceBrowserRowKind::cleanupSummary,
+           cleanupSummary(model, options.packageWorkInProgress));
     addRow(rows,
            PackageMediaMaintenanceBrowserRowKind::batchCount,
            "Batches: " + std::to_string(model.batches.size()));

@@ -46,6 +46,6 @@ audio-callback filesystem work.
 
 ## Follow-Ups
 
-- Add a guarded cleanup/quarantine affordance for cleanup candidates.
 - Add a selected-batch detail surface showing moved/restored/conflict entries.
+- Add confirmation/review details before expanding cleanup scope.
 - Define retention rules before any permanent deletion command.

@@ -191,6 +191,10 @@ Third-party dependencies remain under their own licenses as recorded in
   selected restorable cleanup batches. Restore runs through the background
   package media cleanup job and stays disabled with visible reasons for
   non-restorable states.
+- The Package Maintenance browser surface also has a guarded Clean affordance
+  for current cleanup candidates. Cleanup/quarantine runs through the same
+  background package media cleanup job and stays disabled for empty, missing,
+  unsafe, scan-waiting, or active-work states.
 - A plain C++ track voice scheduler turns timeline clip plans, render windows,
   and track gain/pan/mute/solo snapshots into mixer-ready voice descriptors.
 - Project track volume, pan, mute, and solo state is persisted and fed into
@@ -493,4 +497,6 @@ or use `ctest --preset dev --output-on-failure`.
   Package Maintenance cleanup-batch selection controls.
 - `docs/adr/ADR-0085-package-media-maintenance-restore-guard.md` records the
   guarded Package Maintenance restore affordance.
+- `docs/adr/ADR-0086-package-media-maintenance-cleanup-guard.md` records the
+  guarded Package Maintenance cleanup/quarantine affordance.
 - `docs/issues/NEXT-ISSUES.md` lists the next five small tasks.

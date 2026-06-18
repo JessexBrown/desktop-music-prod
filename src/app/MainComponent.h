@@ -67,6 +67,10 @@ public:
                         bool enabled,
                         juce::String tooltip,
                         std::function<void()> callback);
+    void setSecondaryPanelAction(juce::String text,
+                                 bool enabled,
+                                 juce::String tooltip,
+                                 std::function<void()> callback);
     [[nodiscard]] int getTimelineClipViewportWidthPixels() const;
     void setSubtitle(juce::String subtitle);
     void setLines(juce::StringArray lines);
@@ -78,9 +82,11 @@ private:
     [[nodiscard]] juce::Rectangle<int> getTimelineContentBounds() const;
     [[nodiscard]] juce::Rectangle<int> getViewportControlBounds() const;
     [[nodiscard]] juce::Rectangle<int> getActionButtonBounds() const;
+    [[nodiscard]] juce::Rectangle<int> getSecondaryActionButtonBounds() const;
     [[nodiscard]] std::optional<std::size_t> hitTestSelectableRow(juce::Point<int> position) const;
     [[nodiscard]] bool shouldShowViewportControls() const;
     [[nodiscard]] bool shouldShowActionButton() const;
+    [[nodiscard]] bool shouldShowSecondaryActionButton() const;
     [[nodiscard]] bool shouldPaintKeyboardFocus() const;
     void paintTimelineClipLane(juce::Graphics& graphics, juce::Rectangle<int> bounds);
 
@@ -92,6 +98,7 @@ private:
     juce::TextButton zoomInViewportButton_ { "+" };
     juce::TextButton panRightViewportButton_ { ">" };
     juce::TextButton actionButton_ { "Action" };
+    juce::TextButton secondaryActionButton_ { "Action" };
     juce::String title_;
     juce::String subtitle_;
     std::vector<WorkspacePanelRow> rows_;
@@ -99,6 +106,7 @@ private:
     std::function<void(std::string)> timelineClipSelected_;
     std::function<void(std::string)> selectableRowSelected_;
     std::function<void()> panelActionRequested_;
+    std::function<void()> secondaryPanelActionRequested_;
     std::function<void()> previousTimelineClipRequested_;
     std::function<void()> nextTimelineClipRequested_;
     std::function<void()> previousSelectableRowRequested_;
@@ -183,6 +191,7 @@ private:
     void selectAdjacentPackageMediaCleanupBatch(
         projectname::PackageMediaMaintenanceBrowserSelectionDirection direction);
     void startPackageMediaRestore();
+    void startPackageMediaCleanup();
     [[nodiscard]] bool hasActivePackageFileWork() const;
     void refreshWorkspaceTimelineLane();
     void refreshInspectorPanel();

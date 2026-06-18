@@ -194,3 +194,11 @@ that the maintenance view model marks restorable. Disabled states keep their
 reason visible in the browser/status text. Activated restore work runs through
 the background package media cleanup job; the UI never moves package files
 directly.
+
+The same browser summary exposes a guarded Clean affordance after a package
+maintenance snapshot exists. It is enabled only when cleanup candidates are
+available and no package file work is active. Disabled states cover empty
+candidates, missing references, unsafe references, scan-waiting, and active
+package work. Activated cleanup/quarantine work runs through the background
+package media cleanup job and writes a restore manifest before any future
+retention or deletion feature exists.

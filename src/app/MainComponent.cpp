@@ -13,7 +13,10 @@
 #include <chrono>
 #include <cmath>
 #include <cstdint>
+#include <ctime>
+#include <iomanip>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -32,6 +35,12 @@ const auto textSecondary = juce::Colour(0xffaeb4aa);
 const auto accent = juce::Colour(0xff80d878);
 const auto accentWarm = juce::Colour(0xffe4b86a);
 const auto focusAccent = juce::Colour(0xff6aa8ff);
+
+struct PackageMediaCleanupTimestamp
+{
+    std::string cleanupId;
+    std::string createdAtUtc;
+};
 
 projectname::WorkspaceCommandKey toWorkspaceCommandKey(const juce::KeyPress& key) noexcept
 {
@@ -212,7 +221,7 @@ void setButtonEnabledFromCommand(juce::Button& button,
     switch (phase)
     {
         case projectname::BackgroundPackageMediaCleanupPhase::pending:
-            return "Preparing package media restore";
+            return "Preparing package media cleanup";
         case projectname::BackgroundPackageMediaCleanupPhase::inventory:
             return "Scanning package media";
         case projectname::BackgroundPackageMediaCleanupPhase::preflight:
@@ -229,7 +238,33 @@ void setButtonEnabledFromCommand(juce::Button& button,
             return "Package media cleanup cancelled";
     }
 
-    return "Preparing package media restore";
+    return "Preparing package media cleanup";
+}
+
+[[nodiscard]] std::tm toUtcTime(std::time_t time)
+{
+    std::tm utc {};
+#if defined(_WIN32)
+    gmtime_s(&utc, &time);
+#else
+    gmtime_r(&time, &utc);
+#endif
+    return utc;
+}
+
+[[nodiscard]] PackageMediaCleanupTimestamp makePackageMediaCleanupTimestamp()
+{
+    const auto now = std::chrono::system_clock::now();
+    const auto time = std::chrono::system_clock::to_time_t(now);
+    const auto utc = toUtcTime(time);
+
+    std::ostringstream cleanupId;
+    cleanupId << std::put_time(&utc, "%Y-%m-%dT%H-%M-%SZ") << "-cleanup";
+
+    std::ostringstream createdAt;
+    createdAt << std::put_time(&utc, "%Y-%m-%dT%H:%M:%SZ");
+
+    return { cleanupId.str(), createdAt.str() };
 }
 
 [[nodiscard]] std::int64_t makeTimelineVoiceWindowFrameCount(
@@ -362,6 +397,7 @@ WorkspacePanel::WorkspacePanel(juce::String title, juce::String subtitle, juce::
     configureButton(zoomInViewportButton_, juce::Colour(0xffc6ccd5));
     configureButton(panRightViewportButton_, juce::Colour(0xffc6ccd5));
     configureButton(actionButton_, accent);
+    configureButton(secondaryActionButton_, juce::Colour(0xffc6ccd5));
 
     panLeftViewportButton_.setTooltip("Pan timeline view left");
     resetViewportButton_.setTooltip("Reset timeline view to the project start");
@@ -371,6 +407,7 @@ WorkspacePanel::WorkspacePanel(juce::String title, juce::String subtitle, juce::
     zoomInViewportButton_.setTooltip("Zoom timeline view in");
     panRightViewportButton_.setTooltip("Pan timeline view right");
     actionButton_.setTooltip("Run panel action");
+    secondaryActionButton_.setTooltip("Run panel action");
 
     panLeftViewportButton_.onClick = [this]()
     {
@@ -412,6 +449,11 @@ WorkspacePanel::WorkspacePanel(juce::String title, juce::String subtitle, juce::
         if (panelActionRequested_)
             panelActionRequested_();
     };
+    secondaryActionButton_.onClick = [this]()
+    {
+        if (secondaryPanelActionRequested_)
+            secondaryPanelActionRequested_();
+    };
 
     addChildComponent(panLeftViewportButton_);
     addChildComponent(resetViewportButton_);
@@ -421,7 +463,9 @@ WorkspacePanel::WorkspacePanel(juce::String title, juce::String subtitle, juce::
     addChildComponent(zoomInViewportButton_);
     addChildComponent(panRightViewportButton_);
     addChildComponent(actionButton_);
+    addChildComponent(secondaryActionButton_);
     actionButton_.setVisible(false);
+    secondaryActionButton_.setVisible(false);
 }
 
 void WorkspacePanel::paint(juce::Graphics& graphics)
@@ -452,6 +496,8 @@ void WorkspacePanel::paint(juce::Graphics& graphics)
         subtitleArea.removeFromRight(getViewportControlBounds().getWidth() + 10);
     if (shouldShowActionButton())
         subtitleArea.removeFromRight(getActionButtonBounds().getWidth() + 10);
+    if (shouldShowSecondaryActionButton())
+        subtitleArea.removeFromRight(getSecondaryActionButtonBounds().getWidth() + 6);
     graphics.drawFittedText(subtitle_, subtitleArea, juce::Justification::centredLeft, 1);
 
     content.removeFromTop(10);
@@ -561,6 +607,19 @@ juce::Rectangle<int> WorkspacePanel::getActionButtonBounds() const
     return subtitleArea.removeFromRight(82).reduced(0, 1);
 }
 
+juce::Rectangle<int> WorkspacePanel::getSecondaryActionButtonBounds() const
+{
+    auto content = getLocalBounds().reduced(16);
+    content.removeFromTop(24);
+    auto subtitleArea = content.removeFromTop(22);
+    if (shouldShowViewportControls())
+        subtitleArea.removeFromRight(getViewportControlBounds().getWidth() + 10);
+    if (shouldShowActionButton())
+        subtitleArea.removeFromRight(getActionButtonBounds().getWidth() + 6);
+
+    return subtitleArea.removeFromRight(82).reduced(0, 1);
+}
+
 bool WorkspacePanel::shouldShowViewportControls() const
 {
     return timelinePanLeftControlRequested_
@@ -575,6 +634,11 @@ bool WorkspacePanel::shouldShowViewportControls() const
 bool WorkspacePanel::shouldShowActionButton() const
 {
     return actionButton_.isVisible();
+}
+
+bool WorkspacePanel::shouldShowSecondaryActionButton() const
+{
+    return secondaryActionButton_.isVisible();
 }
 
 void WorkspacePanel::resized()
@@ -608,6 +672,9 @@ void WorkspacePanel::resized()
 
     if (shouldShowActionButton())
         actionButton_.setBounds(getActionButtonBounds());
+
+    if (shouldShowSecondaryActionButton())
+        secondaryActionButton_.setBounds(getSecondaryActionButtonBounds());
 }
 
 void WorkspacePanel::mouseDown(const juce::MouseEvent& event)
@@ -808,6 +875,26 @@ void WorkspacePanel::setPanelAction(juce::String text,
         resized();
     else if (shouldShowActionButton())
         actionButton_.setBounds(getActionButtonBounds());
+
+    repaint();
+}
+
+void WorkspacePanel::setSecondaryPanelAction(juce::String text,
+                                             bool enabled,
+                                             juce::String tooltip,
+                                             std::function<void()> callback)
+{
+    const auto wasVisible = shouldShowSecondaryActionButton();
+    secondaryPanelActionRequested_ = std::move(callback);
+    secondaryActionButton_.setButtonText(text);
+    secondaryActionButton_.setTooltip(tooltip);
+    secondaryActionButton_.setEnabled(enabled);
+    secondaryActionButton_.setVisible(!text.isEmpty() && static_cast<bool>(secondaryPanelActionRequested_));
+
+    if (wasVisible != shouldShowSecondaryActionButton())
+        resized();
+    else if (shouldShowSecondaryActionButton())
+        secondaryActionButton_.setBounds(getSecondaryActionButtonBounds());
 
     repaint();
 }
@@ -2283,6 +2370,13 @@ void MainComponent::updatePackageMediaCleanupProgress(
 void MainComponent::applyCompletedPackageMediaCleanup(
     projectname::BackgroundPackageMediaCleanupResult result)
 {
+    if (result.operation == projectname::BackgroundPackageMediaCleanupOperation::quarantine
+        && result.quarantine.status == projectname::PackageMediaQuarantineCommandStatus::completed
+        && result.quarantine.restoreManifest.has_value())
+    {
+        selectedPackageMediaCleanupId_ = result.quarantine.restoreManifest->cleanupId;
+    }
+
     requestPackageMediaMaintenanceRefresh();
     refreshWorkspaceTimelineLane();
     refreshInspectorPanel();
@@ -2296,10 +2390,30 @@ void MainComponent::applyCompletedPackageMediaCleanup(
 
     if (result.operation != projectname::BackgroundPackageMediaCleanupOperation::restore)
     {
-        if (result.error.empty())
-            setStatus("Package media cleanup completed");
-        else
+        if (!result.error.empty())
+        {
             setStatus("Package media cleanup failed: " + juce::String(result.error));
+            return;
+        }
+
+        if (result.quarantine.status == projectname::PackageMediaQuarantineCommandStatus::completed)
+        {
+            auto movedCount = std::size_t {};
+            if (result.quarantine.restoreManifest.has_value())
+                movedCount = result.quarantine.restoreManifest->movedEntries.size();
+
+            auto status = "Moved "
+                + juce::String(static_cast<int>(movedCount))
+                + " package media item";
+            if (movedCount != 1)
+                status += "s";
+            status += " to media trash";
+            setStatus(status);
+        }
+        else
+        {
+            setStatus("Package media cleanup failed");
+        }
         return;
     }
 
@@ -2385,7 +2499,27 @@ void MainComponent::refreshBrowserPanel()
         && packageMediaMaintenanceScan_.wait_for(std::chrono::seconds(0)) != std::future_status::ready;
     const auto modelRows = projectname::buildPackageMediaMaintenanceBrowserRows(
         packageMediaMaintenanceViewModel_,
-        { hasPackageMediaMaintenanceSnapshot_, scanRunning, 2 });
+        { hasPackageMediaMaintenanceSnapshot_, scanRunning, 2, hasActivePackageFileWork() });
+
+    auto cleanupEnabled = modelRows.cleanupAction.enabled && !scanRunning && !hasActivePackageFileWork();
+    auto cleanupTooltip = juce::String("Move cleanup candidates to media trash");
+    if (!modelRows.cleanupAction.disabledReason.empty())
+        cleanupTooltip = juce::String(modelRows.cleanupAction.disabledReason);
+    if (scanRunning)
+    {
+        cleanupEnabled = false;
+        cleanupTooltip = "Waiting for package media scan";
+    }
+    else if (packageMediaCleanupJob_ != nullptr)
+    {
+        cleanupEnabled = false;
+        cleanupTooltip = "Package media cleanup is already running";
+    }
+    else if (hasActivePackageFileWork())
+    {
+        cleanupEnabled = false;
+        cleanupTooltip = "Package files are busy";
+    }
 
     auto restoreEnabled = modelRows.restoreAction.enabled && !scanRunning && !hasActivePackageFileWork();
     auto restoreTooltip = juce::String("Restore selected cleanup batch");
@@ -2411,6 +2545,15 @@ void MainComponent::refreshBrowserPanel()
                                   ? "Project assets and media scan running"
                                   : "Project assets and media maintenance");
     browserPanel_.setRows(makePackageMediaMaintenancePanelRows(modelRows));
+    browserPanel_.setSecondaryPanelAction(modelRows.cleanupAction.visible
+                                              ? juce::String(modelRows.cleanupAction.text)
+                                              : juce::String(),
+                                          cleanupEnabled,
+                                          cleanupTooltip,
+                                          [this]()
+                                          {
+                                              startPackageMediaCleanup();
+                                          });
     browserPanel_.setPanelAction(modelRows.restoreAction.visible
                                      ? juce::String(modelRows.restoreAction.text)
                                      : juce::String(),
@@ -2467,6 +2610,60 @@ void MainComponent::selectAdjacentPackageMediaCleanupBatch(
     }
 
     selectPackageMediaCleanupBatch(std::move(cleanupId));
+}
+
+void MainComponent::startPackageMediaCleanup()
+{
+    if (packageMediaCleanupJob_ != nullptr)
+    {
+        setStatus("Package media cleanup is already running");
+        return;
+    }
+
+    if (!hasPackageMediaMaintenanceSnapshot_)
+    {
+        setStatus("Package media cleanup unavailable: waiting for scan");
+        refreshBrowserPanel();
+        return;
+    }
+
+    if (!packageMediaMaintenanceViewModel_.cleanupReviewAvailable)
+    {
+        const auto modelRows = projectname::buildPackageMediaMaintenanceBrowserRows(
+            packageMediaMaintenanceViewModel_,
+            { true, false, 2, hasActivePackageFileWork() });
+        auto reason = modelRows.cleanupAction.disabledReason.empty()
+            ? juce::String("cleanup is unavailable")
+            : juce::String(modelRows.cleanupAction.disabledReason);
+        setStatus("Package media cleanup unavailable: " + reason);
+        refreshBrowserPanel();
+        return;
+    }
+
+    if (hasActivePackageFileWork())
+    {
+        setStatus("Package media cleanup unavailable: package files are busy");
+        refreshBrowserPanel();
+        return;
+    }
+
+    const auto timestamp = makePackageMediaCleanupTimestamp();
+    projectname::BackgroundPackageMediaCleanupRequest request;
+    request.operation = projectname::BackgroundPackageMediaCleanupOperation::quarantine;
+    request.packageDirectory = getDefaultProjectPackagePath();
+    request.cleanupId = timestamp.cleanupId;
+    request.createdAtUtc = timestamp.createdAtUtc;
+    request.packageDisplayPath = getDefaultProjectPackagePath().filename().string();
+    request.manifestMarker = "rabbington-studio-ui";
+    request.packageWorkInProgress = false;
+
+    selectedPackageMediaCleanupId_ = request.cleanupId;
+    packageMediaCleanupJob_ =
+        std::make_unique<projectname::BackgroundPackageMediaCleanupJob>(std::move(request));
+    packageMediaCleanupJob_->start();
+    refreshAppCommandEnabledState();
+    refreshBrowserPanel();
+    setStatus("Cleaning package media candidates");
 }
 
 void MainComponent::startPackageMediaRestore()

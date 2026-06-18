@@ -16,6 +16,7 @@ enum class PackageMediaMaintenanceBrowserRowKind
     scanState,
     mediaStatus,
     candidateSummary,
+    cleanupSummary,
     batchCount,
     selectedBatch,
     restoreSummary,
@@ -37,6 +38,7 @@ struct PackageMediaMaintenanceBrowserRowsOptions
     bool hasSnapshot = false;
     bool scanRunning = false;
     std::size_t maxBatchRows = 2;
+    bool packageWorkInProgress = false;
 };
 
 struct PackageMediaMaintenanceBrowserAction
@@ -50,6 +52,7 @@ struct PackageMediaMaintenanceBrowserAction
 struct PackageMediaMaintenanceBrowserRows
 {
     std::vector<PackageMediaMaintenanceBrowserRow> rows;
+    PackageMediaMaintenanceBrowserAction cleanupAction;
     PackageMediaMaintenanceBrowserAction restoreAction;
     int selectedRowIndex = -1;
 };

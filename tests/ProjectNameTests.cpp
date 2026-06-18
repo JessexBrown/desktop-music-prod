@@ -3488,6 +3488,8 @@ void packageMediaMaintenanceBrowserRowsRenderSelectableBatchState()
                "Maintenance browser rows have no selected row before scan snapshot");
         expect(!rows.restoreAction.visible && !rows.restoreAction.enabled,
                "Maintenance browser restore action stays hidden before scan snapshot");
+        expect(!rows.cleanupAction.visible && !rows.cleanupAction.enabled,
+               "Maintenance browser cleanup action stays hidden before scan snapshot");
     }
 
     {
@@ -3508,6 +3510,72 @@ void packageMediaMaintenanceBrowserRowsRenderSelectableBatchState()
                "Maintenance browser restore action is visible but disabled without selection");
         expect(rows.restoreAction.disabledReason.find("Select") != std::string::npos,
                "Maintenance browser restore action exposes no-selection disabled reason");
+        expect(rows.cleanupAction.visible && !rows.cleanupAction.enabled,
+               "Maintenance browser cleanup action is visible but disabled without candidates");
+        expect(rows.cleanupAction.disabledReason.find("No cleanup candidates") != std::string::npos,
+               "Maintenance browser cleanup action exposes empty-candidate disabled reason");
+    }
+
+    {
+        const auto package = makeTemporaryPackagePath("projectname-maintenance-cleanup-action-test");
+        projectname::PackageMediaMaintenanceViewModelRequest request;
+        request.inventory = makePreflightInventoryWithCandidates(package);
+        const auto model = projectname::buildPackageMediaMaintenanceViewModel(std::move(request));
+        const auto rows = projectname::buildPackageMediaMaintenanceBrowserRows(
+            model,
+            { true, false, 2 });
+
+        const auto* cleanupRow = findMaintenanceBrowserRow(
+            rows,
+            projectname::PackageMediaMaintenanceBrowserRowKind::cleanupSummary);
+        expect(cleanupRow != nullptr && cleanupRow->text == "Cleanup: available",
+               "Maintenance browser rows render cleanup availability");
+        expect(rows.cleanupAction.visible && rows.cleanupAction.enabled,
+               "Maintenance browser cleanup action enables for cleanup candidates");
+        expect(rows.cleanupAction.disabledReason.empty(),
+               "Maintenance browser cleanup action has no disabled reason when enabled");
+
+        const auto activeRows = projectname::buildPackageMediaMaintenanceBrowserRows(
+            model,
+            { true, false, 2, true });
+        expect(activeRows.cleanupAction.visible && !activeRows.cleanupAction.enabled,
+               "Maintenance browser cleanup action disables during active package work");
+        expect(activeRows.cleanupAction.disabledReason.find("busy") != std::string::npos,
+               "Maintenance browser cleanup action exposes active-work disabled reason");
+
+        expect(std::filesystem::remove_all(package) > 0,
+               "Temporary maintenance cleanup action package deleted");
+    }
+
+    {
+        projectname::PackageMediaMaintenanceViewModelRequest request;
+        projectname::ImportedMediaPackageMissingReference missing;
+        missing.relativePath = "audio/missing.wav";
+        request.inventory.missingReferences.push_back(std::move(missing));
+        const auto model = projectname::buildPackageMediaMaintenanceViewModel(std::move(request));
+        const auto rows = projectname::buildPackageMediaMaintenanceBrowserRows(
+            model,
+            { true, false, 2 });
+        expect(rows.cleanupAction.visible && !rows.cleanupAction.enabled,
+               "Maintenance browser cleanup action disables for missing references");
+        expect(rows.cleanupAction.disabledReason.find("missing") != std::string::npos,
+               "Maintenance browser cleanup action exposes missing-reference disabled reason");
+    }
+
+    {
+        projectname::PackageMediaMaintenanceViewModelRequest request;
+        projectname::ImportedMediaPackageUnsafeReference unsafe;
+        unsafe.relativePath = "../outside.wav";
+        unsafe.reason = "Path escapes package.";
+        request.inventory.unsafeReferences.push_back(std::move(unsafe));
+        const auto model = projectname::buildPackageMediaMaintenanceViewModel(std::move(request));
+        const auto rows = projectname::buildPackageMediaMaintenanceBrowserRows(
+            model,
+            { true, false, 2 });
+        expect(rows.cleanupAction.visible && !rows.cleanupAction.enabled,
+               "Maintenance browser cleanup action disables for unsafe references");
+        expect(rows.cleanupAction.disabledReason.find("unsafe") != std::string::npos,
+               "Maintenance browser cleanup action exposes unsafe-reference disabled reason");
     }
 
     const auto package = makeTemporaryPackagePath("projectname-maintenance-browser-rows-test");
