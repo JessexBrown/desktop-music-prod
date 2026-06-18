@@ -170,3 +170,9 @@ identifiers for the browser, inspector, and status bar.
 `PackageMediaCleanupBatchDiscovery` is the first testable restore-list model
 slice. It keeps visible UI out of scope while defining how cleanup batches are
 found and how corrupt or suspicious batches remain reviewable.
+
+`PackageMediaMaintenanceViewModel` combines inventory status, discovered
+cleanup batches, discovery issues, selected-batch fallback, and restore action
+enablement for the future non-modal Package Maintenance view. Conflict and
+partial-failure batches stay selectable for review, but repeat restore is kept
+disabled until recovery actions are designed.

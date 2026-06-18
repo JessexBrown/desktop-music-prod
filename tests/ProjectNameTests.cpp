@@ -12,6 +12,7 @@
 #include "core/ImportedMediaPackageInventory.h"
 #include "core/PackageMediaCleanupBatchDiscovery.h"
 #include "core/PackageMediaCleanupStatus.h"
+#include "core/PackageMediaMaintenanceViewModel.h"
 #include "core/PackageMediaQuarantineCommand.h"
 #include "core/PackageMediaQuarantinePreflightPlan.h"
 #include "core/PackageMediaQuarantineRestoreManifest.h"
@@ -3251,6 +3252,179 @@ void packageMediaCleanupBatchDiscoveryReportsInvalidAndUnreadableBatches()
            "Cleanup batch discovery reports missing manifests");
 
     expect(std::filesystem::remove_all(package) > 0, "Temporary cleanup batch issue package deleted");
+}
+
+void packageMediaMaintenanceViewModelSummarizesEmptyAndCleanupCandidateStates()
+{
+    {
+        projectname::PackageMediaMaintenanceViewModelRequest request;
+        request.inventory = {};
+        request.discovery = {};
+
+        const auto model = projectname::buildPackageMediaMaintenanceViewModel(std::move(request));
+        expect(model.inventoryStatus.kind == projectname::PackageMediaCleanupStatusKind::noCandidates,
+               "Maintenance view model reports empty package inventory");
+        expect(!model.cleanupReviewAvailable,
+               "Maintenance view model does not offer cleanup review for empty inventory");
+        expect(model.batches.empty(), "Maintenance view model has no batches for empty discovery");
+        expect(!model.restoreActionEnabled,
+               "Maintenance view model disables restore without a selected batch");
+        expect(!model.restoreUnavailableReason.empty(),
+               "Maintenance view model explains missing restore selection");
+    }
+
+    {
+        const auto package = makeTemporaryPackagePath("projectname-maintenance-candidates-test");
+        projectname::PackageMediaMaintenanceViewModelRequest request;
+        request.inventory = makePreflightInventoryWithCandidates(package);
+        request.discovery = {};
+
+        const auto model = projectname::buildPackageMediaMaintenanceViewModel(std::move(request));
+        expect(model.inventoryStatus.kind == projectname::PackageMediaCleanupStatusKind::reviewAvailable,
+               "Maintenance view model reports cleanup candidates");
+        expect(model.cleanupReviewAvailable,
+               "Maintenance view model offers cleanup review for candidates");
+        expect(model.cleanupCandidateCount == 2,
+               "Maintenance view model counts unreferenced media candidates");
+        expect(model.staleStagingCandidateCount == 1,
+               "Maintenance view model counts stale staging candidates");
+        expect(!model.hasDiscoveryIssues,
+               "Maintenance view model has no discovery issues when discovery is empty");
+
+        expect(std::filesystem::remove_all(package) > 0,
+               "Temporary maintenance candidate package deleted");
+    }
+}
+
+void packageMediaMaintenanceViewModelCombinesBatchRowsAndRestoreEnablement()
+{
+    const auto package = makeTemporaryPackagePath("projectname-maintenance-batch-test");
+    const auto completedId = std::string("2026-06-19T00-10-00Z-completed");
+    const auto restoredId = std::string("2026-06-19T00-20-00Z-restored");
+    const auto conflictId = std::string("2026-06-19T00-30-00Z-conflict");
+    const auto partialId = std::string("2026-06-19T00-40-00Z-partial");
+
+    saveTestCleanupBatchManifest(package,
+                                 completedId,
+                                 "2026-06-19T00-10-00Z",
+                                 projectname::PackageMediaQuarantineManifestState::completed);
+    saveTestCleanupBatchManifest(package,
+                                 restoredId,
+                                 "2026-06-19T00-20-00Z",
+                                 projectname::PackageMediaQuarantineManifestState::restored);
+    saveTestCleanupBatchManifest(package,
+                                 conflictId,
+                                 "2026-06-19T00-30-00Z",
+                                 projectname::PackageMediaQuarantineManifestState::restoreConflict);
+    saveTestCleanupBatchManifest(package,
+                                 partialId,
+                                 "2026-06-19T00-40-00Z",
+                                 projectname::PackageMediaQuarantineManifestState::partialFailure);
+
+    const auto discovery = projectname::discoverPackageMediaCleanupBatches(package);
+    expect(discovery.batches.size() == 4,
+           "Maintenance view model batch test discovers fixture batches");
+
+    {
+        projectname::PackageMediaMaintenanceViewModelRequest request;
+        request.discovery = discovery;
+        request.selectedCleanupId = completedId;
+        const auto model = projectname::buildPackageMediaMaintenanceViewModel(std::move(request));
+        expect(model.hasSelectedBatch && model.selectedCleanupId == completedId,
+               "Maintenance view model preserves selected completed batch");
+        expect(model.restoreActionEnabled,
+               "Maintenance view model enables restore for completed batch");
+        expect(model.batches[static_cast<std::size_t>(model.selectedBatchIndex)].restoreActionEnabled,
+               "Maintenance view model marks completed row restorable");
+    }
+
+    {
+        projectname::PackageMediaMaintenanceViewModelRequest request;
+        request.discovery = discovery;
+        request.selectedCleanupId = restoredId;
+        const auto model = projectname::buildPackageMediaMaintenanceViewModel(std::move(request));
+        expect(model.hasSelectedBatch && model.selectedCleanupId == restoredId,
+               "Maintenance view model preserves selected restored batch");
+        expect(!model.restoreActionEnabled,
+               "Maintenance view model disables restore for restored batch");
+        expect(model.restoreUnavailableReason.find("already been restored") != std::string::npos,
+               "Maintenance view model explains restored batch disablement");
+    }
+
+    {
+        projectname::PackageMediaMaintenanceViewModelRequest request;
+        request.discovery = discovery;
+        request.selectedCleanupId = conflictId;
+        const auto model = projectname::buildPackageMediaMaintenanceViewModel(std::move(request));
+        expect(model.hasSelectedBatch && model.selectedCleanupId == conflictId,
+               "Maintenance view model preserves selected conflicted batch");
+        expect(!model.restoreActionEnabled,
+               "Maintenance view model disables restore for conflicted batch");
+        expect(model.restoreUnavailableReason.find("conflicts") != std::string::npos,
+               "Maintenance view model explains conflicted batch disablement");
+    }
+
+    {
+        projectname::PackageMediaMaintenanceViewModelRequest request;
+        request.discovery = discovery;
+        request.selectedCleanupId = partialId;
+        const auto model = projectname::buildPackageMediaMaintenanceViewModel(std::move(request));
+        expect(model.hasSelectedBatch && model.selectedCleanupId == partialId,
+               "Maintenance view model preserves selected partial-failure batch");
+        expect(!model.restoreActionEnabled,
+               "Maintenance view model disables restore for partial-failure batch");
+        expect(model.restoreUnavailableReason.find("partial restore failures") != std::string::npos,
+               "Maintenance view model explains partial-failure disablement");
+    }
+
+    {
+        projectname::PackageMediaMaintenanceViewModelRequest request;
+        request.discovery = discovery;
+        request.selectedCleanupId = "missing-selection";
+        const auto model = projectname::buildPackageMediaMaintenanceViewModel(std::move(request));
+        expect(model.hasSelectedBatch && model.selectedCleanupId == partialId,
+               "Maintenance view model falls back to newest batch when selection is stale");
+        expect(model.selectedBatchIndex == 0,
+               "Maintenance view model marks fallback batch index");
+        expect(!model.restoreActionEnabled,
+               "Maintenance view model applies fallback batch restore state");
+    }
+
+    expect(std::filesystem::remove_all(package) > 0, "Temporary maintenance batch package deleted");
+}
+
+void packageMediaMaintenanceViewModelCarriesDiscoveryIssues()
+{
+    const auto package = makeTemporaryPackagePath("projectname-maintenance-issues-test");
+    const auto validId = std::string("2026-06-19T00-50-00Z-valid");
+    const auto invalidId = std::string("bad id");
+
+    saveTestCleanupBatchManifest(package,
+                                 validId,
+                                 "2026-06-19T00-50-00Z",
+                                 projectname::PackageMediaQuarantineManifestState::completed);
+    writeTextFile(package
+                      / "backups"
+                      / "media-trash"
+                      / invalidId
+                      / "restore-manifest.json",
+                  "{ }");
+
+    projectname::PackageMediaMaintenanceViewModelRequest request;
+    request.discovery = projectname::discoverPackageMediaCleanupBatches(package);
+    request.selectedCleanupId = validId;
+
+    const auto model = projectname::buildPackageMediaMaintenanceViewModel(std::move(request));
+    expect(model.hasDiscoveryIssues,
+           "Maintenance view model reports discovery issues");
+    expect(model.discoveryIssues.size() == 1,
+           "Maintenance view model carries discovery issue count");
+    expect(model.batches.size() == 1 && model.batches.front().cleanupId == validId,
+           "Maintenance view model keeps valid batches beside discovery issues");
+    expect(model.restoreActionEnabled,
+           "Maintenance view model still enables valid selected batch restore");
+
+    expect(std::filesystem::remove_all(package) > 0, "Temporary maintenance issue package deleted");
 }
 
 void importedClipInspectorReportsSelectedOrFirstImportedClipMetadata()
@@ -7142,6 +7316,9 @@ int main()
     packageMediaCleanupStatusMapsQuarantineRestoreAndCancellation();
     packageMediaCleanupBatchDiscoveryListsValidBatchesNewestFirst();
     packageMediaCleanupBatchDiscoveryReportsInvalidAndUnreadableBatches();
+    packageMediaMaintenanceViewModelSummarizesEmptyAndCleanupCandidateStates();
+    packageMediaMaintenanceViewModelCombinesBatchRowsAndRestoreEnablement();
+    packageMediaMaintenanceViewModelCarriesDiscoveryIssues();
     importedClipInspectorReportsSelectedOrFirstImportedClipMetadata();
     waveformThumbnailLoaderReportsInvalidAnalysis();
     projectModelPlacesImportedAudioClips();

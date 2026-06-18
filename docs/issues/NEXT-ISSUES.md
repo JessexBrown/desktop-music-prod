@@ -34,14 +34,16 @@ Acceptance:
 - Add a non-modal path back to the Audio/MIDI setup dialog.
 - Keep the first implementation separate from plugin scanning.
 
-## 5. Add Package Media Maintenance View Model
+## 5. Wire Package Media Maintenance Status Surface
 
 Acceptance:
-- Add a plain C++ view model that combines package media inventory status,
-  cleanup batch discovery, selected cleanup batch id, and restore action
-  enablement for the future Package Maintenance view.
-- Cover empty packages, cleanup candidates, completed/restored/conflicted
-  batches, partial-failure batches, invalid discovery issues, and selected-batch
-  fallback behavior with unit tests.
-- Keep visible JUCE UI, permanent deletion, and retention policy out of this
-  task.
+- Add a small non-modal JUCE status/browser surface that can show package media
+  inventory status, cleanup batch rows, discovery issues, selected batch state,
+  and restore enablement from `PackageMediaMaintenanceViewModel`.
+- Keep file-moving cleanup and restore commands behind existing background jobs;
+  do not perform package filesystem work on the UI or audio thread.
+- Cover visible empty, cleanup-candidate, restore-batch, conflict,
+  partial-failure, and invalid-discovery states with smokeable model/UI tests
+  where practical.
+- Keep cleanup/restore execution, permanent deletion, and retention policy out
+  of this task; the first surface is read-only.
