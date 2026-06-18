@@ -87,4 +87,4 @@ file chooser for relink.
 
 ## Follow-Ups
 
-- Add package media quarantine restore-manifest model tests.
+- Add package media quarantine preflight plan model.

@@ -67,6 +67,8 @@ add_library(projectname_core
     src/core/ImportedClipInspector.h
     src/core/PackagePath.cpp
     src/core/PackagePath.h
+    src/core/PackageMediaQuarantineRestoreManifest.cpp
+    src/core/PackageMediaQuarantineRestoreManifest.h
     src/core/ProjectAudioImport.cpp
     src/core/ProjectAudioImport.h
     src/core/ProjectModel.cpp

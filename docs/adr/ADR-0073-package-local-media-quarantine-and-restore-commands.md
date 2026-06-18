@@ -107,7 +107,7 @@ or backup-retention policy.
 
 ## Follow-Ups
 
-- Add package media quarantine restore-manifest model tests.
+- Add package media quarantine preflight plan model.
 - Define backup-manifest retention before any permanent media deletion task.
 - Design user-facing package maintenance UI after quarantine and restore
   commands are implemented and tested.

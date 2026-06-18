@@ -42,6 +42,6 @@ selected clip.
 
 ## Follow-Ups
 
-- Add package media quarantine restore-manifest model tests.
+- Add package media quarantine preflight plan model.
 - Add clip movement and resizing only after explicit edit previews and undo are
   defined.

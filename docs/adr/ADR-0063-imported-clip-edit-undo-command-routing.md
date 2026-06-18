@@ -56,6 +56,6 @@ inspector fields, drag/drop edits, or package file restoration.
 
 ## Follow-Ups
 
-- Add package media quarantine restore-manifest model tests.
+- Add package media quarantine preflight plan model.
 - Add visible undo/redo controls only after focus ownership and text-entry
   behavior are covered by tests.

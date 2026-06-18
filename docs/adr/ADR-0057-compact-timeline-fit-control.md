@@ -42,6 +42,6 @@ entry, plugin action, or audio-thread behavior.
 
 ## Follow-Ups
 
-- Add package media quarantine restore-manifest model tests.
+- Add package media quarantine preflight plan model.
 - Keep global shortcuts and command palette work behind the command registry
   focus policy.

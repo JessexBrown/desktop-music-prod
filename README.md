@@ -151,6 +151,9 @@ Third-party dependencies remain under their own licenses as recorded in
 - ADR-0073 defines the package-local media quarantine and restore command
   contract, including restore-manifest contents, rollback rules, active-work
   exclusions, and no permanent deletion.
+- A plain C++ package media quarantine restore-manifest model serializes,
+  loads, and validates human-readable JSON for moved entries, skipped entries,
+  partial-failure state, and restore-conflict state without moving files.
 - A plain C++ track voice scheduler turns timeline clip plans, render windows,
   and track gain/pan/mute/solo snapshots into mixer-ready voice descriptors.
 - Project track volume, pan, mute, and solo state is persisted and fed into
@@ -185,8 +188,9 @@ Third-party dependencies remain under their own licenses as recorded in
   commands, imported clip inspector edit draft validation and cancel behavior,
   imported clip media relink preparation and cleanup behavior, background media
   relink preparation jobs, imported media package inventory classification,
-  workspace command routing, app command registry metadata, enablement, and
-  dispatch results, timeline lane
+  package media quarantine restore-manifest validation, workspace command
+  routing, app command registry metadata, enablement, and dispatch results,
+  timeline lane
   layout/hit-testing/placement/loop-range scaling, track voice scheduling
   policy, persisted track mix state, stereo prepared voice summing, loop-region
   persistence/advance behavior, and background import success, failure,
@@ -424,4 +428,6 @@ or use `ctest --preset dev --output-on-failure`.
   read-only imported media package inventory model.
 - `docs/adr/ADR-0073-package-local-media-quarantine-and-restore-commands.md`
   records package-local media quarantine and restore command design.
+- `docs/adr/ADR-0074-package-media-quarantine-restore-manifest-model.md`
+  records the package media quarantine restore-manifest model.
 - `docs/issues/NEXT-ISSUES.md` lists the next five small tasks.

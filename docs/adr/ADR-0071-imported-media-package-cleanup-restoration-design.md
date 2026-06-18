@@ -86,5 +86,5 @@ drag/drop clip operations, or permanent package retention rules.
 
 ## Follow-Ups
 
-- Add package media quarantine restore-manifest model tests.
+- Add package media quarantine preflight plan model.
 - Define backup-manifest retention before any permanent media deletion task.

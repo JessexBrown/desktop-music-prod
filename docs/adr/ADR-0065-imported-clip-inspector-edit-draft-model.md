@@ -68,5 +68,5 @@ palette entries.
 
 ## Follow-Ups
 
-- Add package media quarantine restore-manifest model tests.
+- Add package media quarantine preflight plan model.
 - Add inspector focus tests when visible text entry exists.

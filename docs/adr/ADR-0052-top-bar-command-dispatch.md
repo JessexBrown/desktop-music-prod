@@ -65,4 +65,4 @@ audio-thread work into command handlers.
 
 - Add command palette and shortcut editor UI only after text-entry/focus
   ownership is covered by tests.
-- Add package media quarantine restore-manifest model tests.
+- Add package media quarantine preflight plan model.

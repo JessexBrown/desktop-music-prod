@@ -34,15 +34,16 @@ Acceptance:
 - Add a non-modal path back to the Audio/MIDI setup dialog.
 - Keep the first implementation separate from plugin scanning.
 
-## 5. Add Package Media Quarantine Restore-Manifest Model Tests
+## 5. Add Package Media Quarantine Preflight Plan Model
 
 Acceptance:
-- Add a plain C++ restore-manifest model for package-local media quarantine
-  metadata, including schema version, cleanup id, moved entries, skipped
-  entries, and conflict/error state.
-- Serialize and load the restore manifest as human-readable JSON with safe
-  package-relative path validation.
-- Cover round-trip, unsafe path rejection, duplicate destination conflicts, and
-  partial-transaction error-state fixtures with tests.
+- Add a plain C++ preflight model that turns inventory unreferenced candidates
+  into a restore-manifest draft under `backups/media-trash/<cleanup-id>/`
+  without moving files.
+- Reject active package work, unsafe references, missing references, protected
+  references, duplicate quarantine destinations, and invalid cleanup ids with
+  human-readable errors.
+- Cover audio, analysis, staging-directory, empty-plan, active-work, and
+  duplicate-path cases with tests.
 - Keep file-moving implementation, permanent deletion, command-palette entries,
   and drag/drop clip operations out of this task.

@@ -9,6 +9,7 @@
 #include "core/ImportedClipMediaRelink.h"
 #include "core/ImportedClipInspector.h"
 #include "core/ImportedMediaPackageInventory.h"
+#include "core/PackageMediaQuarantineRestoreManifest.h"
 #include "core/ProjectAudioImport.h"
 #include "core/ProjectModel.h"
 #include "core/TimelineClipLane.h"
@@ -148,6 +149,41 @@ bool hasUnsafeInventoryReference(const projectname::ImportedMediaPackageInventor
     }
 
     return false;
+}
+
+projectname::PackageMediaQuarantineRestoreManifest makeTestQuarantineRestoreManifest(
+    const std::string& cleanupId)
+{
+    projectname::PackageMediaQuarantineRestoreManifest manifest;
+    manifest.cleanupId = cleanupId;
+    manifest.createdAtUtc = "2026-06-18T18-30-00Z";
+    manifest.packageDisplayPath = "Display Only.project";
+    manifest.inventorySummary = "1 audio, 1 analysis, 1 skipped";
+    manifest.manifestMarker = "manifest-save-1";
+
+    projectname::PackageMediaQuarantineMovedEntry audio;
+    audio.kind = projectname::PackageMediaQuarantineEntryKind::audio;
+    audio.originalRelativePath = "audio/orphan.wav";
+    audio.quarantineRelativePath = "backups/media-trash/" + cleanupId + "/audio/orphan.wav";
+    audio.byteSize = 1234;
+    audio.contentHash = "sha256:abc";
+    manifest.movedEntries.push_back(std::move(audio));
+
+    projectname::PackageMediaQuarantineMovedEntry analysis;
+    analysis.kind = projectname::PackageMediaQuarantineEntryKind::analysis;
+    analysis.originalRelativePath = "analysis/orphan.waveform.json";
+    analysis.quarantineRelativePath =
+        "backups/media-trash/" + cleanupId + "/analysis/orphan.waveform.json";
+    manifest.movedEntries.push_back(std::move(analysis));
+
+    projectname::PackageMediaQuarantineSkippedEntry skipped;
+    skipped.kind = projectname::PackageMediaQuarantineEntryKind::audio;
+    skipped.originalRelativePath = "audio/current.wav";
+    skipped.reason = "current-manifest-reference";
+    skipped.detail = "Protected by current manifest";
+    manifest.skippedEntries.push_back(std::move(skipped));
+
+    return manifest;
 }
 
 projectname::ProjectModel makeProjectWithImportedTimelineClip(double startBeats, double lengthBeats)
@@ -1947,6 +1983,130 @@ void importedMediaPackageInventoryClassifiesStagingDirectories()
            "Media inventory does not mark staging stale while package work is active");
 
     expect(std::filesystem::remove_all(package) > 0, "Temporary staging inventory package deleted");
+}
+
+void packageMediaQuarantineRestoreManifestRoundTrips()
+{
+    const auto package = makeTemporaryPackagePath("projectname-quarantine-manifest-test");
+    const auto cleanupId = std::string("2026-06-18T18-30-00Z-test");
+    const auto manifestPath = package / "backups" / "media-trash" / cleanupId / "restore-manifest.json";
+    std::filesystem::create_directories(manifestPath.parent_path());
+
+    auto manifest = makeTestQuarantineRestoreManifest(cleanupId);
+    std::string error;
+    expect(projectname::validatePackageMediaQuarantineRestoreManifest(manifest, error),
+           "Quarantine restore manifest validates");
+    expect(error.empty(), "Valid quarantine restore manifest leaves error empty");
+    expect(projectname::savePackageMediaQuarantineRestoreManifest(manifest, manifestPath, error),
+           "Quarantine restore manifest saves");
+    const auto text = readTextFile(manifestPath);
+    expect(text.find("\"schemaVersion\": 1") != std::string::npos,
+           "Quarantine restore manifest writes human-readable schema version");
+    expect(text.find("\"movedEntries\"") != std::string::npos,
+           "Quarantine restore manifest writes moved entries");
+
+    const auto loaded = projectname::loadPackageMediaQuarantineRestoreManifest(manifestPath, error);
+    expect(loaded.has_value(), "Quarantine restore manifest loads");
+    expect(loaded.has_value() && loaded->cleanupId == cleanupId,
+           "Loaded quarantine restore manifest preserves cleanup id");
+    expect(loaded.has_value() && loaded->movedEntries.size() == 2,
+           "Loaded quarantine restore manifest preserves moved entries");
+    expect(loaded.has_value()
+               && loaded->movedEntries.front().kind == projectname::PackageMediaQuarantineEntryKind::audio
+               && loaded->movedEntries.front().byteSize.has_value()
+               && *loaded->movedEntries.front().byteSize == 1234,
+           "Loaded quarantine restore manifest preserves audio metadata");
+    expect(loaded.has_value() && loaded->skippedEntries.size() == 1
+               && loaded->skippedEntries.front().reason == "current-manifest-reference",
+           "Loaded quarantine restore manifest preserves skipped entries");
+
+    expect(std::filesystem::remove_all(package) > 0, "Temporary quarantine manifest package deleted");
+}
+
+void packageMediaQuarantineRestoreManifestRejectsUnsafePaths()
+{
+    auto manifest = makeTestQuarantineRestoreManifest("2026-06-18T18-31-00Z-test");
+    manifest.movedEntries.front().originalRelativePath = "../outside.wav";
+
+    std::string error;
+    expect(!projectname::validatePackageMediaQuarantineRestoreManifest(manifest, error),
+           "Quarantine restore manifest rejects escaping original path");
+    expect(error.find("Original quarantine manifest path") != std::string::npos,
+           "Quarantine restore manifest reports unsafe original path");
+
+    manifest = makeTestQuarantineRestoreManifest("2026-06-18T18-31-00Z-test");
+    manifest.movedEntries.front().quarantineRelativePath =
+        "backups/media-trash/wrong-id/audio/orphan.wav";
+    expect(!projectname::validatePackageMediaQuarantineRestoreManifest(manifest, error),
+           "Quarantine restore manifest rejects quarantine path outside cleanup id");
+    expect(error.find("backups/media-trash") != std::string::npos,
+           "Quarantine restore manifest reports unsafe quarantine path");
+
+    manifest = makeTestQuarantineRestoreManifest("2026-06-18T18-31-00Z-test");
+    manifest.skippedEntries.front().originalRelativePath = "audio/./current.wav";
+    expect(!projectname::validatePackageMediaQuarantineRestoreManifest(manifest, error),
+           "Quarantine restore manifest rejects non-normalized skipped path");
+}
+
+void packageMediaQuarantineRestoreManifestRejectsDuplicateDestinations()
+{
+    auto manifest = makeTestQuarantineRestoreManifest("2026-06-18T18-32-00Z-test");
+    auto duplicateAudio = manifest.movedEntries.front();
+    duplicateAudio.originalRelativePath = "audio/second-orphan.wav";
+    manifest.movedEntries.push_back(std::move(duplicateAudio));
+
+    std::string error;
+    expect(!projectname::validatePackageMediaQuarantineRestoreManifest(manifest, error),
+           "Quarantine restore manifest rejects duplicate quarantine destinations");
+    expect(error.find("duplicate quarantine paths") != std::string::npos,
+           "Quarantine restore manifest reports duplicate quarantine destination");
+}
+
+void packageMediaQuarantineRestoreManifestLoadsPartialFailureState()
+{
+    const auto package = makeTemporaryPackagePath("projectname-quarantine-partial-test");
+    const auto cleanupId = std::string("2026-06-18T18-33-00Z-test");
+    const auto manifestPath = package / "backups" / "media-trash" / cleanupId / "restore-manifest.json";
+    writeTextFile(manifestPath,
+                  R"({
+                    "schemaVersion": 1,
+                    "application": "ProjectName",
+                    "cleanupId": "2026-06-18T18-33-00Z-test",
+                    "createdAtUtc": "2026-06-18T18-33-00Z",
+                    "packageDisplayPath": "Display Only.project",
+                    "inventorySummary": "partial transaction fixture",
+                    "state": "partial-failure",
+                    "error": "Rollback could not restore one file.",
+                    "movedEntries": [
+                      {
+                        "kind": "audio",
+                        "originalPath": "audio/orphan.wav",
+                        "quarantinePath": "backups/media-trash/2026-06-18T18-33-00Z-test/audio/orphan.wav",
+                        "error": "Original path is occupied."
+                      }
+                    ],
+                    "skippedEntries": [
+                      {
+                        "kind": "analysis",
+                        "originalPath": "analysis/protected.waveform.json",
+                        "reason": "previous-manifest-backup"
+                      }
+                    ]
+                  })");
+
+    std::string error;
+    const auto loaded = projectname::loadPackageMediaQuarantineRestoreManifest(manifestPath, error);
+    expect(loaded.has_value(), "Partial failure quarantine restore manifest loads");
+    expect(loaded.has_value()
+               && loaded->state == projectname::PackageMediaQuarantineManifestState::partialFailure,
+           "Partial failure quarantine restore manifest preserves state");
+    expect(loaded.has_value() && loaded->error == "Rollback could not restore one file.",
+           "Partial failure quarantine restore manifest preserves error");
+    expect(loaded.has_value() && loaded->movedEntries.size() == 1
+               && loaded->movedEntries.front().error == "Original path is occupied.",
+           "Partial failure quarantine restore manifest preserves entry error");
+
+    expect(std::filesystem::remove_all(package) > 0, "Temporary partial quarantine manifest package deleted");
 }
 
 void importedClipInspectorReportsSelectedOrFirstImportedClipMetadata()
@@ -5815,6 +5975,10 @@ int main()
     importedMediaPackageInventoryClassifiesReferencesAndCandidates();
     importedMediaPackageInventoryReportsUnsafeAndMissingReferences();
     importedMediaPackageInventoryClassifiesStagingDirectories();
+    packageMediaQuarantineRestoreManifestRoundTrips();
+    packageMediaQuarantineRestoreManifestRejectsUnsafePaths();
+    packageMediaQuarantineRestoreManifestRejectsDuplicateDestinations();
+    packageMediaQuarantineRestoreManifestLoadsPartialFailureState();
     importedClipInspectorReportsSelectedOrFirstImportedClipMetadata();
     waveformThumbnailLoaderReportsInvalidAnalysis();
     projectModelPlacesImportedAudioClips();
