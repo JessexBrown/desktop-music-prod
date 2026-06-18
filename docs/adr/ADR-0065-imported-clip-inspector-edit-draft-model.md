@@ -68,6 +68,7 @@ palette entries.
 
 ## Follow-Ups
 
-- Design imported clip media relink chooser flow.
-- Add a media relink chooser separately from package cleanup/restoration.
+- Add imported clip media relink preparation model.
+- Add visible native relink chooser wiring after the preparation model is
+  tested.
 - Add inspector focus tests when visible text entry exists.

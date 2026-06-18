@@ -65,4 +65,4 @@ audio-thread work into command handlers.
 
 - Add command palette and shortcut editor UI only after text-entry/focus
   ownership is covered by tests.
-- Design imported clip media relink chooser flow.
+- Add imported clip media relink preparation model.

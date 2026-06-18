@@ -42,6 +42,6 @@ selected clip.
 
 ## Follow-Ups
 
-- Design imported clip media relink chooser flow.
+- Add imported clip media relink preparation model.
 - Add clip movement and resizing only after explicit edit previews and undo are
   defined.

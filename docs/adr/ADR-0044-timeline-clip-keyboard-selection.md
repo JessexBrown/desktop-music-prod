@@ -46,4 +46,4 @@ session command so keyboard and mouse selection share the same visible state.
 
 ## Follow-Ups
 
-- Design imported clip media relink chooser flow.
+- Add imported clip media relink preparation model.

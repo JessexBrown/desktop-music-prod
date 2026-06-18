@@ -44,4 +44,4 @@ updates the status line with the new view start or zoom scale.
 
 ## Follow-Ups
 
-- Design imported clip media relink chooser flow.
+- Add imported clip media relink preparation model.

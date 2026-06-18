@@ -55,6 +55,6 @@ drag/drop.
 
 ## Follow-Ups
 
-- Design imported clip media relink chooser flow.
+- Add imported clip media relink preparation model.
 - Add visible undo/redo commands only after focus ownership and text-entry
   behavior are covered by tests.

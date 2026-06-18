@@ -52,6 +52,6 @@ global shortcuts.
 
 ## Follow-Ups
 
-- Design imported clip media relink chooser flow.
+- Add imported clip media relink preparation model.
 - Keep global shortcuts and command palette work behind the command registry
   focus policy.

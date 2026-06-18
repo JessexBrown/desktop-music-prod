@@ -61,6 +61,6 @@ global shortcuts, editable inspector fields, or timeline drag/drop.
 
 ## Follow-Ups
 
-- Design imported clip media relink chooser flow.
+- Add imported clip media relink preparation model.
 - Add editable inspector or timeline gesture commits only after visible commands
   and text-entry behavior are covered by tests.

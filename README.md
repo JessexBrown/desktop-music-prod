@@ -131,6 +131,9 @@ Third-party dependencies remain under their own licenses as recorded in
 - The JUCE right inspector exposes a selected-clip-only start-beat text field;
   Return commits through the app session and Escape restores the draft's last
   committed value.
+- ADR-0067 defines the selected-clip media relink chooser flow, including
+  background WAV preparation, staged package writes, metadata validation, and
+  non-destructive undo behavior before any visible relink button is added.
 - A plain C++ track voice scheduler turns timeline clip plans, render windows,
   and track gain/pan/mute/solo snapshots into mixer-ready voice descriptors.
 - Project track volume, pan, mute, and solo state is persisted and fed into
@@ -387,4 +390,6 @@ or use `ctest --preset dev --output-on-failure`.
   plain C++ draft/validation model for future imported clip inspector controls.
 - `docs/adr/ADR-0066-visible-imported-clip-start-beat-control.md` records the
   first visible selected-clip-only imported clip inspector edit control.
+- `docs/adr/ADR-0067-imported-clip-media-relink-chooser-flow.md` records the
+  native selected-clip media relink chooser flow before implementation.
 - `docs/issues/NEXT-ISSUES.md` lists the next five small tasks.

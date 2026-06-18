@@ -87,7 +87,6 @@ file chooser for relink.
 
 ## Follow-Ups
 
-- Design imported clip media relink chooser flow.
-- Add visible inspector edit controls only after the draft model has unit tests.
-- Add relink file chooser behavior separately from package file cleanup or
-  restoration.
+- Add imported clip media relink preparation model.
+- Add visible native relink chooser wiring after the preparation model is
+  tested.

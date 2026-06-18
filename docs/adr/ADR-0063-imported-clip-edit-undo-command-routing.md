@@ -56,6 +56,6 @@ inspector fields, drag/drop edits, or package file restoration.
 
 ## Follow-Ups
 
-- Design imported clip media relink chooser flow.
+- Add imported clip media relink preparation model.
 - Add visible undo/redo controls only after focus ownership and text-entry
   behavior are covered by tests.

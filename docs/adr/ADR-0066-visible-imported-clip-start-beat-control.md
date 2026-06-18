@@ -55,6 +55,6 @@ operations, or automated GUI interaction tests.
 
 ## Follow-Ups
 
-- Design imported clip media relink chooser flow.
+- Add imported clip media relink preparation model.
 - Add automated GUI interaction coverage when a stable JUCE UI test approach is
   available.

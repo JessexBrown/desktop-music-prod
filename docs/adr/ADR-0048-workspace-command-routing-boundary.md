@@ -66,4 +66,4 @@ they affect user-visible workflow. Do not add global shortcuts by scattering
 
 ## Follow-Ups
 
-- Design imported clip media relink chooser flow.
+- Add imported clip media relink preparation model.
