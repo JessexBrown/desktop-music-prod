@@ -34,15 +34,11 @@ Acceptance:
 - Add a non-modal path back to the Audio/MIDI setup dialog.
 - Keep the first implementation separate from plugin scanning.
 
-## 5. Add Imported Clip Media Replacement Undo Tests
+## 5. Add Imported Clip Edit Undo Command Routing
 
 Acceptance:
-- Extend the plain C++ app-session undo history to support imported clip media
-  replacement entries.
-- Add tests proving undo and redo restore `relativePath`, `analysisPath`, and
-  `lengthBeats` through `AppSession`.
-- Prove stale prepared playback cache entries are invalidated on both undo and
-  redo directions.
-- Keep package file copying/deletion, visible undo/redo buttons, global
-  shortcuts, editable inspector fields, and drag/drop clip operations out of
-  this task.
+- Add plain C++ command routing for imported clip edit undo/redo enablement and
+  dispatch.
+- Cover placement and media replacement top-of-stack cases in tests.
+- Keep visible undo/redo buttons, global shortcuts, editable inspector fields,
+  package file restoration, and drag/drop clip operations out of this task.

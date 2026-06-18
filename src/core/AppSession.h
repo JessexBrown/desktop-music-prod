@@ -171,6 +171,10 @@ public:
     [[nodiscard]] bool canRedoImportedClipPlacementEdit() const noexcept;
     [[nodiscard]] bool undoImportedClipPlacementEdit(std::string& error);
     [[nodiscard]] bool redoImportedClipPlacementEdit(std::string& error);
+    [[nodiscard]] bool canUndoImportedClipMediaReplacementEdit() const noexcept;
+    [[nodiscard]] bool canRedoImportedClipMediaReplacementEdit() const noexcept;
+    [[nodiscard]] bool undoImportedClipMediaReplacementEdit(std::string& error);
+    [[nodiscard]] bool redoImportedClipMediaReplacementEdit(std::string& error);
     [[nodiscard]] bool replaceImportedAudioClipMedia(const std::string& clipId,
                                                      std::string relativePath,
                                                      std::string analysisPath,
@@ -188,11 +192,29 @@ private:
         std::shared_ptr<const std::vector<float>> samples;
     };
 
-    struct ImportedClipPlacementEdit
+    enum class ImportedClipEditKind
     {
+        placement,
+        mediaReplacement,
+    };
+
+    struct ImportedClipMediaState
+    {
+        std::string relativePath;
+        std::string analysisPath;
+        double lengthBeats = 0.0;
+
+        [[nodiscard]] bool operator==(const ImportedClipMediaState& other) const = default;
+    };
+
+    struct ImportedClipEdit
+    {
+        ImportedClipEditKind kind = ImportedClipEditKind::placement;
         std::string clipId;
         double beforeStartBeats = 0.0;
         double afterStartBeats = 0.0;
+        ImportedClipMediaState beforeMedia;
+        ImportedClipMediaState afterMedia;
     };
 
     [[nodiscard]] const CachedImportedTimelineClip* findCachedImportedTimelineClip(
@@ -200,16 +222,23 @@ private:
     [[nodiscard]] std::shared_ptr<const std::vector<float>> storeCachedImportedTimelineClip(
         CachedImportedTimelineClip cache);
     [[nodiscard]] std::size_t importedTimelineClipCacheSampleBytes() const noexcept;
+    [[nodiscard]] bool canUndoImportedClipEdit(ImportedClipEditKind kind) const noexcept;
+    [[nodiscard]] bool canRedoImportedClipEdit(ImportedClipEditKind kind) const noexcept;
+    [[nodiscard]] bool undoImportedClipEdit(ImportedClipEditKind kind, std::string& error);
+    [[nodiscard]] bool redoImportedClipEdit(ImportedClipEditKind kind, std::string& error);
+    [[nodiscard]] bool applyImportedClipEdit(const ImportedClipEdit& edit,
+                                             bool useAfterState,
+                                             std::string& error);
     void trimImportedTimelineClipCacheToLimits();
     void clearImportedTimelineClipCacheForClip(const std::string& clipId) noexcept;
-    void clearImportedClipPlacementEditHistory() noexcept;
+    void clearImportedClipEditHistory() noexcept;
 
     ProjectModel project_;
     ImportedTimelineClipCacheLimits importedTimelineClipCacheLimits_;
     TimelineViewportState timelineViewport_;
     std::vector<CachedImportedTimelineClip> importedTimelineClipCache_;
-    std::vector<ImportedClipPlacementEdit> importedClipPlacementUndoStack_;
-    std::vector<ImportedClipPlacementEdit> importedClipPlacementRedoStack_;
+    std::vector<ImportedClipEdit> importedClipUndoStack_;
+    std::vector<ImportedClipEdit> importedClipRedoStack_;
     bool generatedToneActive_ = false;
 };
 } // namespace projectname

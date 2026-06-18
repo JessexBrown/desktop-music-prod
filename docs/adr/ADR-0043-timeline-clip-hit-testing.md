@@ -42,6 +42,6 @@ selected clip.
 
 ## Follow-Ups
 
-- Add imported clip media replacement undo tests.
+- Add imported clip edit undo command routing.
 - Add clip movement and resizing only after explicit edit previews and undo are
   defined.

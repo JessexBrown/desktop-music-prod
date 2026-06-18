@@ -296,7 +296,7 @@ void AppSession::replaceProject(ProjectModel project)
 {
     project_ = std::move(project);
     clearImportedTimelineClipCache();
-    clearImportedClipPlacementEditHistory();
+    clearImportedClipEditHistory();
     generatedToneActive_ = false;
 }
 
@@ -761,7 +761,7 @@ bool AppSession::loadProjectPackage(const std::filesystem::path& packageDirector
 
     project_ = std::move(*loadedProject);
     clearImportedTimelineClipCache();
-    clearImportedClipPlacementEditHistory();
+    clearImportedClipEditHistory();
     generatedToneActive_ = false;
     return true;
 }
@@ -810,57 +810,54 @@ bool AppSession::setImportedAudioClipStartBeats(const std::string& clipId,
     if (clipAfter == nullptr || std::abs(beforeStartBeats - clipAfter->startBeats) < 0.0000001)
         return true;
 
-    importedClipPlacementUndoStack_.push_back({ clipId, beforeStartBeats, clipAfter->startBeats });
-    importedClipPlacementRedoStack_.clear();
+    ImportedClipEdit edit;
+    edit.kind = ImportedClipEditKind::placement;
+    edit.clipId = clipId;
+    edit.beforeStartBeats = beforeStartBeats;
+    edit.afterStartBeats = clipAfter->startBeats;
+    importedClipUndoStack_.push_back(std::move(edit));
+    importedClipRedoStack_.clear();
     return true;
 }
 
 bool AppSession::canUndoImportedClipPlacementEdit() const noexcept
 {
-    return !importedClipPlacementUndoStack_.empty();
+    return canUndoImportedClipEdit(ImportedClipEditKind::placement);
 }
 
 bool AppSession::canRedoImportedClipPlacementEdit() const noexcept
 {
-    return !importedClipPlacementRedoStack_.empty();
+    return canRedoImportedClipEdit(ImportedClipEditKind::placement);
 }
 
 bool AppSession::undoImportedClipPlacementEdit(std::string& error)
 {
-    error.clear();
-
-    if (importedClipPlacementUndoStack_.empty())
-    {
-        error = "No imported clip placement edit is available to undo.";
-        return false;
-    }
-
-    const auto edit = importedClipPlacementUndoStack_.back();
-    if (!project_.setImportedAudioClipStartBeats(edit.clipId, edit.beforeStartBeats, error))
-        return false;
-
-    importedClipPlacementUndoStack_.pop_back();
-    importedClipPlacementRedoStack_.push_back(edit);
-    return true;
+    return undoImportedClipEdit(ImportedClipEditKind::placement, error);
 }
 
 bool AppSession::redoImportedClipPlacementEdit(std::string& error)
 {
-    error.clear();
+    return redoImportedClipEdit(ImportedClipEditKind::placement, error);
+}
 
-    if (importedClipPlacementRedoStack_.empty())
-    {
-        error = "No imported clip placement edit is available to redo.";
-        return false;
-    }
+bool AppSession::canUndoImportedClipMediaReplacementEdit() const noexcept
+{
+    return canUndoImportedClipEdit(ImportedClipEditKind::mediaReplacement);
+}
 
-    const auto edit = importedClipPlacementRedoStack_.back();
-    if (!project_.setImportedAudioClipStartBeats(edit.clipId, edit.afterStartBeats, error))
-        return false;
+bool AppSession::canRedoImportedClipMediaReplacementEdit() const noexcept
+{
+    return canRedoImportedClipEdit(ImportedClipEditKind::mediaReplacement);
+}
 
-    importedClipPlacementRedoStack_.pop_back();
-    importedClipPlacementUndoStack_.push_back(edit);
-    return true;
+bool AppSession::undoImportedClipMediaReplacementEdit(std::string& error)
+{
+    return undoImportedClipEdit(ImportedClipEditKind::mediaReplacement, error);
+}
+
+bool AppSession::redoImportedClipMediaReplacementEdit(std::string& error)
+{
+    return redoImportedClipEdit(ImportedClipEditKind::mediaReplacement, error);
 }
 
 bool AppSession::replaceImportedAudioClipMedia(const std::string& clipId,
@@ -869,15 +866,44 @@ bool AppSession::replaceImportedAudioClipMedia(const std::string& clipId,
                                                double lengthBeats,
                                                std::string& error)
 {
+    const auto* clipBefore = findProjectClipById(project_, clipId);
+    ImportedClipMediaState beforeMedia;
+    if (clipBefore != nullptr)
+    {
+        beforeMedia.relativePath = clipBefore->relativePath;
+        beforeMedia.analysisPath = clipBefore->analysisPath;
+        beforeMedia.lengthBeats = clipBefore->lengthBeats;
+    }
+
     const auto replaced = project_.replaceImportedAudioClipMedia(clipId,
                                                                 std::move(relativePath),
                                                                 std::move(analysisPath),
                                                                 lengthBeats,
                                                                 error);
-    if (replaced)
-        clearImportedTimelineClipCacheForClip(clipId);
+    if (!replaced)
+        return false;
 
-    return replaced;
+    const auto* clipAfter = findProjectClipById(project_, clipId);
+    if (clipAfter == nullptr)
+        return true;
+
+    ImportedClipMediaState afterMedia;
+    afterMedia.relativePath = clipAfter->relativePath;
+    afterMedia.analysisPath = clipAfter->analysisPath;
+    afterMedia.lengthBeats = clipAfter->lengthBeats;
+    if (beforeMedia == afterMedia)
+        return true;
+
+    clearImportedTimelineClipCacheForClip(clipId);
+
+    ImportedClipEdit edit;
+    edit.kind = ImportedClipEditKind::mediaReplacement;
+    edit.clipId = clipId;
+    edit.beforeMedia = std::move(beforeMedia);
+    edit.afterMedia = std::move(afterMedia);
+    importedClipUndoStack_.push_back(std::move(edit));
+    importedClipRedoStack_.clear();
+    return true;
 }
 
 bool AppSession::shouldPlayGeneratedTone() const noexcept
@@ -938,6 +964,90 @@ std::size_t AppSession::importedTimelineClipCacheSampleBytes() const noexcept
     return totalBytes;
 }
 
+bool AppSession::canUndoImportedClipEdit(ImportedClipEditKind kind) const noexcept
+{
+    return !importedClipUndoStack_.empty() && importedClipUndoStack_.back().kind == kind;
+}
+
+bool AppSession::canRedoImportedClipEdit(ImportedClipEditKind kind) const noexcept
+{
+    return !importedClipRedoStack_.empty() && importedClipRedoStack_.back().kind == kind;
+}
+
+bool AppSession::undoImportedClipEdit(ImportedClipEditKind kind, std::string& error)
+{
+    error.clear();
+
+    if (importedClipUndoStack_.empty())
+    {
+        error = "No imported clip edit is available to undo.";
+        return false;
+    }
+
+    const auto edit = importedClipUndoStack_.back();
+    if (edit.kind != kind)
+    {
+        error = "The next imported clip edit is a different edit type.";
+        return false;
+    }
+
+    if (!applyImportedClipEdit(edit, false, error))
+        return false;
+
+    importedClipUndoStack_.pop_back();
+    importedClipRedoStack_.push_back(edit);
+    return true;
+}
+
+bool AppSession::redoImportedClipEdit(ImportedClipEditKind kind, std::string& error)
+{
+    error.clear();
+
+    if (importedClipRedoStack_.empty())
+    {
+        error = "No imported clip edit is available to redo.";
+        return false;
+    }
+
+    const auto edit = importedClipRedoStack_.back();
+    if (edit.kind != kind)
+    {
+        error = "The next imported clip edit is a different edit type.";
+        return false;
+    }
+
+    if (!applyImportedClipEdit(edit, true, error))
+        return false;
+
+    importedClipRedoStack_.pop_back();
+    importedClipUndoStack_.push_back(edit);
+    return true;
+}
+
+bool AppSession::applyImportedClipEdit(const ImportedClipEdit& edit,
+                                       bool useAfterState,
+                                       std::string& error)
+{
+    if (edit.kind == ImportedClipEditKind::placement)
+    {
+        return project_.setImportedAudioClipStartBeats(
+            edit.clipId,
+            useAfterState ? edit.afterStartBeats : edit.beforeStartBeats,
+            error);
+    }
+
+    const auto& media = useAfterState ? edit.afterMedia : edit.beforeMedia;
+    const auto replaced = project_.replaceImportedAudioClipMedia(edit.clipId,
+                                                                 media.relativePath,
+                                                                 media.analysisPath,
+                                                                 media.lengthBeats,
+                                                                 error);
+    if (replaced)
+        clearImportedTimelineClipCacheForClip(edit.clipId);
+
+    return replaced;
+}
+
 void AppSession::trimImportedTimelineClipCacheToLimits()
 {
     if (importedTimelineClipCacheLimits_.maxEntries == 0
@@ -967,9 +1077,9 @@ void AppSession::clearImportedTimelineClipCacheForClip(const std::string& clipId
     importedTimelineClipCache_.erase(matchingEntry, importedTimelineClipCache_.end());
 }
 
-void AppSession::clearImportedClipPlacementEditHistory() noexcept
+void AppSession::clearImportedClipEditHistory() noexcept
 {
-    importedClipPlacementUndoStack_.clear();
-    importedClipPlacementRedoStack_.clear();
+    importedClipUndoStack_.clear();
+    importedClipRedoStack_.clear();
 }
 } // namespace projectname

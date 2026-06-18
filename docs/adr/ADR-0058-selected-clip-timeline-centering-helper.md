@@ -48,6 +48,6 @@ or global shortcuts.
 
 ## Follow-Ups
 
-- Add imported clip media replacement undo tests.
+- Add imported clip edit undo command routing.
 - Keep global shortcuts and command palette work behind the command registry
   focus policy.

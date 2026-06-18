@@ -46,4 +46,4 @@ session command so keyboard and mouse selection share the same visible state.
 
 ## Follow-Ups
 
-- Add imported clip media replacement undo tests.
+- Add imported clip edit undo command routing.

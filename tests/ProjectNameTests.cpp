@@ -3344,6 +3344,230 @@ void appSessionTracksImportedClipPlacementUndoHistory()
            "Session project replacement clears imported clip placement history");
 }
 
+void appSessionTracksImportedClipMediaReplacementUndoHistory()
+{
+    constexpr auto clipId = "clip-imported-playback";
+
+    auto project = makeProjectWithImportedTimelineClip(4.0, 2.0);
+    projectname::AppSession session(std::move(project));
+    std::string error;
+
+    expect(!session.canUndoImportedClipMediaReplacementEdit(),
+           "Session starts with no imported clip media replacement undo history");
+    expect(!session.canRedoImportedClipMediaReplacementEdit(),
+           "Session starts with no imported clip media replacement redo history");
+    expect(!session.undoImportedClipMediaReplacementEdit(error),
+           "Session rejects imported clip media replacement undo with empty history");
+    expect(!session.redoImportedClipMediaReplacementEdit(error),
+           "Session rejects imported clip media replacement redo with empty history");
+
+    expect(!session.replaceImportedAudioClipMedia("clip-1",
+                                                  "audio/rejected-media.wav",
+                                                  "analysis/rejected-media.waveform.json",
+                                                  1.0,
+                                                  error),
+           "Session media replacement undo history ignores failed replacement edits");
+    expect(!session.canUndoImportedClipMediaReplacementEdit(),
+           "Session failed media replacement edit does not record undo history");
+
+    expect(session.replaceImportedAudioClipMedia(clipId,
+                                                 "audio/timeline-clip.wav",
+                                                 "analysis/timeline-clip.waveform.json",
+                                                 2.0,
+                                                 error),
+           "Session media replacement undo history accepts no-op replacement edit");
+    expect(!session.canUndoImportedClipMediaReplacementEdit(),
+           "Session no-op media replacement edit does not record undo history");
+
+    expect(session.replaceImportedAudioClipMedia(clipId,
+                                                 "audio/relinked.wav",
+                                                 "analysis/relinked.waveform.json",
+                                                 3.5,
+                                                 error),
+           "Session media replacement undo history records relinked imported clip");
+    auto* relinkedClip = findClipById(session.getProject(), clipId);
+    expect(relinkedClip != nullptr && relinkedClip->relativePath == "audio/relinked.wav",
+           "Session media replacement undo history applies media path");
+    expect(relinkedClip != nullptr && relinkedClip->analysisPath == "analysis/relinked.waveform.json",
+           "Session media replacement undo history applies analysis path");
+    expect(relinkedClip != nullptr && std::abs(relinkedClip->lengthBeats - 3.5) < 0.0001,
+           "Session media replacement undo history applies clip length");
+    expect(session.canUndoImportedClipMediaReplacementEdit()
+               && !session.canRedoImportedClipMediaReplacementEdit(),
+           "Session media replacement edit enables undo and clears redo");
+
+    expect(session.undoImportedClipMediaReplacementEdit(error),
+           "Session media replacement undo restores original imported clip media");
+    relinkedClip = findClipById(session.getProject(), clipId);
+    expect(relinkedClip != nullptr && relinkedClip->relativePath == "audio/timeline-clip.wav",
+           "Session media replacement undo restores original media path");
+    expect(relinkedClip != nullptr && relinkedClip->analysisPath == "analysis/timeline-clip.waveform.json",
+           "Session media replacement undo restores original analysis path");
+    expect(relinkedClip != nullptr && std::abs(relinkedClip->lengthBeats - 2.0) < 0.0001,
+           "Session media replacement undo restores original clip length");
+    expect(!session.canUndoImportedClipMediaReplacementEdit()
+               && session.canRedoImportedClipMediaReplacementEdit(),
+           "Session media replacement undo moves edit to redo history");
+
+    expect(session.redoImportedClipMediaReplacementEdit(error),
+           "Session media replacement redo reapplies relinked imported clip media");
+    relinkedClip = findClipById(session.getProject(), clipId);
+    expect(relinkedClip != nullptr && relinkedClip->relativePath == "audio/relinked.wav",
+           "Session media replacement redo restores relinked media path");
+    expect(relinkedClip != nullptr && relinkedClip->analysisPath == "analysis/relinked.waveform.json",
+           "Session media replacement redo restores relinked analysis path");
+    expect(relinkedClip != nullptr && std::abs(relinkedClip->lengthBeats - 3.5) < 0.0001,
+           "Session media replacement redo restores relinked clip length");
+    expect(session.canUndoImportedClipMediaReplacementEdit()
+               && !session.canRedoImportedClipMediaReplacementEdit(),
+           "Session media replacement redo moves edit back to undo history");
+
+    expect(session.undoImportedClipMediaReplacementEdit(error),
+           "Session media replacement undo prepares redo clearing test");
+    expect(session.replaceImportedAudioClipMedia(clipId,
+                                                 "audio/relinked-second.wav",
+                                                 "analysis/relinked-second.waveform.json",
+                                                 1.25,
+                                                 error),
+           "Session media replacement undo history records new edit after undo");
+    relinkedClip = findClipById(session.getProject(), clipId);
+    expect(relinkedClip != nullptr && relinkedClip->relativePath == "audio/relinked-second.wav",
+           "Session media replacement new edit applies after undo");
+    expect(relinkedClip != nullptr && std::abs(relinkedClip->lengthBeats - 1.25) < 0.0001,
+           "Session media replacement new edit stores replacement length");
+    expect(session.canUndoImportedClipMediaReplacementEdit()
+               && !session.canRedoImportedClipMediaReplacementEdit(),
+           "Session new media replacement edit clears redo history");
+    expect(!session.redoImportedClipMediaReplacementEdit(error),
+           "Session cleared media replacement redo history cannot be replayed");
+
+    expect(session.replaceImportedAudioClipMedia(clipId,
+                                                 "audio/relinked-stale.wav",
+                                                 "analysis/relinked-stale.waveform.json",
+                                                 5.0,
+                                                 error),
+           "Session media replacement undo history records stale failure setup edit");
+    session.getProject() = projectname::ProjectModel::createDefault();
+    const auto staleProjectState = session.getProject();
+    expect(!session.undoImportedClipMediaReplacementEdit(error),
+           "Session media replacement undo fails when edited imported clip is stale");
+    expect(session.getProject() == staleProjectState,
+           "Session stale media replacement undo leaves project state unchanged");
+    expect(session.canUndoImportedClipMediaReplacementEdit(),
+           "Session stale media replacement undo keeps undo entry for retry");
+
+    session.replaceProject(makeProjectWithImportedTimelineClip(2.0, 1.0));
+    expect(!session.canUndoImportedClipMediaReplacementEdit()
+               && !session.canRedoImportedClipMediaReplacementEdit(),
+           "Session project replacement clears imported clip media replacement history");
+}
+
+void appSessionMediaReplacementUndoInvalidatesPreparedCache()
+{
+    constexpr auto clipId = "clip-imported-playback";
+
+    auto project = makeProjectWithImportedTimelineClip(4.0, 2.0);
+    projectname::AppSession session(std::move(project));
+    std::string error;
+
+    const auto* originalClip = findClipById(session.getProject(), clipId);
+    expect(originalClip != nullptr, "Session media replacement cache test has original imported clip");
+    auto cachedOriginal = originalClip != nullptr
+        ? session.cacheImportedTimelineClip(*originalClip, makePreparedMonoCacheClip({ 0.10f, 0.11f, 0.12f }))
+        : nullptr;
+    expect(cachedOriginal != nullptr && cachedOriginal->size() == 3,
+           "Session media replacement cache test stores original prepared clip");
+
+    session.getTransport().setPositionBeats(4.0);
+    auto originalHit = session.playFromCachedTimeline(10.0, error);
+    expect(originalHit.status == projectname::TimelinePlaybackPreparationStatus::importedClipReady,
+           "Session media replacement cache test hits original prepared clip");
+    expect(originalHit.preparedSamples != nullptr && std::abs((*originalHit.preparedSamples)[0] - 0.10f) < 0.0001f,
+           "Session media replacement cache test returns original prepared samples");
+
+    expect(session.replaceImportedAudioClipMedia(clipId,
+                                                 "audio/timeline-clip.wav",
+                                                 "analysis/timeline-clip.waveform.json",
+                                                 2.0,
+                                                 error),
+           "Session media replacement cache test accepts same-path no-op replacement");
+    session.getTransport().setPositionBeats(4.0);
+    auto noOpHit = session.playFromCachedTimeline(10.0, error);
+    expect(noOpHit.status == projectname::TimelinePlaybackPreparationStatus::importedClipReady,
+           "Session media replacement no-op preserves prepared cache");
+    expect(noOpHit.preparedSamples != nullptr && std::abs((*noOpHit.preparedSamples)[0] - 0.10f) < 0.0001f,
+           "Session media replacement no-op keeps original prepared samples");
+
+    expect(session.replaceImportedAudioClipMedia(clipId,
+                                                 "audio/timeline-clip.wav",
+                                                 "analysis/timeline-clip-replaced.waveform.json",
+                                                 4.0,
+                                                 error),
+           "Session media replacement cache test records same-path replacement");
+    session.getTransport().setPositionBeats(4.0);
+    auto replacedMiss = session.playFromCachedTimeline(10.0, error);
+    expect(replacedMiss.status == projectname::TimelinePlaybackPreparationStatus::backgroundPreparationRequired,
+           "Session media replacement clears same-path stale cache on forward edit");
+    expect(!replacedMiss.usedCachedBuffer,
+           "Session media replacement forward cache invalidation does not reuse stale samples");
+
+    const auto* replacedClip = findClipById(session.getProject(), clipId);
+    expect(replacedClip != nullptr
+               && replacedClip->analysisPath == "analysis/timeline-clip-replaced.waveform.json"
+               && std::abs(replacedClip->lengthBeats - 4.0) < 0.0001,
+           "Session media replacement cache test stores same-path replacement metadata");
+    auto cachedReplacement = replacedClip != nullptr
+        ? session.cacheImportedTimelineClip(*replacedClip, makePreparedMonoCacheClip({ 0.20f, 0.21f, 0.22f }))
+        : nullptr;
+    expect(cachedReplacement != nullptr && cachedReplacement->size() == 3,
+           "Session media replacement cache test stores replacement prepared clip");
+
+    session.getTransport().setPositionBeats(4.0);
+    auto replacementHit = session.playFromCachedTimeline(10.0, error);
+    expect(replacementHit.status == projectname::TimelinePlaybackPreparationStatus::importedClipReady,
+           "Session media replacement cache test hits replacement prepared clip");
+    expect(replacementHit.preparedSamples != nullptr
+               && std::abs((*replacementHit.preparedSamples)[0] - 0.20f) < 0.0001f,
+           "Session media replacement cache test returns replacement prepared samples");
+
+    expect(session.undoImportedClipMediaReplacementEdit(error),
+           "Session media replacement cache test undoes same-path replacement");
+    session.getTransport().setPositionBeats(4.0);
+    auto undoMiss = session.playFromCachedTimeline(10.0, error);
+    expect(undoMiss.status == projectname::TimelinePlaybackPreparationStatus::backgroundPreparationRequired,
+           "Session media replacement undo clears same-path replacement cache");
+    expect(!undoMiss.usedCachedBuffer,
+           "Session media replacement undo cache invalidation does not reuse stale replacement samples");
+
+    const auto* restoredClip = findClipById(session.getProject(), clipId);
+    expect(restoredClip != nullptr
+               && restoredClip->analysisPath == "analysis/timeline-clip.waveform.json"
+               && std::abs(restoredClip->lengthBeats - 2.0) < 0.0001,
+           "Session media replacement cache test restores original same-path metadata");
+    auto cachedRestored = restoredClip != nullptr
+        ? session.cacheImportedTimelineClip(*restoredClip, makePreparedMonoCacheClip({ 0.30f, 0.31f, 0.32f }))
+        : nullptr;
+    expect(cachedRestored != nullptr && cachedRestored->size() == 3,
+           "Session media replacement cache test stores restored prepared clip");
+
+    session.getTransport().setPositionBeats(4.0);
+    auto restoredHit = session.playFromCachedTimeline(10.0, error);
+    expect(restoredHit.status == projectname::TimelinePlaybackPreparationStatus::importedClipReady,
+           "Session media replacement cache test hits restored prepared clip");
+    expect(restoredHit.preparedSamples != nullptr
+               && std::abs((*restoredHit.preparedSamples)[0] - 0.30f) < 0.0001f,
+           "Session media replacement cache test returns restored prepared samples");
+
+    expect(session.redoImportedClipMediaReplacementEdit(error),
+           "Session media replacement cache test redoes same-path replacement");
+    session.getTransport().setPositionBeats(4.0);
+    auto redoMiss = session.playFromCachedTimeline(10.0, error);
+    expect(redoMiss.status == projectname::TimelinePlaybackPreparationStatus::backgroundPreparationRequired,
+           "Session media replacement redo clears same-path restored cache");
+    expect(!redoMiss.usedCachedBuffer,
+           "Session media replacement redo cache invalidation does not reuse stale restored samples");
+}
+
 void appSessionUpdatesStaticTrackMixStateThroughCommand()
 {
     projectname::AppSession session;
@@ -4596,6 +4820,8 @@ int main()
     appCommandRegistryDescribesPrototypeTopBarCommands();
     appSessionSelectsImportedAudioClips();
     appSessionTracksImportedClipPlacementUndoHistory();
+    appSessionTracksImportedClipMediaReplacementUndoHistory();
+    appSessionMediaReplacementUndoInvalidatesPreparedCache();
     appSessionUpdatesStaticTrackMixStateThroughCommand();
     appSessionSavesAndLoadsProjectPackages();
     appSessionLoopRegionCommandsKeepTransportState();
