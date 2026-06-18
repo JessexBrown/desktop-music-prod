@@ -56,6 +56,6 @@ inspector fields, drag/drop edits, or package file restoration.
 
 ## Follow-Ups
 
-- Add visible imported clip inspector start-beat controls.
+- Design imported clip media relink chooser flow.
 - Add visible undo/redo controls only after focus ownership and text-entry
   behavior are covered by tests.

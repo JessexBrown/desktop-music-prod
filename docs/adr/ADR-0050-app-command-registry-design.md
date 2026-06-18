@@ -87,4 +87,4 @@ shortcut editor UI.
 
 ## Follow-Ups
 
-- Add visible imported clip inspector start-beat controls.
+- Design imported clip media relink chooser flow.

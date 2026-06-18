@@ -68,6 +68,6 @@ palette entries.
 
 ## Follow-Ups
 
-- Add visible imported clip inspector start-beat controls.
+- Design imported clip media relink chooser flow.
 - Add a media relink chooser separately from package cleanup/restoration.
 - Add inspector focus tests when visible text entry exists.

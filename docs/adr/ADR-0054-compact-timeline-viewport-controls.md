@@ -51,6 +51,6 @@ timeline pan buttons.
 
 ## Follow-Ups
 
-- Add visible imported clip inspector start-beat controls.
+- Design imported clip media relink chooser flow.
 - Keep global shortcuts and command palette work behind the command registry
   focus policy.

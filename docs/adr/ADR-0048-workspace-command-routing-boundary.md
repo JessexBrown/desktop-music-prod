@@ -66,4 +66,4 @@ they affect user-visible workflow. Do not add global shortcuts by scattering
 
 ## Follow-Ups
 
-- Add visible imported clip inspector start-beat controls.
+- Design imported clip media relink chooser flow.

@@ -34,12 +34,12 @@ Acceptance:
 - Add a non-modal path back to the Audio/MIDI setup dialog.
 - Keep the first implementation separate from plugin scanning.
 
-## 5. Add Visible Imported Clip Start-Beat Control
+## 5. Design Imported Clip Media Relink Chooser Flow
 
 Acceptance:
-- Add a selected-clip-only start-beat text field to the right inspector using
-  `ImportedClipInspectorEditDraft`.
-- Return accepted values through `AppSession::setImportedAudioClipStartBeats`
-  and Escape cancels back to the last committed value.
-- Keep media relink UI, file chooser behavior, package restoration, global
-  shortcuts, and drag/drop clip operations out of this task.
+- Add an ADR or UX note for the native media relink chooser path from the
+  selected imported clip inspector.
+- Define how the chooser produces package-relative media path, analysis path,
+  and length metadata before `AppSession::replaceImportedAudioClipMedia`.
+- Keep implementation, package file cleanup/restoration, global shortcuts, and
+  drag/drop clip operations out of this task.

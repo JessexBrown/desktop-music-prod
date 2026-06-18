@@ -74,6 +74,20 @@ void configureMixerSlider(juce::Slider& slider)
     slider.setColour(juce::Slider::textBoxBackgroundColourId, juce::Colour(0xff22252b));
 }
 
+void configureTextEditor(juce::TextEditor& editor)
+{
+    editor.setMultiLine(false);
+    editor.setReturnKeyStartsNewLine(false);
+    editor.setSelectAllWhenFocused(true);
+    editor.setJustification(juce::Justification::centredLeft);
+    editor.setFont(juce::FontOptions(13.0f, juce::Font::plain));
+    editor.setColour(juce::TextEditor::backgroundColourId, juce::Colour(0xff22252b));
+    editor.setColour(juce::TextEditor::textColourId, textPrimary);
+    editor.setColour(juce::TextEditor::highlightColourId, accent.withAlpha(0.38f));
+    editor.setColour(juce::TextEditor::outlineColourId, panelOutline);
+    editor.setColour(juce::TextEditor::focusedOutlineColourId, focusAccent);
+}
+
 void setButtonEnabledFromCommand(juce::Button& button,
                                  const projectname::AppCommandRegistry& registry,
                                  std::string_view commandId)
@@ -184,6 +198,11 @@ void setButtonEnabledFromCommand(juce::Button& button,
 
     lines.add("Clip: " + formatInspectorClipName(state));
     lines.add("Path: " + juce::String(state.relativePath));
+
+    if (state.usingSelectedClip)
+        lines.add(" ");
+    else
+        lines.add("Start: " + juce::String(state.startBeats, 2) + " beats");
 
     if (state.status == projectname::ImportedClipInspectorStatus::ready)
     {
@@ -825,6 +844,13 @@ void MainComponent::resized()
     devicePanel_.setBounds(deviceArea);
     mixerPanel_.setBounds(mixerArea);
 
+    auto inspectorStartRow = getInspectorStartBeatRowBounds();
+    auto inspectorStartContent = inspectorStartRow.reduced(10, 3);
+    inspectorStartBeatLabel_.setBounds(inspectorStartContent.removeFromLeft(74));
+    inspectorStartContent.removeFromLeft(8);
+    inspectorStartBeatEditor_.setBounds(inspectorStartContent.removeFromLeft(
+        std::min(96, inspectorStartContent.getWidth())));
+
     auto mixerContent = mixerArea.reduced(16, 10);
     mixerTrackLabel_.setBounds(mixerContent.removeFromLeft(190));
     mixerContent.removeFromLeft(12);
@@ -938,6 +964,8 @@ void MainComponent::configureControls()
     addAndMakeVisible(inspectorPanel_);
     addAndMakeVisible(devicePanel_);
     addAndMakeVisible(mixerPanel_);
+    addAndMakeVisible(inspectorStartBeatLabel_);
+    addAndMakeVisible(inspectorStartBeatEditor_);
 
     configureButton(playButton_, accent);
     configureButton(stopButton_, accentWarm);
@@ -989,11 +1017,26 @@ void MainComponent::configureControls()
     configureLabel(mixerTrackLabel_, 13.0f, juce::Justification::centredLeft);
     configureLabel(trackVolumeLabel_, 12.0f, juce::Justification::centredLeft);
     configureLabel(trackPanLabel_, 12.0f, juce::Justification::centredLeft);
+    configureLabel(inspectorStartBeatLabel_, 12.0f, juce::Justification::centredLeft);
+    configureTextEditor(inspectorStartBeatEditor_);
     statusLabel_.setColour(juce::Label::textColourId, textSecondary);
+    inspectorStartBeatLabel_.setColour(juce::Label::textColourId, textSecondary);
 
     tempoLabel_.setText("Tempo", juce::dontSendNotification);
     trackVolumeLabel_.setText("Volume", juce::dontSendNotification);
     trackPanLabel_.setText("Pan", juce::dontSendNotification);
+    inspectorStartBeatLabel_.setText("Start beat", juce::dontSendNotification);
+    inspectorStartBeatLabel_.setVisible(false);
+    inspectorStartBeatEditor_.setVisible(false);
+    inspectorStartBeatEditor_.setTooltip("Selected imported clip start beat");
+    inspectorStartBeatEditor_.onReturnKey = [this]()
+    {
+        commitInspectorStartBeatEdit();
+    };
+    inspectorStartBeatEditor_.onEscapeKey = [this]()
+    {
+        cancelInspectorStartBeatEdit();
+    };
 
     refreshAppCommandEnabledState();
 }
@@ -1650,6 +1693,86 @@ void MainComponent::refreshInspectorPanel()
             ? "Project overview"
             : (inspector.usingSelectedClip ? "Selected imported audio clip" : "First imported audio clip"));
     inspectorPanel_.setLines(makeImportedClipInspectorLines(inspector));
+    refreshInspectorStartBeatControl(inspector);
+}
+
+void MainComponent::refreshInspectorStartBeatControl(const projectname::ImportedClipInspectorState& inspector)
+{
+    inspectorEditDraft_ = projectname::ImportedClipInspectorEditDraft::fromInspectorState(inspector);
+    const auto editable = inspectorEditDraft_.canEdit();
+
+    inspectorStartBeatLabel_.setVisible(editable);
+    inspectorStartBeatEditor_.setVisible(editable);
+    inspectorStartBeatEditor_.setEnabled(editable);
+
+    if (!editable)
+    {
+        inspectorStartBeatEditor_.setText({}, juce::dontSendNotification);
+        return;
+    }
+
+    inspectorStartBeatEditor_.setText(juce::String(inspectorEditDraft_.getStartBeatText()),
+                                      juce::dontSendNotification);
+}
+
+juce::Rectangle<int> MainComponent::getInspectorStartBeatRowBounds() const
+{
+    auto content = inspectorPanel_.getBounds().reduced(16);
+    content.removeFromTop(24);
+    content.removeFromTop(22);
+    content.removeFromTop(10);
+
+    for (auto skippedRows = 0; skippedRows < 2; ++skippedRows)
+    {
+        if (content.getHeight() < 76)
+            return {};
+
+        content.removeFromTop(28);
+        content.removeFromTop(6);
+    }
+
+    return content.getHeight() >= 28 ? content.removeFromTop(28) : juce::Rectangle<int> {};
+}
+
+void MainComponent::commitInspectorStartBeatEdit()
+{
+    if (!inspectorStartBeatEditor_.isVisible())
+        return;
+
+    inspectorEditDraft_.setStartBeatText(inspectorStartBeatEditor_.getText().toStdString());
+
+    std::string error;
+    const auto commit = inspectorEditDraft_.makeStartBeatCommit(error);
+    if (!commit.has_value())
+    {
+        setStatus("Start beat edit failed: " + juce::String(error));
+        inspectorStartBeatEditor_.grabKeyboardFocus();
+        inspectorStartBeatEditor_.selectAll();
+        return;
+    }
+
+    if (!session_.setImportedAudioClipStartBeats(commit->clipId, commit->startBeats, error))
+    {
+        setStatus("Start beat edit failed: " + juce::String(error));
+        refreshInspectorPanel();
+        return;
+    }
+
+    refreshWorkspaceTimelineLane();
+    refreshInspectorPanel();
+    refreshAppCommandEnabledState();
+    setStatus("Set selected clip start beat: " + juce::String(commit->startBeats, 2));
+}
+
+void MainComponent::cancelInspectorStartBeatEdit()
+{
+    if (!inspectorStartBeatEditor_.isVisible())
+        return;
+
+    inspectorEditDraft_.cancelStartBeatEdit();
+    inspectorStartBeatEditor_.setText(juce::String(inspectorEditDraft_.getStartBeatText()),
+                                      juce::dontSendNotification);
+    setStatus("Cancelled selected clip start beat edit");
 }
 
 void MainComponent::selectTimelineClip(std::string clipId)

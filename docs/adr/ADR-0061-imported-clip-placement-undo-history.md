@@ -55,6 +55,6 @@ drag/drop.
 
 ## Follow-Ups
 
-- Add visible imported clip inspector start-beat controls.
+- Design imported clip media relink chooser flow.
 - Add visible undo/redo commands only after focus ownership and text-entry
   behavior are covered by tests.

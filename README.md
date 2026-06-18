@@ -120,14 +120,17 @@ Third-party dependencies remain under their own licenses as recorded in
   `relativePath`, `analysisPath`, and `lengthBeats` while invalidating prepared
   playback cache entries in both directions.
 - App command metadata now includes imported clip edit undo/redo routing for the
-  top undo or redo stack entry; visible controls and shortcuts are still future
-  work.
+  top undo or redo stack entry; visible undo/redo controls and shortcuts are
+  still future work.
 - ADR-0064 defines the editable imported clip inspector flow before visible
   text fields are added, including focus ownership, commit/cancel behavior,
   validation, and undo grouping.
 - A plain C++ imported clip inspector edit draft model validates selected-clip
   start-beat edits and media relink metadata before future visible controls call
   app-session commit commands.
+- The JUCE right inspector exposes a selected-clip-only start-beat text field;
+  Return commits through the app session and Escape restores the draft's last
+  committed value.
 - A plain C++ track voice scheduler turns timeline clip plans, render windows,
   and track gain/pan/mute/solo snapshots into mixer-ready voice descriptors.
 - Project track volume, pan, mute, and solo state is persisted and fed into
@@ -175,8 +178,8 @@ Third-party dependencies remain under their own licenses as recorded in
 ## What Does Not Exist Yet
 
 - AIFF/FLAC/MP3 import, automatic resampling, interactive waveform editing,
-  visible editable imported clip inspector fields, timeline zoom/scroll,
-  loop-region editing controls, or drag/drop clip placement.
+  imported clip media relink controls, timeline zoom/scroll, loop-region
+  editing controls, or drag/drop clip placement.
 - Resampling, time-stretching, streaming, multi-track mixer strips, metering,
   and automation.
 - MIDI clips or piano roll editing.
@@ -382,4 +385,6 @@ or use `ctest --preset dev --output-on-failure`.
   editable inspector focus, commit/cancel, validation, and undo grouping design.
 - `docs/adr/ADR-0065-imported-clip-inspector-edit-draft-model.md` records the
   plain C++ draft/validation model for future imported clip inspector controls.
+- `docs/adr/ADR-0066-visible-imported-clip-start-beat-control.md` records the
+  first visible selected-clip-only imported clip inspector edit control.
 - `docs/issues/NEXT-ISSUES.md` lists the next five small tasks.

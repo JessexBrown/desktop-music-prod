@@ -42,6 +42,6 @@ selected clip.
 
 ## Follow-Ups
 
-- Add visible imported clip inspector start-beat controls.
+- Design imported clip media relink chooser flow.
 - Add clip movement and resizing only after explicit edit previews and undo are
   defined.

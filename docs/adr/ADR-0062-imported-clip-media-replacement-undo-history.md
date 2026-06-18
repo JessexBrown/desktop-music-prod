@@ -61,6 +61,6 @@ global shortcuts, editable inspector fields, or timeline drag/drop.
 
 ## Follow-Ups
 
-- Add visible imported clip inspector start-beat controls.
+- Design imported clip media relink chooser flow.
 - Add editable inspector or timeline gesture commits only after visible commands
   and text-entry behavior are covered by tests.

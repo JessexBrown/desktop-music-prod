@@ -9,6 +9,7 @@
 #include "core/BackgroundAudioImportJob.h"
 #include "core/BackgroundTimelinePlaybackPreparationJob.h"
 #include "core/ImportedClipInspector.h"
+#include "core/ImportedClipInspectorEditDraft.h"
 #include "core/TimelineClipLane.h"
 #include "core/TimelinePlaybackPreparationCompletion.h"
 
@@ -127,6 +128,10 @@ private:
     void applyCompletedTimelinePlaybackPreparation(projectname::BackgroundTimelinePlaybackPreparationResult result);
     void refreshWorkspaceTimelineLane();
     void refreshInspectorPanel();
+    void refreshInspectorStartBeatControl(const projectname::ImportedClipInspectorState& inspector);
+    [[nodiscard]] juce::Rectangle<int> getInspectorStartBeatRowBounds() const;
+    void commitInspectorStartBeatEdit();
+    void cancelInspectorStartBeatEdit();
     void selectTimelineClip(std::string clipId);
     void selectAdjacentTimelineClip(projectname::ImportedAudioClipSelectionDirection direction);
     void panTimelineViewport(double deltaBeats);
@@ -161,6 +166,8 @@ private:
     juce::Label mixerTrackLabel_;
     juce::Label trackVolumeLabel_;
     juce::Label trackPanLabel_;
+    juce::Label inspectorStartBeatLabel_;
+    juce::TextEditor inspectorStartBeatEditor_;
     juce::ToggleButton muteToggle_ { "Mute" };
     juce::ToggleButton soloToggle_ { "Solo" };
     juce::String statusText_;
@@ -177,4 +184,5 @@ private:
     WorkspacePanel mixerPanel_;
     double lastInspectorOutputSampleRateHz_ = -1.0;
     bool refreshingMixerControls_ = false;
+    projectname::ImportedClipInspectorEditDraft inspectorEditDraft_;
 };
