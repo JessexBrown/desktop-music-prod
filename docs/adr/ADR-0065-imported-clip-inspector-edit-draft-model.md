@@ -68,5 +68,5 @@ palette entries.
 
 ## Follow-Ups
 
-- Add visible native relink chooser wiring.
+- Add background media relink preparation job.
 - Add inspector focus tests when visible text entry exists.

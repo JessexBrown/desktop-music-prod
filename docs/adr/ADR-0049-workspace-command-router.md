@@ -46,4 +46,4 @@ the returned command. Current behavior is preserved:
 
 ## Follow-Ups
 
-- Add visible native relink chooser wiring.
+- Add background media relink preparation job.

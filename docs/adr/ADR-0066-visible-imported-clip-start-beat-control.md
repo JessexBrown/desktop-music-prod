@@ -55,6 +55,6 @@ operations, or automated GUI interaction tests.
 
 ## Follow-Ups
 
-- Add visible native relink chooser wiring.
+- Add background media relink preparation job.
 - Add automated GUI interaction coverage when a stable JUCE UI test approach is
   available.

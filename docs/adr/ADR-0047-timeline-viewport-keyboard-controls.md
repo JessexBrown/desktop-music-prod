@@ -44,4 +44,4 @@ updates the status line with the new view start or zoom scale.
 
 ## Follow-Ups
 
-- Add visible native relink chooser wiring.
+- Add background media relink preparation job.

@@ -34,13 +34,16 @@ Acceptance:
 - Add a non-modal path back to the Audio/MIDI setup dialog.
 - Keep the first implementation separate from plugin scanning.
 
-## 5. Add Visible Native Relink Chooser Wiring
+## 5. Add Background Media Relink Preparation Job
 
 Acceptance:
-- Add a selected-clip-only Relink action to the right inspector.
-- Launch a native `.wav` chooser and prepare the selected file through
-  `ImportedClipMediaRelink`.
-- Commit prepared relinks through `commitPreparedImportedClipMediaRelink` and
-  refresh timeline, inspector, playback cache state, and undo/redo enablement.
+- Wrap `ImportedClipMediaRelink` preparation in a cancellable background job
+  with decode, copy, analysis, and completion progress.
+- Keep the visible inspector Relink button disabled while a relink job is
+  running, and surface cancel/failure/stale-selection status without blocking
+  the UI.
+- Commit only prepared current-selection results through
+  `commitPreparedImportedClipMediaRelink`, then refresh timeline, inspector,
+  playback cache state, and undo/redo enablement.
 - Keep package cleanup/restoration, global shortcuts, command-palette entries,
   and drag/drop clip operations out of this task.

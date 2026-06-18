@@ -196,3 +196,6 @@ documents folder. Import Audio uses a native WAV file chooser and a background
 import job with frame-level decode progress, byte-level staged-copy progress,
 and cancel state, but still writes to that deterministic package until full
 project New/Open/Save As workflow is added.
+The right inspector's selected-clip Relink button currently uses a native WAV
+chooser and the staged relink preparation model synchronously; a background
+relink job is tracked as the next small task.

@@ -61,6 +61,6 @@ global shortcuts, editable inspector fields, or timeline drag/drop.
 
 ## Follow-Ups
 
-- Add visible native relink chooser wiring.
+- Add background media relink preparation job.
 - Add editable inspector or timeline gesture commits only after visible commands
   and text-entry behavior are covered by tests.

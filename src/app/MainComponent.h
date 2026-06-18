@@ -10,6 +10,7 @@
 #include "core/BackgroundTimelinePlaybackPreparationJob.h"
 #include "core/ImportedClipInspector.h"
 #include "core/ImportedClipInspectorEditDraft.h"
+#include "core/ImportedClipMediaRelink.h"
 #include "core/TimelineClipLane.h"
 #include "core/TimelinePlaybackPreparationCompletion.h"
 
@@ -116,9 +117,11 @@ private:
     [[nodiscard]] projectname::AppCommandResult undoImportedClipEdit();
     [[nodiscard]] projectname::AppCommandResult redoImportedClipEdit();
     void importAudio();
+    void relinkSelectedClipMedia();
     void cancelAudioImport();
     void cancelTimelinePlaybackPreparation();
     void handleAudioImportResult(const juce::FileChooser& chooser);
+    void handleMediaRelinkResult(const juce::FileChooser& chooser);
     void pollAudioImportJob();
     void pollTimelinePlaybackPreparationJob();
     void updateAudioImportProgress(const projectname::BackgroundAudioImportProgress& progress);
@@ -129,6 +132,7 @@ private:
     void refreshWorkspaceTimelineLane();
     void refreshInspectorPanel();
     void refreshInspectorStartBeatControl(const projectname::ImportedClipInspectorState& inspector);
+    void refreshInspectorRelinkButtonState();
     [[nodiscard]] juce::Rectangle<int> getInspectorStartBeatRowBounds() const;
     void commitInspectorStartBeatEdit();
     void cancelInspectorStartBeatEdit();
@@ -168,10 +172,12 @@ private:
     juce::Label trackPanLabel_;
     juce::Label inspectorStartBeatLabel_;
     juce::TextEditor inspectorStartBeatEditor_;
+    juce::TextButton inspectorRelinkButton_ { "Relink" };
     juce::ToggleButton muteToggle_ { "Mute" };
     juce::ToggleButton soloToggle_ { "Solo" };
     juce::String statusText_;
     std::unique_ptr<juce::FileChooser> audioImportChooser_;
+    std::unique_ptr<juce::FileChooser> mediaRelinkChooser_;
     std::unique_ptr<projectname::BackgroundAudioImportJob> audioImportJob_;
     std::unique_ptr<projectname::BackgroundTimelinePlaybackPreparationJob> timelinePlaybackPreparationJob_;
     bool canCancelAudioImport_ = false;

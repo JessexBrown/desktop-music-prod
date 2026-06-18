@@ -91,5 +91,5 @@ AIFF/FLAC/MP3 support, resampling, or time-stretching.
 
 ## Follow-Ups
 
-- Add visible native relink chooser wiring.
+- Add background media relink preparation job.
 - Design unreferenced package asset cleanup/restoration separately.

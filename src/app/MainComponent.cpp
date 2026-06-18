@@ -113,6 +113,25 @@ void setButtonEnabledFromCommand(juce::Button& button,
     return nullptr;
 }
 
+[[nodiscard]] const projectname::ProjectClip* findProjectClipById(
+    const projectname::ProjectModel& project,
+    const std::string& clipId) noexcept
+{
+    if (clipId.empty())
+        return nullptr;
+
+    for (const auto& track : project.getTracks())
+    {
+        for (const auto& clip : track.clips)
+        {
+            if (clip.id == clipId)
+                return &clip;
+        }
+    }
+
+    return nullptr;
+}
+
 [[nodiscard]] juce::String formatPosition(double positionBeats, projectname::TimeSignature signature)
 {
     const auto beatsPerBar = static_cast<double>(signature.numerator);
@@ -846,10 +865,13 @@ void MainComponent::resized()
 
     auto inspectorStartRow = getInspectorStartBeatRowBounds();
     auto inspectorStartContent = inspectorStartRow.reduced(10, 3);
-    inspectorStartBeatLabel_.setBounds(inspectorStartContent.removeFromLeft(74));
-    inspectorStartContent.removeFromLeft(8);
-    inspectorStartBeatEditor_.setBounds(inspectorStartContent.removeFromLeft(
-        std::min(96, inspectorStartContent.getWidth())));
+    inspectorRelinkButton_.setBounds(inspectorStartContent.removeFromRight(
+        std::min(64, inspectorStartContent.getWidth())));
+    inspectorStartContent.removeFromRight(std::min(8, inspectorStartContent.getWidth()));
+    inspectorStartBeatLabel_.setBounds(inspectorStartContent.removeFromLeft(
+        std::min(64, inspectorStartContent.getWidth())));
+    inspectorStartContent.removeFromLeft(std::min(6, inspectorStartContent.getWidth()));
+    inspectorStartBeatEditor_.setBounds(inspectorStartContent);
 
     auto mixerContent = mixerArea.reduced(16, 10);
     mixerTrackLabel_.setBounds(mixerContent.removeFromLeft(190));
@@ -891,6 +913,10 @@ void MainComponent::buttonClicked(juce::Button* button)
     else if (button == &importButton_)
     {
         dispatchAppCommand(projectname::AppCommandIds::audioImport);
+    }
+    else if (button == &inspectorRelinkButton_)
+    {
+        relinkSelectedClipMedia();
     }
     else if (button == &cancelImportButton_)
     {
@@ -966,12 +992,14 @@ void MainComponent::configureControls()
     addAndMakeVisible(mixerPanel_);
     addAndMakeVisible(inspectorStartBeatLabel_);
     addAndMakeVisible(inspectorStartBeatEditor_);
+    addAndMakeVisible(inspectorRelinkButton_);
 
     configureButton(playButton_, accent);
     configureButton(stopButton_, accentWarm);
     configureButton(saveButton_, juce::Colour(0xffc6ccd5));
     configureButton(openButton_, juce::Colour(0xffc6ccd5));
     configureButton(importButton_, juce::Colour(0xffc6ccd5));
+    configureButton(inspectorRelinkButton_, juce::Colour(0xffc6ccd5));
     configureButton(cancelImportButton_, accentWarm);
     configureButton(cancelTimelinePreparationButton_, accentWarm);
     configureButton(audioButton_, juce::Colour(0xffc6ccd5));
@@ -981,6 +1009,7 @@ void MainComponent::configureControls()
     saveButton_.addListener(this);
     openButton_.addListener(this);
     importButton_.addListener(this);
+    inspectorRelinkButton_.addListener(this);
     cancelImportButton_.addListener(this);
     cancelTimelinePreparationButton_.addListener(this);
     audioButton_.addListener(this);
@@ -1028,7 +1057,9 @@ void MainComponent::configureControls()
     inspectorStartBeatLabel_.setText("Start beat", juce::dontSendNotification);
     inspectorStartBeatLabel_.setVisible(false);
     inspectorStartBeatEditor_.setVisible(false);
+    inspectorRelinkButton_.setVisible(false);
     inspectorStartBeatEditor_.setTooltip("Selected imported clip start beat");
+    inspectorRelinkButton_.setTooltip("Replace selected clip media with a PCM16 WAV file");
     inspectorStartBeatEditor_.onReturnKey = [this]()
     {
         commitInspectorStartBeatEdit();
@@ -1046,7 +1077,8 @@ projectname::AppCommandRegistry MainComponent::buildAppCommandRegistry() const
     projectname::AppCommandAvailability availability;
     availability.canUndoImportedClipEdit = session_.canUndoImportedClipEdit();
     availability.canRedoImportedClipEdit = session_.canRedoImportedClipEdit();
-    availability.canImportAudio = audioImportChooser_ == nullptr && audioImportJob_ == nullptr;
+    availability.canImportAudio =
+        audioImportChooser_ == nullptr && mediaRelinkChooser_ == nullptr && audioImportJob_ == nullptr;
     availability.canCancelImport = audioImportJob_ != nullptr && canCancelAudioImport_;
     availability.canCancelTimelinePreparation =
         timelinePlaybackPreparationJob_ != nullptr && canCancelTimelinePlaybackPreparation_;
@@ -1068,6 +1100,7 @@ void MainComponent::refreshAppCommandEnabledState()
                                 registry,
                                 projectname::AppCommandIds::timelinePreparationCancel);
     setButtonEnabledFromCommand(audioButton_, registry, projectname::AppCommandIds::audioSettingsShow);
+    refreshInspectorRelinkButtonState();
 }
 
 projectname::AppCommandResult MainComponent::dispatchAppCommand(std::string_view commandId)
@@ -1385,6 +1418,12 @@ void MainComponent::importAudio()
         return;
     }
 
+    if (mediaRelinkChooser_ != nullptr)
+    {
+        setStatus("Finish the media relink chooser before importing audio");
+        return;
+    }
+
     const auto initialDirectory = juce::File::getSpecialLocation(juce::File::userMusicDirectory);
     audioImportChooser_ = std::make_unique<juce::FileChooser>("Import a PCM16 WAV file",
                                                               initialDirectory,
@@ -1401,6 +1440,54 @@ void MainComponent::importAudio()
                                      {
                                          if (safeThis != nullptr)
                                              safeThis->handleAudioImportResult(chooser);
+                                     });
+}
+
+void MainComponent::relinkSelectedClipMedia()
+{
+    if (!inspectorEditDraft_.canEdit()
+        || inspectorEditDraft_.getClipId() != session_.getSelectedClipId())
+    {
+        setStatus("Select an imported audio clip before relinking media");
+        refreshInspectorPanel();
+        return;
+    }
+
+    if (mediaRelinkChooser_ != nullptr)
+    {
+        setStatus("Media relink chooser is already open");
+        return;
+    }
+
+    if (audioImportChooser_ != nullptr || audioImportJob_ != nullptr)
+    {
+        setStatus("Finish the current audio import before relinking media");
+        return;
+    }
+
+    if (timelinePlaybackPreparationJob_ != nullptr)
+    {
+        setStatus("Finish or cancel timeline audio preparation before relinking media");
+        return;
+    }
+
+    const auto initialDirectory = juce::File::getSpecialLocation(juce::File::userMusicDirectory);
+    mediaRelinkChooser_ = std::make_unique<juce::FileChooser>("Relink selected clip to a PCM16 WAV file",
+                                                              initialDirectory,
+                                                              "*.wav",
+                                                              true,
+                                                              false,
+                                                              this);
+    refreshInspectorRelinkButtonState();
+    refreshAppCommandEnabledState();
+
+    const auto chooserFlags = juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles;
+    const auto safeThis = juce::Component::SafePointer<MainComponent>(this);
+    mediaRelinkChooser_->launchAsync(chooserFlags,
+                                     [safeThis](const juce::FileChooser& chooser) mutable
+                                     {
+                                         if (safeThis != nullptr)
+                                             safeThis->handleMediaRelinkResult(chooser);
                                      });
 }
 
@@ -1463,6 +1550,81 @@ void MainComponent::handleAudioImportResult(const juce::FileChooser& chooser)
     audioImportChooser_.reset();
     refreshAppCommandEnabledState();
     updateTransportLabels();
+}
+
+void MainComponent::handleMediaRelinkResult(const juce::FileChooser& chooser)
+{
+    const auto selectedFile = chooser.getResult();
+    mediaRelinkChooser_.reset();
+
+    if (!selectedFile.existsAsFile())
+    {
+        setStatus("Media relink cancelled");
+        refreshInspectorRelinkButtonState();
+        refreshAppCommandEnabledState();
+        return;
+    }
+
+    if (!inspectorEditDraft_.canEdit()
+        || inspectorEditDraft_.getClipId() != session_.getSelectedClipId())
+    {
+        setStatus("Media relink failed: selected clip changed");
+        refreshInspectorPanel();
+        refreshAppCommandEnabledState();
+        return;
+    }
+
+    setStatus("Relinking selected clip media");
+
+    projectname::ImportedClipMediaRelinkPreparationRequest request;
+    request.project = session_.getProject();
+    request.packageDirectory = getDefaultProjectPackagePath();
+    request.sourceWavPath = std::filesystem::path(selectedFile.getFullPathName().toStdString());
+    request.selectedClipId = session_.getSelectedClipId();
+
+    auto result = projectname::prepareImportedClipMediaRelink(std::move(request));
+    if (!result.preparation.has_value())
+    {
+        setStatus("Media relink failed: " + juce::String(result.error));
+        refreshInspectorPanel();
+        refreshAppCommandEnabledState();
+        return;
+    }
+
+    auto preparation = std::move(*result.preparation);
+    const auto relinkedPath = preparation.relativePath;
+    const auto relinkedSampleRate = preparation.preparedClip.sampleRateHz;
+    auto commit = projectname::commitPreparedImportedClipMediaRelink(session_, preparation);
+    if (commit.status != projectname::ImportedClipMediaRelinkCommitStatus::committed)
+    {
+        setStatus("Media relink failed: " + juce::String(commit.error));
+        refreshWorkspaceTimelineLane();
+        refreshInspectorPanel();
+        refreshAppCommandEnabledState();
+        return;
+    }
+
+    const auto* relinkedClip = findProjectClipById(session_.getProject(), preparation.clipId);
+    auto preparedSamples = relinkedClip != nullptr
+        ? session_.cacheImportedTimelineClip(*relinkedClip, std::move(preparation.preparedClip))
+        : nullptr;
+    const auto refreshedPlaybackCache = preparedSamples != nullptr;
+    if (refreshedPlaybackCache)
+        audioService_.playPreparedMonoClip(std::move(preparedSamples));
+
+    refreshWorkspaceTimelineLane();
+    refreshInspectorPanel();
+    refreshAppCommandEnabledState();
+    updateTransportLabels();
+
+    auto status = "Relinked selected clip to " + juce::String(relinkedPath);
+    const auto summary = audioService_.getDeviceSummary();
+    if (summary.isOpen && relinkedSampleRate > 0.0 && std::abs(summary.sampleRate - relinkedSampleRate) > 1.0)
+        status += " - sample-rate conversion is not implemented yet";
+    if (!refreshedPlaybackCache)
+        status += " - playback cache was not refreshed";
+
+    setStatus(status);
 }
 
 void MainComponent::pollAudioImportJob()
@@ -1704,6 +1866,7 @@ void MainComponent::refreshInspectorStartBeatControl(const projectname::Imported
     inspectorStartBeatLabel_.setVisible(editable);
     inspectorStartBeatEditor_.setVisible(editable);
     inspectorStartBeatEditor_.setEnabled(editable);
+    refreshInspectorRelinkButtonState();
 
     if (!editable)
     {
@@ -1713,6 +1876,19 @@ void MainComponent::refreshInspectorStartBeatControl(const projectname::Imported
 
     inspectorStartBeatEditor_.setText(juce::String(inspectorEditDraft_.getStartBeatText()),
                                       juce::dontSendNotification);
+}
+
+void MainComponent::refreshInspectorRelinkButtonState()
+{
+    const auto visible = inspectorEditDraft_.canEdit();
+    const auto enabled = visible
+        && audioImportChooser_ == nullptr
+        && mediaRelinkChooser_ == nullptr
+        && audioImportJob_ == nullptr
+        && timelinePlaybackPreparationJob_ == nullptr;
+
+    inspectorRelinkButton_.setVisible(visible);
+    inspectorRelinkButton_.setEnabled(enabled);
 }
 
 juce::Rectangle<int> MainComponent::getInspectorStartBeatRowBounds() const

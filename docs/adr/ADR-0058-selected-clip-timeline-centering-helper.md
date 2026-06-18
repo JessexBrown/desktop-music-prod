@@ -48,6 +48,6 @@ or global shortcuts.
 
 ## Follow-Ups
 
-- Add visible native relink chooser wiring.
+- Add background media relink preparation job.
 - Keep global shortcuts and command palette work behind the command registry
   focus policy.

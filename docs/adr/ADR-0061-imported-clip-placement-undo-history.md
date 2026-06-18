@@ -55,6 +55,6 @@ drag/drop.
 
 ## Follow-Ups
 
-- Add visible native relink chooser wiring.
+- Add background media relink preparation job.
 - Add visible undo/redo commands only after focus ownership and text-entry
   behavior are covered by tests.

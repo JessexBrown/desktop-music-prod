@@ -126,17 +126,20 @@ Third-party dependencies remain under their own licenses as recorded in
   text fields are added, including focus ownership, commit/cancel behavior,
   validation, and undo grouping.
 - A plain C++ imported clip inspector edit draft model validates selected-clip
-  start-beat edits and media relink metadata before future visible controls call
+  start-beat edits and media relink metadata for visible controls that call
   app-session commit commands.
 - The JUCE right inspector exposes a selected-clip-only start-beat text field;
   Return commits through the app session and Escape restores the draft's last
   committed value.
 - ADR-0067 defines the selected-clip media relink chooser flow, including
   background WAV preparation, staged package writes, metadata validation, and
-  non-destructive undo behavior before any visible relink button is added.
+  non-destructive undo behavior.
 - A plain C++ imported clip media relink preparation model stages PCM16 WAV
   replacements, produces draft-valid package-relative metadata, and cleans
-  cancellation or stale-selection staging before visible chooser wiring.
+  cancellation or stale-selection staging for visible chooser wiring.
+- The JUCE right inspector exposes a selected-clip-only Relink button that opens
+  a native WAV chooser, prepares and commits staged media replacement, refreshes
+  the timeline/inspector/undo state, and previews the refreshed clip cache.
 - A plain C++ track voice scheduler turns timeline clip plans, render windows,
   and track gain/pan/mute/solo snapshots into mixer-ready voice descriptors.
 - Project track volume, pan, mute, and solo state is persisted and fed into
@@ -395,7 +398,9 @@ or use `ctest --preset dev --output-on-failure`.
 - `docs/adr/ADR-0066-visible-imported-clip-start-beat-control.md` records the
   first visible selected-clip-only imported clip inspector edit control.
 - `docs/adr/ADR-0067-imported-clip-media-relink-chooser-flow.md` records the
-  native selected-clip media relink chooser flow before implementation.
+  native selected-clip media relink chooser flow design.
 - `docs/adr/ADR-0068-imported-clip-media-relink-preparation-model.md` records
   the plain C++ relink preparation and staged commit boundary.
+- `docs/adr/ADR-0069-visible-imported-clip-media-relink-control.md` records
+  the visible selected-clip-only inspector relink control.
 - `docs/issues/NEXT-ISSUES.md` lists the next five small tasks.
