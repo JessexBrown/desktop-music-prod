@@ -122,6 +122,9 @@ Third-party dependencies remain under their own licenses as recorded in
 - App command metadata now includes imported clip edit undo/redo routing for the
   top undo or redo stack entry; visible controls and shortcuts are still future
   work.
+- ADR-0064 defines the editable imported clip inspector flow before visible
+  text fields are added, including focus ownership, commit/cancel behavior,
+  validation, and undo grouping.
 - A plain C++ track voice scheduler turns timeline clip plans, render windows,
   and track gain/pan/mute/solo snapshots into mixer-ready voice descriptors.
 - Project track volume, pan, mute, and solo state is persisted and fed into
@@ -168,8 +171,8 @@ Third-party dependencies remain under their own licenses as recorded in
 ## What Does Not Exist Yet
 
 - AIFF/FLAC/MP3 import, automatic resampling, interactive waveform editing,
-  timeline zoom/scroll, loop-region editing controls, or drag/drop clip
-  placement.
+  visible editable imported clip inspector fields, timeline zoom/scroll,
+  loop-region editing controls, or drag/drop clip placement.
 - Resampling, time-stretching, streaming, multi-track mixer strips, metering,
   and automation.
 - MIDI clips or piano roll editing.
@@ -371,4 +374,6 @@ or use `ctest --preset dev --output-on-failure`.
   the media replacement undo/redo history and cache invalidation behavior.
 - `docs/adr/ADR-0063-imported-clip-edit-undo-command-routing.md` records the
   command routing path for top-of-stack imported clip edit undo/redo.
+- `docs/adr/ADR-0064-imported-clip-inspector-editing-flow.md` records the
+  editable inspector focus, commit/cancel, validation, and undo grouping design.
 - `docs/issues/NEXT-ISSUES.md` lists the next five small tasks.

@@ -46,4 +46,4 @@ session command so keyboard and mouse selection share the same visible state.
 
 ## Follow-Ups
 
-- Design the imported clip inspector editing flow.
+- Add a plain C++ imported clip inspector edit draft/validation model.

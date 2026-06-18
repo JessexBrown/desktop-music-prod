@@ -45,6 +45,6 @@ command-palette entries.
 
 ## Follow-Ups
 
-- Design the imported clip inspector editing flow.
+- Add a plain C++ imported clip inspector edit draft/validation model.
 - Keep global shortcuts and command palette work behind the command registry
   focus policy.

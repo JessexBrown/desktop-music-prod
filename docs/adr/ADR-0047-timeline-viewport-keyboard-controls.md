@@ -44,4 +44,4 @@ updates the status line with the new view start or zoom scale.
 
 ## Follow-Ups
 
-- Design the imported clip inspector editing flow.
+- Add a plain C++ imported clip inspector edit draft/validation model.

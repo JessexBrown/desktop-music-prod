@@ -61,7 +61,6 @@ global shortcuts, editable inspector fields, or timeline drag/drop.
 
 ## Follow-Ups
 
-- Design the imported clip inspector editing flow, including text-entry focus
-  ownership and undo grouping.
+- Add a plain C++ imported clip inspector edit draft/validation model.
 - Add editable inspector or timeline gesture commits only after visible commands
   and text-entry behavior are covered by tests.

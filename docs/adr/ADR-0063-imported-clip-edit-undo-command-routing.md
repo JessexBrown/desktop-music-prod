@@ -56,7 +56,6 @@ inspector fields, drag/drop edits, or package file restoration.
 
 ## Follow-Ups
 
-- Design the imported clip inspector editing flow, including text-entry focus,
-  commit/cancel behavior, validation errors, and undo grouping.
+- Add a plain C++ imported clip inspector edit draft/validation model.
 - Add visible undo/redo controls only after focus ownership and text-entry
   behavior are covered by tests.

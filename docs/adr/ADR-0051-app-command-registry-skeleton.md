@@ -60,7 +60,7 @@ shortcut editor.
 
 ## Follow-Ups
 
-- Design the imported clip inspector editing flow.
+- Add a plain C++ imported clip inspector edit draft/validation model.
 - Move toward a longer-lived app command table when global shortcuts or command
   palette UI need it.
 - Add command palette and shortcut editor UI only after focus and text-entry

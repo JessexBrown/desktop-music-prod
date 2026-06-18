@@ -34,11 +34,12 @@ Acceptance:
 - Add a non-modal path back to the Audio/MIDI setup dialog.
 - Keep the first implementation separate from plugin scanning.
 
-## 5. Design Imported Clip Inspector Editing Flow
+## 5. Add Imported Clip Inspector Edit Draft Model
 
 Acceptance:
-- Add a short UX/architecture note for editable imported clip inspector fields.
-- Define text-entry focus ownership, commit/cancel behavior, validation errors,
-  and undo grouping for placement and media replacement edits.
-- Keep visible controls, global shortcuts, package file restoration, and
-  drag/drop clip operations out of this task.
+- Add a plain C++ edit draft/validation model for imported clip inspector
+  fields.
+- Cover start-beat commit/cancel validation and media relink metadata validation
+  with tests.
+- Keep visible controls, global shortcuts, file chooser behavior, package file
+  restoration, and drag/drop clip operations out of this task.
