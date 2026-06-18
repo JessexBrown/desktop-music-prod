@@ -10,6 +10,7 @@
 #include "core/ImportedClipMediaRelink.h"
 #include "core/ImportedClipInspector.h"
 #include "core/ImportedMediaPackageInventory.h"
+#include "core/PackageMediaCleanupStatus.h"
 #include "core/PackageMediaQuarantineCommand.h"
 #include "core/PackageMediaQuarantinePreflightPlan.h"
 #include "core/PackageMediaQuarantineRestoreManifest.h"
@@ -2908,6 +2909,201 @@ void backgroundPackageMediaCleanupJobPropagatesCommandFailure()
            "Background cleanup command failure leaves audio original");
 
     expect(std::filesystem::remove_all(package) > 0, "Temporary background failure package deleted");
+}
+
+void packageMediaCleanupStatusMapsInventoryAndPreflightStates()
+{
+    {
+        projectname::ImportedMediaPackageInventory inventory;
+        const auto empty = projectname::describePackageMediaCleanupInventory(inventory);
+        expect(empty.kind == projectname::PackageMediaCleanupStatusKind::noCandidates,
+               "Cleanup status reports no inventory candidates");
+        expect(empty.severity == projectname::PackageMediaCleanupStatusSeverity::success,
+               "Cleanup status treats no candidates as successful");
+    }
+
+    {
+        projectname::ImportedMediaPackageInventory inventory;
+        projectname::ImportedMediaPackageAsset asset;
+        asset.relativePath = "audio/orphan.wav";
+        asset.unreferencedCandidate = true;
+        inventory.assets.push_back(std::move(asset));
+
+        const auto review = projectname::describePackageMediaCleanupInventory(inventory);
+        expect(review.kind == projectname::PackageMediaCleanupStatusKind::reviewAvailable,
+               "Cleanup status reports inventory candidates");
+        expect(review.browserAffordanceId
+                   == std::string(projectname::packageMediaCleanupAffordanceIds::browserReviewAction),
+               "Cleanup inventory status targets browser review action");
+    }
+
+    {
+        projectname::ImportedMediaPackageInventory inventory;
+        projectname::ImportedMediaPackageUnsafeReference unsafe;
+        unsafe.relativePath = "../outside.wav";
+        unsafe.reason = "unsafe path";
+        inventory.unsafeReferences.push_back(std::move(unsafe));
+
+        const auto unsafeStatus = projectname::describePackageMediaCleanupInventory(inventory);
+        expect(unsafeStatus.kind == projectname::PackageMediaCleanupStatusKind::unsafeReferences,
+               "Cleanup status reports unsafe inventory references");
+        expect(unsafeStatus.severity == projectname::PackageMediaCleanupStatusSeverity::warning,
+               "Cleanup unsafe reference status is warning severity");
+    }
+
+    {
+        projectname::ImportedMediaPackageInventory inventory;
+        projectname::ImportedMediaPackageMissingReference missing;
+        missing.relativePath = "audio/missing.wav";
+        inventory.missingReferences.push_back(std::move(missing));
+
+        const auto missingStatus = projectname::describePackageMediaCleanupInventory(inventory);
+        expect(missingStatus.kind == projectname::PackageMediaCleanupStatusKind::missingReferences,
+               "Cleanup status reports missing inventory references");
+        expect(missingStatus.inspectorAffordanceId
+                   == std::string(projectname::packageMediaCleanupAffordanceIds::inspectorRestoreOptions),
+               "Cleanup missing reference status targets inspector restore options");
+    }
+
+    {
+        projectname::PackageMediaQuarantinePreflightResult preflight;
+        preflight.status = projectname::PackageMediaQuarantinePreflightStatus::planned;
+        preflight.restoreManifest =
+            makeTestQuarantineRestoreManifest("2026-06-18T23-00-00Z-status");
+
+        const auto ready = projectname::describePackageMediaCleanupPreflight(preflight);
+        expect(ready.kind == projectname::PackageMediaCleanupStatusKind::preflightReady,
+               "Cleanup status reports planned preflight as ready");
+        expect(ready.browserAffordanceId
+                   == std::string(projectname::packageMediaCleanupAffordanceIds::browserCleanupAction),
+               "Cleanup preflight-ready status targets cleanup confirmation");
+    }
+
+    {
+        projectname::PackageMediaQuarantinePreflightResult preflight;
+        preflight.status = projectname::PackageMediaQuarantinePreflightStatus::activePackageWork;
+        preflight.error = "Package work is active.";
+
+        const auto active = projectname::describePackageMediaCleanupPreflight(preflight);
+        expect(active.kind == projectname::PackageMediaCleanupStatusKind::activePackageWork,
+               "Cleanup status reports active package work");
+        expect(active.browserAffordanceId
+                   == std::string(projectname::packageMediaCleanupAffordanceIds::browserCleanupDisabled),
+               "Cleanup active-work status disables browser cleanup action");
+    }
+
+    {
+        projectname::PackageMediaQuarantinePreflightResult preflight;
+        preflight.status = projectname::PackageMediaQuarantinePreflightStatus::noMovableCandidates;
+
+        const auto noCandidates = projectname::describePackageMediaCleanupPreflight(preflight);
+        expect(noCandidates.kind == projectname::PackageMediaCleanupStatusKind::noCandidates,
+               "Cleanup status reports no preflight candidates");
+    }
+}
+
+void packageMediaCleanupStatusMapsQuarantineRestoreAndCancellation()
+{
+    {
+        projectname::PackageMediaQuarantineCommandResult quarantine;
+        quarantine.status = projectname::PackageMediaQuarantineCommandStatus::completed;
+        quarantine.restoreManifest =
+            makeTestQuarantineRestoreManifest("2026-06-18T23-10-00Z-status");
+
+        const auto completed = projectname::describePackageMediaCleanupQuarantine(quarantine);
+        expect(completed.kind == projectname::PackageMediaCleanupStatusKind::quarantineCompleted,
+               "Cleanup status reports quarantine completion");
+        expect(completed.severity == projectname::PackageMediaCleanupStatusSeverity::success,
+               "Cleanup quarantine completion is success severity");
+        expect(completed.browserAffordanceId
+                   == std::string(projectname::packageMediaCleanupAffordanceIds::browserRestoreList),
+               "Cleanup quarantine completion targets restore list");
+    }
+
+    {
+        projectname::PackageMediaQuarantineCommandResult quarantine;
+        quarantine.status = projectname::PackageMediaQuarantineCommandStatus::destinationOccupied;
+        quarantine.error = "Quarantine destination is occupied.";
+
+        const auto failed = projectname::describePackageMediaCleanupQuarantine(quarantine);
+        expect(failed.kind == projectname::PackageMediaCleanupStatusKind::cleanupFailed,
+               "Cleanup status reports quarantine failure");
+        expect(failed.severity == projectname::PackageMediaCleanupStatusSeverity::error,
+               "Cleanup quarantine failure is error severity");
+        expect(failed.detailText == "Quarantine destination is occupied.",
+               "Cleanup quarantine failure preserves command detail");
+    }
+
+    {
+        projectname::PackageMediaQuarantineRestoreCommandResult restore;
+        restore.status = projectname::PackageMediaQuarantineRestoreCommandStatus::restored;
+        restore.restoredCount = 3;
+
+        const auto restored = projectname::describePackageMediaCleanupRestore(restore);
+        expect(restored.kind == projectname::PackageMediaCleanupStatusKind::restoreCompleted,
+               "Cleanup status reports restore completion");
+        expect(restored.detailText == "3 item(s) restored.",
+               "Cleanup restore completion reports restored count");
+    }
+
+    {
+        projectname::PackageMediaQuarantineRestoreCommandResult restore;
+        restore.status = projectname::PackageMediaQuarantineRestoreCommandStatus::restoreConflict;
+        restore.conflictCount = 1;
+
+        const auto conflict = projectname::describePackageMediaCleanupRestore(restore);
+        expect(conflict.kind == projectname::PackageMediaCleanupStatusKind::restoreConflict,
+               "Cleanup status reports restore conflict");
+        expect(conflict.inspectorAffordanceId
+                   == std::string(projectname::packageMediaCleanupAffordanceIds::inspectorConflictNotice),
+               "Cleanup restore conflict targets inspector conflict notice");
+    }
+
+    {
+        projectname::PackageMediaQuarantineRestoreCommandResult restore;
+        restore.status = projectname::PackageMediaQuarantineRestoreCommandStatus::missingQuarantinePath;
+        restore.missingCount = 1;
+
+        const auto partial = projectname::describePackageMediaCleanupRestore(restore);
+        expect(partial.kind == projectname::PackageMediaCleanupStatusKind::partialFailure,
+               "Cleanup status reports restore partial failure");
+        expect(partial.severity == projectname::PackageMediaCleanupStatusSeverity::error,
+               "Cleanup restore partial failure is error severity");
+    }
+
+    {
+        auto manifest = makeTestQuarantineRestoreManifest("2026-06-18T23-20-00Z-status");
+        manifest.state = projectname::PackageMediaQuarantineManifestState::restoreConflict;
+        manifest.movedEntries.front().restoreConflict = true;
+
+        const auto conflict = projectname::describePackageMediaCleanupRestoreManifest(manifest);
+        expect(conflict.kind == projectname::PackageMediaCleanupStatusKind::restoreConflict,
+               "Cleanup status maps restore-manifest conflict");
+    }
+
+    {
+        projectname::BackgroundPackageMediaCleanupProgress progress;
+        progress.phase = projectname::BackgroundPackageMediaCleanupPhase::inventory;
+        progress.percent = 15;
+
+        const auto running = projectname::describePackageMediaCleanupProgress(progress);
+        expect(running.kind == projectname::PackageMediaCleanupStatusKind::inventoryRunning,
+               "Cleanup status maps inventory progress");
+        expect(running.statusBarAffordanceId
+                   == std::string(projectname::packageMediaCleanupAffordanceIds::statusBarProgress),
+               "Cleanup progress targets status bar progress affordance");
+    }
+
+    {
+        projectname::BackgroundPackageMediaCleanupResult result;
+        result.cancelled = true;
+
+        const auto cancelled = projectname::describePackageMediaCleanupResult(result);
+        expect(cancelled.kind == projectname::PackageMediaCleanupStatusKind::cancelled,
+               "Cleanup status maps cancellation");
+        expect(cancelled.statusText == "Cleanup was cancelled before moving media.",
+               "Cleanup cancellation text is stable");
+    }
 }
 
 void importedClipInspectorReportsSelectedOrFirstImportedClipMetadata()
@@ -6795,6 +6991,8 @@ int main()
     backgroundPackageMediaCleanupJobCancelsBeforeStart();
     backgroundPackageMediaCleanupJobRejectsActivePackageWork();
     backgroundPackageMediaCleanupJobPropagatesCommandFailure();
+    packageMediaCleanupStatusMapsInventoryAndPreflightStates();
+    packageMediaCleanupStatusMapsQuarantineRestoreAndCancellation();
     importedClipInspectorReportsSelectedOrFirstImportedClipMetadata();
     waveformThumbnailLoaderReportsInvalidAnalysis();
     projectModelPlacesImportedAudioClips();

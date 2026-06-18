@@ -34,16 +34,15 @@ Acceptance:
 - Add a non-modal path back to the Audio/MIDI setup dialog.
 - Keep the first implementation separate from plugin scanning.
 
-## 5. Add Package Media Cleanup Status Model
+## 5. Add Package Media Cleanup Batch Discovery
 
 Acceptance:
-- Add a plain C++ mapper that converts package media inventory, preflight,
-  quarantine, restore, conflict, partial-failure, and cancellation states into
-  stable status text, severity, and browser/inspector/status-bar affordance ids.
-- Cover active package work, unsafe references, missing references, no cleanup
-  candidates, quarantine success/failure, restore success/conflict, partial
-  failure, and cancellation with unit tests.
+- Add a plain C++ scanner that lists package-local cleanup batches from
+  `backups/media-trash/<cleanup-id>/restore-manifest.json`.
+- Validate cleanup ids and package-relative manifest paths before loading, then
+  attach `PackageMediaCleanupStatus` output for completed, restored,
+  restore-conflict, and partial-failure manifests.
+- Cover valid batches, invalid cleanup ids, unreadable manifests, and sorted
+  newest-first batch order with unit tests.
 - Keep visible JUCE UI, permanent deletion, and retention policy out of this
   task.
-- Update `README.md` or `docs/PACKAGE_MEDIA_CLEANUP_UX.md` if the mapper names
-  differ from the documented UI states.

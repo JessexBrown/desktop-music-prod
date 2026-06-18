@@ -159,7 +159,7 @@ plain C++ command models. It should not move files on the UI thread, scan
 plugins, delete quarantined media, invent retention rules, or mutate project
 state from the audio callback.
 
-The first testable model slice should be a status mapper that turns inventory,
-preflight, quarantine, restore, conflict, partial-failure, and cancellation
-states into stable status text, severity, and target affordance identifiers for
-the browser, inspector, and status bar.
+`PackageMediaCleanupStatus` is the first testable model slice. It turns
+inventory, preflight, quarantine, restore, conflict, partial-failure, and
+cancellation states into stable status text, severity, and target affordance
+identifiers for the browser, inspector, and status bar.

@@ -171,6 +171,10 @@ Third-party dependencies remain under their own licenses as recorded in
 - A cancellable background package media cleanup job runs inventory, preflight,
   quarantine, and restore command paths off the UI/audio threads while reporting
   phase and percent progress for future package maintenance UI.
+- A plain C++ package media cleanup status model maps inventory, preflight,
+  quarantine, restore, conflict, partial-failure, and cancellation states to
+  stable user-facing copy, severity, and browser/inspector/status-bar
+  affordance ids.
 - A plain C++ track voice scheduler turns timeline clip plans, render windows,
   and track gain/pan/mute/solo snapshots into mixer-ready voice descriptors.
 - Project track volume, pan, mute, and solo state is persisted and fed into
@@ -461,4 +465,6 @@ or use `ctest --preset dev --output-on-failure`.
   package media quarantine restore command.
 - `docs/adr/ADR-0079-background-package-media-cleanup-job.md` records the
   cancellable background cleanup/restore job wrapper.
+- `docs/adr/ADR-0080-package-media-cleanup-status-model.md` records the
+  package media cleanup status mapping contract.
 - `docs/issues/NEXT-ISSUES.md` lists the next five small tasks.

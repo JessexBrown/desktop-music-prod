@@ -69,6 +69,8 @@ add_library(projectname_core
     src/core/ImportedClipInspector.h
     src/core/PackagePath.cpp
     src/core/PackagePath.h
+    src/core/PackageMediaCleanupStatus.cpp
+    src/core/PackageMediaCleanupStatus.h
     src/core/PackageMediaQuarantineCommand.cpp
     src/core/PackageMediaQuarantineCommand.h
     src/core/PackageMediaQuarantinePreflightPlan.cpp
