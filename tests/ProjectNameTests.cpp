@@ -2842,6 +2842,129 @@ void timelineViewportFitHelperFramesImportedAudioClips()
     }
 }
 
+void timelineViewportCenterHelperFramesSelectedImportedAudioClip()
+{
+    auto unselectedProject = projectname::ProjectModel::createDefault();
+    projectname::ProjectClip unselected;
+    unselected.id = "clip-center-unselected";
+    unselected.name = "Center Unselected";
+    unselected.type = "audio-file";
+    unselected.relativePath = "audio/center-unselected.wav";
+    unselected.analysisPath = "analysis/center-unselected.waveform.json";
+    unselected.startBeats = 8.0;
+    unselected.lengthBeats = 2.0;
+    expect(unselectedProject.addClipToTrack("track-1", unselected),
+           "Timeline center helper test attaches unselected imported clip");
+    const auto unselectedCenter = projectname::centerTimelineViewportOnSelectedImportedAudioClip(
+        unselectedProject,
+        { 0.0, 0.25 },
+        80);
+    expect(!unselectedCenter.has_value(),
+           "Timeline center helper ignores projects without a selected imported clip");
+
+    const auto stalePackage = makeTemporaryPackagePath("projectname-center-helper-stale-selection-test");
+    writeManifestText(stalePackage, R"({
+  "manifestVersion": 1,
+  "name": "Stale Center Selection",
+  "transport": {
+    "tempoBpm": 120,
+    "timeSignature": { "numerator": 4, "denominator": 4 },
+    "positionBeats": 0
+  },
+  "selection": { "clipId": "missing-selected-center-clip" },
+  "tracks": [
+    {
+      "id": "track-center-stale",
+      "name": "Center Stale",
+      "type": "audio",
+      "clips": [
+        {
+          "id": "clip-center-fallback",
+          "name": "Center Fallback",
+          "type": "audio-file",
+          "relativePath": "audio/center-fallback.wav",
+          "analysisPath": "analysis/center-fallback.waveform.json",
+          "startBeats": 2,
+          "lengthBeats": 2
+        }
+      ]
+    }
+  ]
+})");
+
+    std::string error;
+    auto staleProject = projectname::ProjectModel::loadPackage(stalePackage, error);
+    expect(staleProject.has_value()
+               && staleProject->getSelectedClipId() == "missing-selected-center-clip",
+           "Timeline center helper stale test loads stale selected id");
+    if (staleProject.has_value())
+    {
+        const auto staleCenter = projectname::centerTimelineViewportOnSelectedImportedAudioClip(
+            *staleProject,
+            { 0.0, 0.25 },
+            80);
+        expect(!staleCenter.has_value(),
+               "Timeline center helper ignores stale selected imported clip ids");
+    }
+    expect(std::filesystem::remove_all(stalePackage) > 0,
+           "Temporary stale center helper package deleted");
+
+    auto selectedProject = projectname::ProjectModel::createDefault();
+    projectname::ProjectClip selected;
+    selected.id = "clip-center-selected";
+    selected.name = "Center Selected";
+    selected.type = "audio-file";
+    selected.relativePath = "audio/center-selected.wav";
+    selected.analysisPath = "analysis/center-selected.waveform.json";
+    selected.startBeats = 40.0;
+    selected.lengthBeats = 4.0;
+    expect(selectedProject.addClipToTrack("track-1", selected),
+           "Timeline center helper test attaches selected imported clip");
+    expect(selectedProject.selectImportedAudioClip(selected.id, error),
+           "Timeline center helper test selects imported clip");
+    const auto invalidWidthCenter = projectname::centerTimelineViewportOnSelectedImportedAudioClip(
+        selectedProject,
+        { 0.0, 0.25 },
+        0);
+    expect(!invalidWidthCenter.has_value(),
+           "Timeline center helper rejects invalid viewport width");
+
+    auto centered = projectname::centerTimelineViewportOnSelectedImportedAudioClip(
+        selectedProject,
+        { 0.0, 0.25 },
+        80);
+    expect(centered.has_value(), "Timeline center helper frames selected imported clip");
+    expect(centered.has_value() && std::abs(centered->viewStartBeats - 32.0) < 0.0001,
+           "Timeline center helper centers offscreen selected imported clip");
+    expect(centered.has_value() && std::abs(centered->beatsPerPixel - 0.25) < 0.0001,
+           "Timeline center helper preserves current zoom scale");
+
+    if (centered.has_value())
+    {
+        projectname::TimelineClipLaneOptions options;
+        options.viewStartBeats = centered->viewStartBeats;
+        options.beatsPerPixel = centered->beatsPerPixel;
+        options.viewportWidthPixels = 80;
+
+        const auto layout = projectname::buildImportedAudioTimelineClipLane(
+            selectedProject,
+            makeTemporaryPackagePath("center-unused"),
+            options);
+        expect(layout.clips.size() == 1,
+               "Timeline center helper lane proof includes selected imported clip");
+
+        if (!layout.clips.empty())
+        {
+            const auto& item = layout.clips.front();
+            expect(item.selected && item.visible,
+                   "Timeline center helper lane proof keeps selected clip visible");
+            expect(std::abs((static_cast<double>(item.x) + static_cast<double>(item.width) * 0.5) - 40.0)
+                       < 0.0001,
+                   "Timeline center helper lane proof centers selected clip rectangle");
+        }
+    }
+}
+
 void workspaceCommandRouterPreservesFocusedWorkspaceShortcuts()
 {
     const projectname::WorkspaceCommandAvailability allAvailable {
@@ -4389,6 +4512,7 @@ int main()
     appSessionKeepsTransportInsideProjectModel();
     appSessionTimelineViewportStateClampsValues();
     timelineViewportFitHelperFramesImportedAudioClips();
+    timelineViewportCenterHelperFramesSelectedImportedAudioClip();
     workspaceCommandRouterPreservesFocusedWorkspaceShortcuts();
     appCommandRegistryDescribesPrototypeTopBarCommands();
     appSessionSelectsImportedAudioClips();

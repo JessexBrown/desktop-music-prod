@@ -66,7 +66,7 @@ they affect user-visible workflow. Do not add global shortcuts by scattering
 
 ## Follow-Ups
 
-- Add a selected-clip centering helper before adding another viewport control.
+- Add a compact center-selected control beside the viewport controls.
 - Add visible viewport controls or a compact zoom indicator after command
   routing is clearer.
 - Add undo boundaries before editable inspector or timeline clip operations.

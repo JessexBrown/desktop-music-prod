@@ -145,6 +145,24 @@ void sanitizePreparedSamples(std::vector<float>& samples)
         && clip.lengthBeats > 0.0;
 }
 
+[[nodiscard]] const ProjectClip* findUsableImportedTimelineClipById(const ProjectModel& project,
+                                                                    const std::string& clipId) noexcept
+{
+    if (clipId.empty())
+        return nullptr;
+
+    for (const auto& track : project.getTracks())
+    {
+        for (const auto& clip : track.clips)
+        {
+            if (clip.id == clipId && isUsableImportedTimelineClip(clip))
+                return &clip;
+        }
+    }
+
+    return nullptr;
+}
+
 [[nodiscard]] TimelinePlaybackSampleRateMismatch makeSampleRateMismatch(
     const TimelinePlaybackClipPlan& clip,
     double sourceSampleRateHz,
@@ -230,6 +248,26 @@ std::optional<TimelineViewportState> fitTimelineViewportToImportedAudioClips(
                                        viewStartBeats + TimelineViewportState {}.beatsPerPixel);
     const auto beatsPerPixel = normalizeTimelineBeatsPerPixel(
         (viewEndBeats - viewStartBeats) / static_cast<double>(viewportWidthPixels));
+
+    return TimelineViewportState { viewStartBeats, beatsPerPixel };
+}
+
+std::optional<TimelineViewportState> centerTimelineViewportOnSelectedImportedAudioClip(
+    const ProjectModel& project,
+    TimelineViewportState currentViewport,
+    int viewportWidthPixels)
+{
+    if (viewportWidthPixels <= 0)
+        return std::nullopt;
+
+    const auto* selectedClip = findUsableImportedTimelineClipById(project, project.getSelectedClipId());
+    if (selectedClip == nullptr)
+        return std::nullopt;
+
+    const auto beatsPerPixel = normalizeTimelineBeatsPerPixel(currentViewport.beatsPerPixel);
+    const auto visibleBeats = static_cast<double>(viewportWidthPixels) * beatsPerPixel;
+    const auto clipCenterBeats = selectedClip->startBeats + selectedClip->lengthBeats * 0.5;
+    const auto viewStartBeats = normalizeTimelineViewStartBeats(clipCenterBeats - visibleBeats * 0.5);
 
     return TimelineViewportState { viewStartBeats, beatsPerPixel };
 }

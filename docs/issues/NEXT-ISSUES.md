@@ -34,12 +34,13 @@ Acceptance:
 - Add a non-modal path back to the Audio/MIDI setup dialog.
 - Keep the first implementation separate from plugin scanning.
 
-## 5. Add a Selected-Clip Timeline Centering Helper
+## 5. Add a Compact Selected-Clip Center Control
 
 Acceptance:
-- Add a plain C++ helper that computes a timeline viewport start capable of
-  centering the selected imported audio clip without changing zoom scale.
-- Add focused tests for no selection, missing selected clip, and an offscreen
-  selected imported clip.
-- Do not add a visible center button until the helper behavior is proven.
+- Add a small visible center-selected control beside the existing workspace
+  viewport controls.
+- Route it through `centerTimelineViewportOnSelectedImportedAudioClip`, update
+  the session viewport, and refresh the lane plus indicator.
+- Surface a non-disruptive status message when no selected imported clip can be
+  centered.
 - Keep clip editing, drag/drop behavior, and global shortcuts out of this task.

@@ -87,5 +87,5 @@ shortcut editor UI.
 
 ## Follow-Ups
 
-- Add a selected-clip centering helper before adding another viewport control.
+- Add a compact center-selected control beside the viewport controls.
 - Add undo boundaries before editable inspector or timeline clip operations.

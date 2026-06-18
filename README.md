@@ -68,6 +68,8 @@ Third-party dependencies remain under their own licenses as recorded in
 - Compact workspace controls can pan the timeline view, reset it to beat zero,
   fit imported clips, and zoom the viewport in or out without adding global
   shortcuts.
+- A plain C++ selected-clip centering helper computes a viewport start for the
+  selected imported timeline clip while preserving the current zoom scale.
 - Focused workspace shortcuts route through a small tested command router before
   the JUCE panel executes clip-selection or viewport callbacks.
 - A small app command registry records stable ids, metadata, scopes, and
@@ -137,9 +139,10 @@ Third-party dependencies remain under their own licenses as recorded in
   clip selection and keyboard traversal, cached prepared voice-window playback,
   sample-rate mismatch metadata propagation, static track mix command updates,
   background timeline voice-window preparation and cancelled/stale completion
-  handling, timeline viewport state, fit-to-clips helper, indicator formatting,
-  and keyboard commands, workspace command routing, app command registry
-  metadata, enablement, and dispatch results, timeline lane
+  handling, timeline viewport state, fit-to-clips and selected-clip centering
+  helpers, indicator formatting, and keyboard commands, workspace command
+  routing, app command registry metadata, enablement, and dispatch results,
+  timeline lane
   layout/hit-testing/placement/loop-range scaling, track voice scheduling
   policy, persisted track mix state, stereo prepared voice summing, loop-region
   persistence/advance behavior, and background import success, failure,
@@ -344,4 +347,6 @@ or use `ctest --preset dev --output-on-failure`.
   tested model helper for fitting imported clips in the timeline viewport.
 - `docs/adr/ADR-0057-compact-timeline-fit-control.md` records the visible
   compact workspace control for fitting imported timeline clips.
+- `docs/adr/ADR-0058-selected-clip-timeline-centering-helper.md` records the
+  tested model helper for centering the selected imported timeline clip.
 - `docs/issues/NEXT-ISSUES.md` lists the next five small tasks.

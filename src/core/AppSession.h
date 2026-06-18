@@ -82,6 +82,10 @@ struct TimelineViewportState
     const ProjectModel& project,
     int viewportWidthPixels,
     double paddingBeats = 1.0);
+[[nodiscard]] std::optional<TimelineViewportState> centerTimelineViewportOnSelectedImportedAudioClip(
+    const ProjectModel& project,
+    TimelineViewportState currentViewport,
+    int viewportWidthPixels);
 
 class AppSession
 {
