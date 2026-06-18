@@ -87,6 +87,4 @@ file chooser for relink.
 
 ## Follow-Ups
 
-- Add imported clip media relink preparation model.
-- Add visible native relink chooser wiring after the preparation model is
-  tested.
+- Add visible native relink chooser wiring.

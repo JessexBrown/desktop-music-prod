@@ -91,7 +91,5 @@ AIFF/FLAC/MP3 support, resampling, or time-stretching.
 
 ## Follow-Ups
 
-- Add imported clip media relink preparation model.
-- Add visible native relink chooser wiring after the preparation model is
-  tested.
+- Add visible native relink chooser wiring.
 - Design unreferenced package asset cleanup/restoration separately.

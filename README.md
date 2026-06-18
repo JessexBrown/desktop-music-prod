@@ -134,6 +134,9 @@ Third-party dependencies remain under their own licenses as recorded in
 - ADR-0067 defines the selected-clip media relink chooser flow, including
   background WAV preparation, staged package writes, metadata validation, and
   non-destructive undo behavior before any visible relink button is added.
+- A plain C++ imported clip media relink preparation model stages PCM16 WAV
+  replacements, produces draft-valid package-relative metadata, and cleans
+  cancellation or stale-selection staging before visible chooser wiring.
 - A plain C++ track voice scheduler turns timeline clip plans, render windows,
   and track gain/pan/mute/solo snapshots into mixer-ready voice descriptors.
 - Project track volume, pan, mute, and solo state is persisted and fed into
@@ -166,7 +169,8 @@ Third-party dependencies remain under their own licenses as recorded in
   helpers, imported clip placement and media replacement undo/redo, imported
   clip edit undo/redo command routing, indicator formatting, and keyboard
   commands, imported clip inspector edit draft validation and cancel behavior,
-  workspace command routing, app command registry metadata,
+  imported clip media relink preparation and cleanup behavior, workspace
+  command routing, app command registry metadata,
   enablement, and dispatch results, timeline lane
   layout/hit-testing/placement/loop-range scaling, track voice scheduling
   policy, persisted track mix state, stereo prepared voice summing, loop-region
@@ -392,4 +396,6 @@ or use `ctest --preset dev --output-on-failure`.
   first visible selected-clip-only imported clip inspector edit control.
 - `docs/adr/ADR-0067-imported-clip-media-relink-chooser-flow.md` records the
   native selected-clip media relink chooser flow before implementation.
+- `docs/adr/ADR-0068-imported-clip-media-relink-preparation-model.md` records
+  the plain C++ relink preparation and staged commit boundary.
 - `docs/issues/NEXT-ISSUES.md` lists the next five small tasks.

@@ -57,6 +57,8 @@ add_library(projectname_core
     src/core/BackgroundWaveformAnalysisJob.h
     src/core/ImportedClipInspectorEditDraft.cpp
     src/core/ImportedClipInspectorEditDraft.h
+    src/core/ImportedClipMediaRelink.cpp
+    src/core/ImportedClipMediaRelink.h
     src/core/ImportedClipInspector.cpp
     src/core/ImportedClipInspector.h
     src/core/PackagePath.cpp

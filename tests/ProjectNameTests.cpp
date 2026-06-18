@@ -5,6 +5,7 @@
 #include "core/BackgroundTimelinePlaybackPreparationJob.h"
 #include "core/BackgroundWaveformAnalysisJob.h"
 #include "core/ImportedClipInspectorEditDraft.h"
+#include "core/ImportedClipMediaRelink.h"
 #include "core/ImportedClipInspector.h"
 #include "core/ProjectAudioImport.h"
 #include "core/ProjectModel.h"
@@ -2013,6 +2014,228 @@ void importedClipInspectorEditDraftValidatesMediaRelinkMetadata()
            "Cancelled media relink no-op remains acceptable to the session");
     expect(!cancelSession.canUndoImportedClipMediaReplacementEdit(),
            "Cancelled media relink edit does not record undo history");
+}
+
+void importedClipMediaRelinkPreparationStagesValidatedMetadata()
+{
+    constexpr auto clipId = "clip-imported-playback";
+
+    auto project = makeProjectWithImportedTimelineClip(4.0, 2.0);
+    std::string error;
+    expect(project.selectImportedAudioClip(clipId, error),
+           "Media relink preparation test selects imported clip");
+
+    const auto package = makeTemporaryPackagePath("projectname-media-relink-prep-test");
+    const auto sourceWav = makeTemporaryAudioPath("projectname-media-relink-source-test");
+    writePcm16Wav(sourceWav, 10, 1, { 1000, 2000, 3000, 4000, 5000 });
+
+    projectname::ImportedClipMediaRelinkPreparationRequest request;
+    request.project = project;
+    request.packageDirectory = package;
+    request.sourceWavPath = sourceWav;
+    request.selectedClipId = clipId;
+
+    auto result = projectname::prepareImportedClipMediaRelink(std::move(request));
+    expect(result.status == projectname::ImportedClipMediaRelinkPreparationStatus::prepared,
+           "Media relink preparation stages valid PCM16 WAV source");
+    expect(result.preparation.has_value(),
+           "Media relink preparation returns prepared metadata");
+
+    if (result.preparation.has_value())
+    {
+        const auto& preparation = *result.preparation;
+        expect(preparation.clipId == clipId,
+               "Media relink preparation preserves selected clip id");
+        expect(preparation.relativePath.rfind("audio/", 0) == 0,
+               "Media relink preparation returns package-relative audio path");
+        expect(preparation.analysisPath.rfind("analysis/", 0) == 0,
+               "Media relink preparation returns package-relative analysis path");
+        expect(std::abs(preparation.lengthBeats - 1.0) < 0.0001,
+               "Media relink preparation calculates length from source frames and tempo");
+        expect(std::filesystem::is_regular_file(preparation.stagedAudioPath),
+               "Media relink preparation stages audio copy");
+        expect(std::filesystem::is_regular_file(preparation.stagedAnalysisPath),
+               "Media relink preparation stages waveform summary");
+        expect(!std::filesystem::exists(preparation.finalAudioPath),
+               "Media relink preparation does not commit final audio before session commit");
+        expect(!std::filesystem::exists(preparation.finalAnalysisPath),
+               "Media relink preparation does not commit final analysis before session commit");
+
+        auto draft =
+            projectname::ImportedClipInspectorEditDraft::fromInspectorState(
+                makeImportedClipInspectorEditState(true));
+        draft.setMediaRelinkDraft(preparation.relativePath,
+                                  preparation.analysisPath,
+                                  preparation.lengthBeats);
+        expect(draft.makeMediaRelinkCommit(error).has_value(),
+               "Media relink preparation metadata validates through inspector edit draft");
+
+        projectname::AppSession session(project);
+        auto commit = projectname::commitPreparedImportedClipMediaRelink(session, preparation);
+        expect(commit.status == projectname::ImportedClipMediaRelinkCommitStatus::committed,
+               "Media relink preparation commits staged files through app session");
+        expect(commit.commit.has_value() && commit.commit->relativePath == preparation.relativePath,
+               "Media relink preparation commit returns draft-compatible relative path");
+        expect(std::filesystem::is_regular_file(preparation.finalAudioPath),
+               "Media relink preparation commit moves audio into final package path");
+        expect(std::filesystem::is_regular_file(preparation.finalAnalysisPath),
+               "Media relink preparation commit moves waveform summary into final package path");
+        expect(!std::filesystem::exists(preparation.stagingDirectory),
+               "Media relink preparation commit removes staging directory");
+
+        const auto* relinkedClip = findClipById(session.getProject(), clipId);
+        expect(relinkedClip != nullptr && relinkedClip->relativePath == preparation.relativePath,
+               "Media relink preparation commit updates imported clip media path");
+        expect(relinkedClip != nullptr && relinkedClip->analysisPath == preparation.analysisPath,
+               "Media relink preparation commit updates imported clip analysis path");
+        expect(relinkedClip != nullptr && std::abs(relinkedClip->lengthBeats - 1.0) < 0.0001,
+               "Media relink preparation commit updates imported clip length");
+        expect(relinkedClip != nullptr && std::abs(relinkedClip->startBeats - 4.0) < 0.0001,
+               "Media relink preparation commit preserves imported clip start beat");
+        expect(session.canUndoImportedClipMediaReplacementEdit(),
+               "Media relink preparation commit records media replacement undo history");
+    }
+
+    expect(std::filesystem::remove(sourceWav), "Temporary media relink source WAV deleted");
+    expect(std::filesystem::remove_all(package) > 0, "Temporary media relink package deleted");
+}
+
+void importedClipMediaRelinkPreparationRejectsInvalidSourceWithoutStaging()
+{
+    constexpr auto clipId = "clip-imported-playback";
+
+    auto project = makeProjectWithImportedTimelineClip(4.0, 2.0);
+    std::string error;
+    expect(project.selectImportedAudioClip(clipId, error),
+           "Invalid media relink preparation test selects imported clip");
+
+    const auto package = makeTemporaryPackagePath("projectname-media-relink-invalid-test");
+    const auto invalidWav = makeTemporaryAudioPath("projectname-media-relink-invalid-source-test");
+    {
+        std::ofstream file(invalidWav, std::ios::binary | std::ios::trunc);
+        file << "not a wav";
+    }
+
+    projectname::ImportedClipMediaRelinkPreparationRequest request;
+    request.project = project;
+    request.packageDirectory = package;
+    request.sourceWavPath = invalidWav;
+    request.selectedClipId = clipId;
+
+    auto result = projectname::prepareImportedClipMediaRelink(std::move(request));
+    expect(result.status == projectname::ImportedClipMediaRelinkPreparationStatus::decodeFailed,
+           "Media relink preparation rejects invalid WAV source");
+    expect(!result.preparation.has_value(),
+           "Media relink invalid source does not return preparation metadata");
+    expect(!std::filesystem::exists(package / ".projectname-staging"),
+           "Media relink invalid source does not create staging directory");
+    expect(!result.error.empty(), "Media relink invalid source reports recoverable error");
+
+    expect(std::filesystem::remove(invalidWav), "Temporary invalid media relink WAV deleted");
+    if (std::filesystem::exists(package))
+        expect(std::filesystem::remove_all(package) > 0, "Temporary invalid media relink package deleted");
+}
+
+void importedClipMediaRelinkPreparationCancelsAndCleansStaging()
+{
+    constexpr auto clipId = "clip-imported-playback";
+
+    auto project = makeProjectWithImportedTimelineClip(4.0, 2.0);
+    std::string error;
+    expect(project.selectImportedAudioClip(clipId, error),
+           "Cancelled media relink preparation test selects imported clip");
+
+    const auto package = makeTemporaryPackagePath("projectname-media-relink-cancel-test");
+    const auto sourceWav = makeTemporaryAudioPath("projectname-media-relink-cancel-source-test");
+    writePcm16Wav(sourceWav, 44100, 1, { 1000, 2000, 3000, 4000, 5000, 6000 });
+
+    std::atomic_bool cancelRequested { false };
+    auto sawCopyProgress = false;
+
+    projectname::ImportedClipMediaRelinkPreparationRequest request;
+    request.project = project;
+    request.packageDirectory = package;
+    request.sourceWavPath = sourceWav;
+    request.selectedClipId = clipId;
+    request.cancelRequested = &cancelRequested;
+    request.copyChunkBytes = 1;
+    request.progressCallback =
+        [&cancelRequested, &sawCopyProgress](const projectname::ImportedClipMediaRelinkProgress& progress)
+        {
+            if (progress.stage == projectname::ImportedClipMediaRelinkPreparationStage::copying
+                && progress.bytesCopied > 0)
+            {
+                sawCopyProgress = true;
+                cancelRequested.store(true, std::memory_order_release);
+            }
+        };
+
+    auto result = projectname::prepareImportedClipMediaRelink(std::move(request));
+    expect(result.status == projectname::ImportedClipMediaRelinkPreparationStatus::cancelled,
+           "Media relink preparation reports cancellation");
+    expect(sawCopyProgress, "Media relink preparation cancellation test reaches staged copy progress");
+    expect(!result.preparation.has_value(),
+           "Cancelled media relink preparation does not return prepared metadata");
+    expect(!std::filesystem::exists(package / ".projectname-staging"),
+           "Cancelled media relink preparation cleans staging directory");
+
+    expect(std::filesystem::remove(sourceWav), "Temporary cancelled media relink WAV deleted");
+    if (std::filesystem::exists(package))
+        expect(std::filesystem::remove_all(package) > 0, "Temporary cancelled media relink package deleted");
+}
+
+void importedClipMediaRelinkCommitCleansStaleSelection()
+{
+    constexpr auto clipId = "clip-imported-playback";
+
+    auto project = makeProjectWithImportedTimelineClip(4.0, 2.0);
+    std::string error;
+    expect(project.selectImportedAudioClip(clipId, error),
+           "Stale media relink preparation test selects imported clip");
+
+    const auto package = makeTemporaryPackagePath("projectname-media-relink-stale-test");
+    const auto sourceWav = makeTemporaryAudioPath("projectname-media-relink-stale-source-test");
+    writePcm16Wav(sourceWav, 10, 1, { 1000, 2000, 3000, 4000 });
+
+    projectname::ImportedClipMediaRelinkPreparationRequest request;
+    request.project = project;
+    request.packageDirectory = package;
+    request.sourceWavPath = sourceWav;
+    request.selectedClipId = clipId;
+
+    auto result = projectname::prepareImportedClipMediaRelink(std::move(request));
+    expect(result.status == projectname::ImportedClipMediaRelinkPreparationStatus::prepared
+               && result.preparation.has_value(),
+           "Stale media relink test prepares staged relink");
+
+    if (result.preparation.has_value())
+    {
+        const auto& preparation = *result.preparation;
+        expect(std::filesystem::is_regular_file(preparation.stagedAudioPath),
+               "Stale media relink test starts with staged audio");
+
+        projectname::AppSession session(project);
+        session.clearSelectedClip();
+        auto commit = projectname::commitPreparedImportedClipMediaRelink(session, preparation);
+        expect(commit.status == projectname::ImportedClipMediaRelinkCommitStatus::staleSelection,
+               "Media relink commit rejects stale selected clip");
+        expect(!std::filesystem::exists(preparation.stagingDirectory),
+               "Media relink stale selection cleanup removes staging directory");
+        expect(!std::filesystem::exists(preparation.finalAudioPath),
+               "Media relink stale selection cleanup does not create final audio");
+        expect(!std::filesystem::exists(preparation.finalAnalysisPath),
+               "Media relink stale selection cleanup does not create final analysis");
+
+        const auto* clip = findClipById(session.getProject(), clipId);
+        expect(clip != nullptr && clip->relativePath == "audio/timeline-clip.wav",
+               "Media relink stale selection leaves clip media path unchanged");
+        expect(!session.canUndoImportedClipMediaReplacementEdit(),
+               "Media relink stale selection does not record undo history");
+    }
+
+    expect(std::filesystem::remove(sourceWav), "Temporary stale media relink WAV deleted");
+    if (std::filesystem::exists(package))
+        expect(std::filesystem::remove_all(package) > 0, "Temporary stale media relink package deleted");
 }
 
 void waveformThumbnailLoaderReportsInvalidAnalysis()
@@ -5217,6 +5440,10 @@ int main()
     backgroundAudioImportJobCancelsBeforeStart();
     importedClipInspectorEditDraftValidatesStartBeatCommitAndCancel();
     importedClipInspectorEditDraftValidatesMediaRelinkMetadata();
+    importedClipMediaRelinkPreparationStagesValidatedMetadata();
+    importedClipMediaRelinkPreparationRejectsInvalidSourceWithoutStaging();
+    importedClipMediaRelinkPreparationCancelsAndCleansStaging();
+    importedClipMediaRelinkCommitCleansStaleSelection();
 
     if (failures == 0)
     {

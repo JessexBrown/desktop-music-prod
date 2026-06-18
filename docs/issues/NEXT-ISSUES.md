@@ -34,14 +34,13 @@ Acceptance:
 - Add a non-modal path back to the Audio/MIDI setup dialog.
 - Keep the first implementation separate from plugin scanning.
 
-## 5. Add Imported Clip Media Relink Preparation Model
+## 5. Add Visible Native Relink Chooser Wiring
 
 Acceptance:
-- Add a plain C++ request/result model for preparing a selected imported clip
-  media relink from a PCM16 WAV source.
-- Produce validated package-relative media path, analysis path, and length
-  metadata suitable for `ImportedClipInspectorEditDraft`.
-- Cover invalid source, cancellation, and stale selection cleanup behavior with
-  tests.
-- Keep visible chooser wiring, package cleanup/restoration, global shortcuts,
+- Add a selected-clip-only Relink action to the right inspector.
+- Launch a native `.wav` chooser and prepare the selected file through
+  `ImportedClipMediaRelink`.
+- Commit prepared relinks through `commitPreparedImportedClipMediaRelink` and
+  refresh timeline, inspector, playback cache state, and undo/redo enablement.
+- Keep package cleanup/restoration, global shortcuts, command-palette entries,
   and drag/drop clip operations out of this task.

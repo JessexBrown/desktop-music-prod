@@ -87,4 +87,4 @@ shortcut editor UI.
 
 ## Follow-Ups
 
-- Add imported clip media relink preparation model.
+- Add visible native relink chooser wiring.

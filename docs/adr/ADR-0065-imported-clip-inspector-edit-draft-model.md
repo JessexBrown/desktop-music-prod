@@ -68,7 +68,5 @@ palette entries.
 
 ## Follow-Ups
 
-- Add imported clip media relink preparation model.
-- Add visible native relink chooser wiring after the preparation model is
-  tested.
+- Add visible native relink chooser wiring.
 - Add inspector focus tests when visible text entry exists.
