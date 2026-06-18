@@ -34,14 +34,15 @@ Acceptance:
 - Add a non-modal path back to the Audio/MIDI setup dialog.
 - Keep the first implementation separate from plugin scanning.
 
-## 5. Add Imported Clip Placement Undo History Skeleton
+## 5. Add Imported Clip Media Replacement Undo Tests
 
 Acceptance:
-- Add a plain C++ app-session undo history skeleton for imported clip placement
-  edits only.
-- Record successful `setImportedAudioClipStartBeats` edits with old/new start
-  beats, and ignore failed or no-op edits.
-- Add focused tests for undo, redo, redo clearing after a new edit, and stale
-  clip failure leaving project state unchanged.
-- Do not add visible undo/redo buttons, global shortcuts, media replacement
-  undo, editable inspector fields, or drag/drop clip operations in this task.
+- Extend the plain C++ app-session undo history to support imported clip media
+  replacement entries.
+- Add tests proving undo and redo restore `relativePath`, `analysisPath`, and
+  `lengthBeats` through `AppSession`.
+- Prove stale prepared playback cache entries are invalidated on both undo and
+  redo directions.
+- Keep package file copying/deletion, visible undo/redo buttons, global
+  shortcuts, editable inspector fields, and drag/drop clip operations out of
+  this task.

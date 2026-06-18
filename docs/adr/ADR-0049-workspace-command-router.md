@@ -46,4 +46,4 @@ the returned command. Current behavior is preserved:
 
 ## Follow-Ups
 
-- Add a plain C++ imported clip placement undo history skeleton.
+- Add imported clip media replacement undo tests.

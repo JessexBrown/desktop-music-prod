@@ -42,6 +42,6 @@ selected clip.
 
 ## Follow-Ups
 
-- Add a plain C++ imported clip placement undo history skeleton.
+- Add imported clip media replacement undo tests.
 - Add clip movement and resizing only after explicit edit previews and undo are
   defined.

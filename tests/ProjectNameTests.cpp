@@ -3265,6 +3265,85 @@ void appSessionSelectsImportedAudioClips()
            "Session adjacent selection failure leaves selection empty");
 }
 
+void appSessionTracksImportedClipPlacementUndoHistory()
+{
+    constexpr auto clipId = "clip-imported-playback";
+
+    auto project = makeProjectWithImportedTimelineClip(4.0, 2.0);
+    projectname::AppSession session(std::move(project));
+    std::string error;
+
+    expect(!session.canUndoImportedClipPlacementEdit(),
+           "Session starts with no imported clip placement undo history");
+    expect(!session.canRedoImportedClipPlacementEdit(),
+           "Session starts with no imported clip placement redo history");
+    expect(!session.undoImportedClipPlacementEdit(error),
+           "Session rejects imported clip placement undo with empty history");
+    expect(!session.redoImportedClipPlacementEdit(error),
+           "Session rejects imported clip placement redo with empty history");
+
+    expect(!session.setImportedAudioClipStartBeats(clipId, -1.0, error),
+           "Session placement undo history ignores failed placement edits");
+    expect(!session.canUndoImportedClipPlacementEdit(),
+           "Session failed placement edit does not record undo history");
+
+    expect(session.setImportedAudioClipStartBeats(clipId, 4.0, error),
+           "Session placement undo history accepts no-op placement edit");
+    expect(!session.canUndoImportedClipPlacementEdit(),
+           "Session no-op placement edit does not record undo history");
+
+    expect(session.setImportedAudioClipStartBeats(clipId, 8.0, error),
+           "Session placement undo history records moved imported clip");
+    auto* movedClip = findClipById(session.getProject(), clipId);
+    expect(movedClip != nullptr && std::abs(movedClip->startBeats - 8.0) < 0.0001,
+           "Session placement undo history applies moved start beat");
+    expect(session.canUndoImportedClipPlacementEdit() && !session.canRedoImportedClipPlacementEdit(),
+           "Session placement edit enables undo and clears redo");
+
+    expect(session.undoImportedClipPlacementEdit(error),
+           "Session placement undo reverts moved imported clip");
+    movedClip = findClipById(session.getProject(), clipId);
+    expect(movedClip != nullptr && std::abs(movedClip->startBeats - 4.0) < 0.0001,
+           "Session placement undo restores previous start beat");
+    expect(!session.canUndoImportedClipPlacementEdit() && session.canRedoImportedClipPlacementEdit(),
+           "Session placement undo moves edit to redo history");
+
+    expect(session.redoImportedClipPlacementEdit(error),
+           "Session placement redo reapplies moved imported clip");
+    movedClip = findClipById(session.getProject(), clipId);
+    expect(movedClip != nullptr && std::abs(movedClip->startBeats - 8.0) < 0.0001,
+           "Session placement redo restores moved start beat");
+    expect(session.canUndoImportedClipPlacementEdit() && !session.canRedoImportedClipPlacementEdit(),
+           "Session placement redo moves edit back to undo history");
+
+    expect(session.undoImportedClipPlacementEdit(error),
+           "Session placement undo prepares redo clearing test");
+    expect(session.setImportedAudioClipStartBeats(clipId, 12.0, error),
+           "Session placement undo history records new edit after undo");
+    movedClip = findClipById(session.getProject(), clipId);
+    expect(movedClip != nullptr && std::abs(movedClip->startBeats - 12.0) < 0.0001,
+           "Session placement new edit applies after undo");
+    expect(session.canUndoImportedClipPlacementEdit() && !session.canRedoImportedClipPlacementEdit(),
+           "Session new placement edit clears redo history");
+    expect(!session.redoImportedClipPlacementEdit(error),
+           "Session cleared placement redo history cannot be replayed");
+
+    expect(session.setImportedAudioClipStartBeats(clipId, 16.0, error),
+           "Session placement undo history records stale failure setup edit");
+    session.getProject() = projectname::ProjectModel::createDefault();
+    const auto staleProjectState = session.getProject();
+    expect(!session.undoImportedClipPlacementEdit(error),
+           "Session placement undo fails when edited imported clip is stale");
+    expect(session.getProject() == staleProjectState,
+           "Session stale placement undo leaves project state unchanged");
+    expect(session.canUndoImportedClipPlacementEdit(),
+           "Session stale placement undo keeps undo entry for retry");
+
+    session.replaceProject(makeProjectWithImportedTimelineClip(2.0, 1.0));
+    expect(!session.canUndoImportedClipPlacementEdit() && !session.canRedoImportedClipPlacementEdit(),
+           "Session project replacement clears imported clip placement history");
+}
+
 void appSessionUpdatesStaticTrackMixStateThroughCommand()
 {
     projectname::AppSession session;
@@ -4516,6 +4595,7 @@ int main()
     workspaceCommandRouterPreservesFocusedWorkspaceShortcuts();
     appCommandRegistryDescribesPrototypeTopBarCommands();
     appSessionSelectsImportedAudioClips();
+    appSessionTracksImportedClipPlacementUndoHistory();
     appSessionUpdatesStaticTrackMixStateThroughCommand();
     appSessionSavesAndLoadsProjectPackages();
     appSessionLoopRegionCommandsKeepTransportState();

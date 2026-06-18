@@ -167,6 +167,10 @@ public:
     [[nodiscard]] bool setImportedAudioClipStartBeats(const std::string& clipId,
                                                       double startBeats,
                                                       std::string& error);
+    [[nodiscard]] bool canUndoImportedClipPlacementEdit() const noexcept;
+    [[nodiscard]] bool canRedoImportedClipPlacementEdit() const noexcept;
+    [[nodiscard]] bool undoImportedClipPlacementEdit(std::string& error);
+    [[nodiscard]] bool redoImportedClipPlacementEdit(std::string& error);
     [[nodiscard]] bool replaceImportedAudioClipMedia(const std::string& clipId,
                                                      std::string relativePath,
                                                      std::string analysisPath,
@@ -184,6 +188,13 @@ private:
         std::shared_ptr<const std::vector<float>> samples;
     };
 
+    struct ImportedClipPlacementEdit
+    {
+        std::string clipId;
+        double beforeStartBeats = 0.0;
+        double afterStartBeats = 0.0;
+    };
+
     [[nodiscard]] const CachedImportedTimelineClip* findCachedImportedTimelineClip(
         const TimelinePlaybackClipPlan& clip) const noexcept;
     [[nodiscard]] std::shared_ptr<const std::vector<float>> storeCachedImportedTimelineClip(
@@ -191,11 +202,14 @@ private:
     [[nodiscard]] std::size_t importedTimelineClipCacheSampleBytes() const noexcept;
     void trimImportedTimelineClipCacheToLimits();
     void clearImportedTimelineClipCacheForClip(const std::string& clipId) noexcept;
+    void clearImportedClipPlacementEditHistory() noexcept;
 
     ProjectModel project_;
     ImportedTimelineClipCacheLimits importedTimelineClipCacheLimits_;
     TimelineViewportState timelineViewport_;
     std::vector<CachedImportedTimelineClip> importedTimelineClipCache_;
+    std::vector<ImportedClipPlacementEdit> importedClipPlacementUndoStack_;
+    std::vector<ImportedClipPlacementEdit> importedClipPlacementRedoStack_;
     bool generatedToneActive_ = false;
 };
 } // namespace projectname

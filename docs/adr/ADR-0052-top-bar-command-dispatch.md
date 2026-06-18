@@ -65,4 +65,4 @@ audio-thread work into command handlers.
 
 - Add command palette and shortcut editor UI only after text-entry/focus
   ownership is covered by tests.
-- Add a plain C++ imported clip placement undo history skeleton.
+- Add imported clip media replacement undo tests.

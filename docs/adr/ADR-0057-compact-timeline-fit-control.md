@@ -42,6 +42,6 @@ entry, plugin action, or audio-thread behavior.
 
 ## Follow-Ups
 
-- Add a plain C++ imported clip placement undo history skeleton.
+- Add imported clip media replacement undo tests.
 - Keep global shortcuts and command palette work behind the command registry
   focus policy.

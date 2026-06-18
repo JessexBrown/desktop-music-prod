@@ -46,4 +46,4 @@ session command so keyboard and mouse selection share the same visible state.
 
 ## Follow-Ups
 
-- Add a plain C++ imported clip placement undo history skeleton.
+- Add imported clip media replacement undo tests.

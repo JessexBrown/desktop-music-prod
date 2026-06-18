@@ -87,8 +87,6 @@ recorded.
 
 ## Follow-Ups
 
-- Add a plain C++ imported clip edit history skeleton with placement undo/redo
-  tests.
 - Add media replacement undo/redo tests before editable relink UI.
 - Add visible undo/redo commands only after focus ownership and text-entry
   behavior are covered by tests.
