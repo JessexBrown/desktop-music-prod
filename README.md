@@ -168,6 +168,9 @@ Third-party dependencies remain under their own licenses as recorded in
   package paths are empty, records occupied-original conflicts without
   overwriting active media, and persists updated manifest state through
   `restore-manifest.json.tmp`.
+- A cancellable background package media cleanup job runs inventory, preflight,
+  quarantine, and restore command paths off the UI/audio threads while reporting
+  phase and percent progress for future package maintenance UI.
 - A plain C++ track voice scheduler turns timeline clip plans, render windows,
   and track gain/pan/mute/solo snapshots into mixer-ready voice descriptors.
 - Project track volume, pan, mute, and solo state is persisted and fed into
@@ -203,7 +206,8 @@ Third-party dependencies remain under their own licenses as recorded in
   imported clip media relink preparation and cleanup behavior, background media
   relink preparation jobs, imported media package inventory classification,
   package media quarantine restore-manifest validation, preflight planning,
-  file-moving rollback behavior, and restore/conflict behavior,
+  file-moving rollback behavior, restore/conflict behavior, and background
+  cleanup job status propagation,
   workspace command routing, app command registry metadata, enablement, and
   dispatch results, timeline lane
   layout/hit-testing/placement/loop-range scaling, track voice scheduling
@@ -453,4 +457,6 @@ or use `ctest --preset dev --output-on-failure`.
   package media quarantine file-moving command.
 - `docs/adr/ADR-0078-package-media-quarantine-restore-command.md` records the
   package media quarantine restore command.
+- `docs/adr/ADR-0079-background-package-media-cleanup-job.md` records the
+  cancellable background cleanup/restore job wrapper.
 - `docs/issues/NEXT-ISSUES.md` lists the next five small tasks.

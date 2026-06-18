@@ -34,14 +34,14 @@ Acceptance:
 - Add a non-modal path back to the Audio/MIDI setup dialog.
 - Keep the first implementation separate from plugin scanning.
 
-## 5. Add Package Media Cleanup Background Job
+## 5. Design Package Media Cleanup UI Flow
 
 Acceptance:
-- Add a cancellable background job wrapper for package media inventory,
-  quarantine preflight, quarantine move, and restore commands.
-- Report phase/progress and final command status without running file moves on
-  the UI thread or audio callback.
-- Cover successful quarantine, successful restore, cancellation before start,
-  active package-work rejection, and command failure propagation with tests.
-- Keep visible cleanup UI, permanent deletion, and retention policy out of this
+- Create a short UX note for package media cleanup and restore entry points,
+  confirmation copy, progress states, conflict states, and recovery language.
+- Define how inventory, quarantine, restore, and restore-conflict statuses map
+  to non-modal app status messages and inspector/browser affordances.
+- Keep implementation, permanent deletion, and retention policy out of this
   task.
+- Update `docs/issues/NEXT-ISSUES.md` with the next small implementation task
+  after the design note lands.

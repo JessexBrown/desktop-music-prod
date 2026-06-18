@@ -3,6 +3,7 @@
 #include "core/AudioEngineStub.h"
 #include "core/BackgroundAudioImportJob.h"
 #include "core/BackgroundMediaRelinkPreparationJob.h"
+#include "core/BackgroundPackageMediaCleanupJob.h"
 #include "core/BackgroundTimelinePlaybackPreparationJob.h"
 #include "core/BackgroundWaveformAnalysisJob.h"
 #include "core/ImportedClipInspectorEditDraft.h"
@@ -267,6 +268,28 @@ projectname::PackageMediaQuarantinePreflightRequest makePreflightRequest(
     request.createdAtUtc = "2026-06-18T19-00-00Z";
     request.packageDisplayPath = "Display Only.project";
     request.manifestMarker = "manifest-save-2";
+    return request;
+}
+
+void writePackageMediaCleanupJobFixture(const std::filesystem::path& package)
+{
+    writeManifestText(package, R"({ "tracks": [] })");
+    writeTextFile(package / "audio" / "orphan.wav", "orphan-audio");
+    writeTextFile(package / "analysis" / "orphan.waveform.json", "{}");
+    writeTextFile(package / ".projectname-staging" / "audio-import-a" / "staged.wav", "staged");
+}
+
+projectname::BackgroundPackageMediaCleanupRequest makeBackgroundCleanupQuarantineRequest(
+    const std::filesystem::path& package,
+    std::string cleanupId = "2026-06-18T22-00-00Z-test")
+{
+    projectname::BackgroundPackageMediaCleanupRequest request;
+    request.operation = projectname::BackgroundPackageMediaCleanupOperation::quarantine;
+    request.packageDirectory = package;
+    request.cleanupId = std::move(cleanupId);
+    request.createdAtUtc = "2026-06-18T22-00-00Z";
+    request.packageDisplayPath = "Display Only.project";
+    request.manifestMarker = "manifest-save-3";
     return request;
 }
 
@@ -2730,6 +2753,161 @@ void packageMediaQuarantineRestoreCommandPersistsMissingQuarantinePath()
     }
 
     expect(std::filesystem::remove_all(package) > 0, "Temporary missing restore package deleted");
+}
+
+void backgroundPackageMediaCleanupJobQuarantinesPackage()
+{
+    const auto package = makeTemporaryPackagePath("projectname-background-cleanup-quarantine-test");
+    const auto cleanupId = std::string("2026-06-18T22-00-00Z-test");
+    writePackageMediaCleanupJobFixture(package);
+
+    projectname::BackgroundPackageMediaCleanupJob job(
+        makeBackgroundCleanupQuarantineRequest(package, cleanupId));
+    job.start();
+    const auto startedProgress = job.getProgress();
+    expect(startedProgress.phase != projectname::BackgroundPackageMediaCleanupPhase::pending,
+           "Background cleanup job reports progress after start");
+
+    const auto result = job.waitForResult();
+    const auto completedProgress = job.getProgress();
+    expect(!result.cancelled, "Background cleanup quarantine job is not cancelled");
+    expect(result.preflight.status == projectname::PackageMediaQuarantinePreflightStatus::planned,
+           "Background cleanup quarantine job plans candidates");
+    expect(result.quarantine.status == projectname::PackageMediaQuarantineCommandStatus::completed,
+           "Background cleanup quarantine job completes command");
+    expect(completedProgress.phase == projectname::BackgroundPackageMediaCleanupPhase::completed,
+           "Background cleanup quarantine job reports completed phase");
+    expect(completedProgress.percent == 100,
+           "Background cleanup quarantine job reports 100 percent");
+    expect(std::filesystem::is_regular_file(result.quarantine.restoreManifestPath),
+           "Background cleanup quarantine job writes restore manifest");
+    expect(!std::filesystem::exists(package / "audio" / "orphan.wav"),
+           "Background cleanup quarantine job moves audio original");
+    expect(std::filesystem::is_regular_file(package
+                                            / "backups"
+                                            / "media-trash"
+                                            / cleanupId
+                                            / "audio"
+                                            / "orphan.wav"),
+           "Background cleanup quarantine job moves audio to quarantine");
+
+    expect(std::filesystem::remove_all(package) > 0, "Temporary background cleanup package deleted");
+}
+
+void backgroundPackageMediaCleanupJobRestoresPackage()
+{
+    const auto package = makeTemporaryPackagePath("projectname-background-cleanup-restore-test");
+    const auto cleanupId = std::string("2026-06-18T22-10-00Z-test");
+    writePackageMediaCleanupJobFixture(package);
+
+    projectname::BackgroundPackageMediaCleanupJob quarantineJob(
+        makeBackgroundCleanupQuarantineRequest(package, cleanupId));
+    const auto quarantine = quarantineJob.waitForResult();
+    expect(quarantine.quarantine.status == projectname::PackageMediaQuarantineCommandStatus::completed,
+           "Background cleanup restore test quarantines package first");
+
+    projectname::BackgroundPackageMediaCleanupRequest restoreRequest;
+    restoreRequest.operation = projectname::BackgroundPackageMediaCleanupOperation::restore;
+    restoreRequest.packageDirectory = package;
+    restoreRequest.restoreManifestPath = quarantine.quarantine.restoreManifestPath;
+    projectname::BackgroundPackageMediaCleanupJob restoreJob(std::move(restoreRequest));
+    restoreJob.start();
+    const auto result = restoreJob.waitForResult();
+    const auto completedProgress = restoreJob.getProgress();
+
+    expect(result.restore.status == projectname::PackageMediaQuarantineRestoreCommandStatus::restored,
+           "Background cleanup restore job completes command");
+    expect(result.restore.restoredCount == 3,
+           "Background cleanup restore job reports restored entries");
+    expect(completedProgress.phase == projectname::BackgroundPackageMediaCleanupPhase::completed,
+           "Background cleanup restore job reports completed phase");
+    expect(std::filesystem::is_regular_file(package / "audio" / "orphan.wav"),
+           "Background cleanup restore job restores audio");
+    expect(std::filesystem::is_regular_file(package / "analysis" / "orphan.waveform.json"),
+           "Background cleanup restore job restores analysis");
+    expect(std::filesystem::is_directory(package / ".projectname-staging" / "audio-import-a"),
+           "Background cleanup restore job restores staging");
+
+    expect(std::filesystem::remove_all(package) > 0, "Temporary background restore package deleted");
+}
+
+void backgroundPackageMediaCleanupJobCancelsBeforeStart()
+{
+    const auto package = makeTemporaryPackagePath("projectname-background-cleanup-cancel-test");
+    writePackageMediaCleanupJobFixture(package);
+
+    projectname::BackgroundPackageMediaCleanupJob job(
+        makeBackgroundCleanupQuarantineRequest(package, "2026-06-18T22-20-00Z-test"));
+    job.requestCancel();
+    const auto cancelledProgress = job.getProgress();
+    expect(cancelledProgress.phase == projectname::BackgroundPackageMediaCleanupPhase::cancelled,
+           "Background cleanup job reports cancelled before start");
+    expect(cancelledProgress.cancelRequested,
+           "Background cleanup job records cancel request");
+
+    const auto result = job.waitForResult();
+    expect(result.cancelled, "Background cleanup job returns cancelled result");
+    expect(!std::filesystem::exists(package
+                                    / "backups"
+                                    / "media-trash"
+                                    / "2026-06-18T22-20-00Z-test"
+                                    / "restore-manifest.json"),
+           "Background cleanup cancellation avoids package mutation");
+    expect(std::filesystem::is_regular_file(package / "audio" / "orphan.wav"),
+           "Background cleanup cancellation leaves audio original in place");
+
+    expect(std::filesystem::remove_all(package) > 0, "Temporary background cancel package deleted");
+}
+
+void backgroundPackageMediaCleanupJobRejectsActivePackageWork()
+{
+    const auto package = makeTemporaryPackagePath("projectname-background-cleanup-active-test");
+    writePackageMediaCleanupJobFixture(package);
+    auto request = makeBackgroundCleanupQuarantineRequest(package, "2026-06-18T22-30-00Z-test");
+    request.packageWorkInProgress = true;
+
+    projectname::BackgroundPackageMediaCleanupJob job(std::move(request));
+    const auto result = job.waitForResult();
+    const auto progress = job.getProgress();
+    expect(result.preflight.status == projectname::PackageMediaQuarantinePreflightStatus::activePackageWork,
+           "Background cleanup job rejects active package work");
+    expect(progress.phase == projectname::BackgroundPackageMediaCleanupPhase::failed,
+           "Background cleanup job reports failed phase for active work");
+    expect(!result.error.empty(),
+           "Background cleanup job reports active work error");
+    expect(std::filesystem::is_regular_file(package / "audio" / "orphan.wav"),
+           "Background cleanup active-work rejection leaves audio original");
+
+    expect(std::filesystem::remove_all(package) > 0, "Temporary background active package deleted");
+}
+
+void backgroundPackageMediaCleanupJobPropagatesCommandFailure()
+{
+    const auto package = makeTemporaryPackagePath("projectname-background-cleanup-failure-test");
+    const auto cleanupId = std::string("2026-06-18T22-40-00Z-test");
+    writePackageMediaCleanupJobFixture(package);
+    writeTextFile(package
+                      / "backups"
+                      / "media-trash"
+                      / cleanupId
+                      / "audio"
+                      / "orphan.wav",
+                  "occupied");
+
+    projectname::BackgroundPackageMediaCleanupJob job(
+        makeBackgroundCleanupQuarantineRequest(package, cleanupId));
+    const auto result = job.waitForResult();
+    const auto progress = job.getProgress();
+    expect(result.quarantine.status == projectname::PackageMediaQuarantineCommandStatus::destinationOccupied,
+           "Background cleanup job propagates quarantine command failure");
+    expect(progress.phase == projectname::BackgroundPackageMediaCleanupPhase::failed,
+           "Background cleanup job reports failed phase for command failure");
+    expect(!result.error.empty(),
+           "Background cleanup job reports command failure error");
+    expect(std::filesystem::is_regular_file(package / "audio" / "orphan.wav"),
+           "Background cleanup command failure leaves audio original");
+
+    expect(std::filesystem::remove_all(package) > 0, "Temporary background failure package deleted");
 }
 
 void importedClipInspectorReportsSelectedOrFirstImportedClipMetadata()
@@ -6612,6 +6790,11 @@ int main()
     packageMediaQuarantineRestoreCommandRestoresSelectedEntries();
     packageMediaQuarantineRestoreCommandMarksOccupiedOriginalConflicts();
     packageMediaQuarantineRestoreCommandPersistsMissingQuarantinePath();
+    backgroundPackageMediaCleanupJobQuarantinesPackage();
+    backgroundPackageMediaCleanupJobRestoresPackage();
+    backgroundPackageMediaCleanupJobCancelsBeforeStart();
+    backgroundPackageMediaCleanupJobRejectsActivePackageWork();
+    backgroundPackageMediaCleanupJobPropagatesCommandFailure();
     importedClipInspectorReportsSelectedOrFirstImportedClipMetadata();
     waveformThumbnailLoaderReportsInvalidAnalysis();
     projectModelPlacesImportedAudioClips();
