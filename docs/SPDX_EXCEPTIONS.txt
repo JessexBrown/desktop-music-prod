@@ -18,6 +18,3 @@ docs/PLUGIN_POLICY.md
 docs/REFERENCES.md
 docs/UX_PRINCIPLES.md
 docs/issues/NEXT-ISSUES.md
-src/core/AudioDeviceService.cpp
-src/core/AudioDeviceService.h
-tests/ProjectNameTests.cpp

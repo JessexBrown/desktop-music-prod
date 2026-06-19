@@ -1,14 +1,6 @@
 # Next Issues
 
-## 1. Continue SPDX Baseline Reduction for Audio/Test Sources
-
-Acceptance:
-- Add SPDX headers to the remaining legacy source/test files:
-  `src/core/AudioDeviceService.*` and `tests/ProjectNameTests.cpp`.
-- Remove those paths from `docs/SPDX_EXCEPTIONS.txt`.
-- Keep `projectname_spdx_check` passing.
-
-## 2. Add Save As Package Asset Copy Policy
+## 1. Add Save As Package Asset Copy Policy
 
 Acceptance:
 - Define whether Save As clones package-local audio, analysis, samples, presets,
@@ -17,7 +9,7 @@ Acceptance:
 - Add tests or a documented UI test hook before copying package-local assets.
 - Do not perform package copying on the audio callback thread.
 
-## 3. Persist Audio/MIDI Setup Preferences
+## 2. Persist Audio/MIDI Setup Preferences
 
 Acceptance:
 - Define an application settings file location separate from project packages.
@@ -25,7 +17,7 @@ Acceptance:
 - Keep device preference reads/writes off the audio callback thread.
 - Add tests for settings serialization before applying preferences at startup.
 
-## 4. Refresh GitHub Actions Node Runtime Usage
+## 3. Refresh GitHub Actions Node Runtime Usage
 
 Acceptance:
 - Review the hosted CI annotation about Node.js 20 actions being forced to
@@ -35,7 +27,7 @@ Acceptance:
 - Preserve the existing Linux core and Windows app build/test coverage.
 - Verify the workflow still passes on GitHub-hosted runners.
 
-## 5. Add Restore-Selection Keyboard Affordances
+## 4. Add Restore-Selection Keyboard Affordances
 
 Acceptance:
 - Add keyboard-accessible commands for select all, clear selection, and toggling
@@ -45,3 +37,10 @@ Acceptance:
   conflict-review, and partial-failure-review batches.
 - Cover command availability and state transitions with core or app-session
   tests.
+
+## 5. Continue SPDX Baseline Reduction for Docs/Config
+
+Acceptance:
+- Add SPDX headers to one small, reviewable group of legacy docs or config files.
+- Remove those paths from `docs/SPDX_EXCEPTIONS.txt`.
+- Keep `projectname_spdx_check` passing.

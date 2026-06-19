@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 #include "core/AppSession.h"
 #include "core/AppCommandRegistry.h"
 #include "core/AudioSetupStatus.h"
