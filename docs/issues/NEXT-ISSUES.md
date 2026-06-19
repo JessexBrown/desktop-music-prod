@@ -2,11 +2,11 @@
 
 # Next Issues
 
-## 1. Continue SPDX Baseline Reduction for Root Config
+## 1. Continue SPDX Baseline Reduction for Root Docs
 
 Acceptance:
-- Add SPDX headers to one small, reviewable group of remaining root/config
-  exceptions.
+- Add SPDX headers to one small, reviewable group of remaining root
+  documentation exceptions, such as `AGENTS.md`, `GOAL.md`, or `README.md`.
 - Remove those paths from `docs/SPDX_EXCEPTIONS.txt`.
 - Keep `projectname_spdx_check` passing.
 - Avoid changing document meaning or build behavior.

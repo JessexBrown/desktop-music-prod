@@ -4,9 +4,7 @@
 # New files should include SPDX-License-Identifier: AGPL-3.0-or-later instead
 # of growing this list unless there is a specific reviewed reason.
 
-.github/workflows/ci.yml
 AGENTS.md
-CMakeLists.txt
 CMakePresets.json
 CODEX_STARTING_PROMPT.md
 GOAL.md
