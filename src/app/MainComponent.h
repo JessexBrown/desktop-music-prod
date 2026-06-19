@@ -156,6 +156,8 @@ public:
 
     void paint(juce::Graphics& graphics) override;
     void resized() override;
+    [[nodiscard]] bool runProjectChooserSmokeTest(const std::filesystem::path& scratchRoot,
+                                                  std::string& error);
 
 private:
     void buttonClicked(juce::Button* button) override;
@@ -180,6 +182,16 @@ private:
     void handleProjectNewResult(const juce::FileChooser& chooser);
     void handleProjectSaveAsResult(const juce::FileChooser& chooser);
     void handleProjectOpenResult(const juce::FileChooser& chooser);
+    [[nodiscard]] bool createProjectFromChooserSelection(juce::File selectedFile,
+                                                         std::string& error);
+    [[nodiscard]] bool beginSaveAsFromChooserSelection(juce::File selectedFile,
+                                                       std::string& error);
+    [[nodiscard]] bool openProjectFromChooserSelection(juce::File selectedFile,
+                                                       std::string& error);
+    [[nodiscard]] bool finishSaveAsPackageCopyForSmoke(
+        projectname::ProjectPackageSaveAsCopyStatus& status,
+        std::string& error);
+    [[nodiscard]] bool addProjectChooserSmokePackageAsset(std::string& error);
     void refreshAfterProjectPackageChange(juce::String status);
     [[nodiscard]] projectname::AppCommandResult undoImportedClipEdit();
     [[nodiscard]] projectname::AppCommandResult redoImportedClipEdit();

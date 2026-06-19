@@ -269,13 +269,15 @@ Third-party dependencies remain under their own licenses as recorded in
   smoke testing.
 - JUCE app `--smoke-test` launch mode registered with CTest for supported
   desktop toolchains.
+- JUCE app `--smoke-project-choosers` mode registered with CTest for hidden,
+  deterministic New/Open/Save As coverage, including Save As no-copy and
+  package-asset-copy paths.
 
 ## What Does Not Exist Yet
 
 - AIFF/FLAC/MP3 import, automatic resampling, interactive waveform editing,
-  deterministic chooser-level smoke coverage for New/Open/Save As,
-  imported-media cleanup/restoration UI,
-  command-palette relink entries,
+  chooser cancellation/failure smoke coverage, imported-media cleanup/restoration
+  UI, command-palette relink entries,
   timeline zoom/scroll, loop-region editing controls, or drag/drop clip
   placement.
 - Resampling, time-stretching, streaming, multi-track mixer strips, metering,

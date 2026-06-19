@@ -163,7 +163,11 @@ if(PROJECTNAME_BUILD_APP)
 
     if(BUILD_TESTING)
         add_test(NAME projectname_app_smoke COMMAND projectname --smoke-test)
-        set_tests_properties(projectname_app_smoke PROPERTIES TIMEOUT 20)
+        add_test(NAME projectname_project_chooser_smoke
+            COMMAND projectname --smoke-project-choosers)
+        set_tests_properties(projectname_app_smoke
+                             projectname_project_chooser_smoke
+                             PROPERTIES TIMEOUT 30)
     endif()
 endif()
 

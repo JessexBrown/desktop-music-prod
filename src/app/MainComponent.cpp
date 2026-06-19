@@ -18,6 +18,7 @@
 #include <cmath>
 #include <cstdint>
 #include <ctime>
+#include <fstream>
 #include <iomanip>
 #include <memory>
 #include <sstream>
@@ -141,6 +142,43 @@ void setButtonEnabledFromCommand(juce::Button& button,
 {
     std::error_code error;
     return std::filesystem::is_regular_file(packageDirectory / "manifest.json", error);
+}
+
+[[nodiscard]] bool packagePathsMatch(const std::filesystem::path& first,
+                                     const std::filesystem::path& second)
+{
+    std::error_code error;
+    if (std::filesystem::exists(first, error) && std::filesystem::exists(second, error))
+    {
+        error.clear();
+        if (std::filesystem::equivalent(first, second, error))
+            return true;
+    }
+
+    return first.lexically_normal() == second.lexically_normal();
+}
+
+[[nodiscard]] bool writeSmokeFile(const std::filesystem::path& path,
+                                  std::string_view contents,
+                                  std::string& error)
+{
+    std::error_code filesystemError;
+    std::filesystem::create_directories(path.parent_path(), filesystemError);
+    if (filesystemError)
+    {
+        error = "Could not create smoke fixture folder: " + filesystemError.message();
+        return false;
+    }
+
+    std::ofstream output(path, std::ios::binary);
+    if (!output)
+    {
+        error = "Could not create smoke fixture file: " + path.string();
+        return false;
+    }
+
+    output << contents;
+    return true;
 }
 
 [[nodiscard]] bool saveAsCopyStatusAllowsManifestSave(
@@ -1372,6 +1410,86 @@ MainComponent::~MainComponent()
     audioService_.shutdown();
 }
 
+bool MainComponent::runProjectChooserSmokeTest(const std::filesystem::path& scratchRoot,
+                                               std::string& error)
+{
+    error.clear();
+
+    auto fail = [&error](std::string message)
+    {
+        error = std::move(message);
+        return false;
+    };
+
+    if (scratchRoot.empty())
+        return fail("Project chooser smoke requires a scratch directory.");
+
+    std::error_code filesystemError;
+    std::filesystem::remove_all(scratchRoot, filesystemError);
+    if (filesystemError)
+        return fail("Could not reset chooser smoke scratch directory: " + filesystemError.message());
+
+    std::filesystem::create_directories(scratchRoot, filesystemError);
+    if (filesystemError)
+        return fail("Could not create chooser smoke scratch directory: " + filesystemError.message());
+
+    const auto newSelection = toJuceFile(scratchRoot / "Chooser New");
+    if (!createProjectFromChooserSelection(newSelection, error))
+        return false;
+
+    const auto newPackage = projectPackagePathFromChooserResult(newSelection, true);
+    if (!projectManifestExists(newPackage))
+        return fail("New project smoke did not create a manifest.");
+
+    if (!openProjectFromChooserSelection(toJuceFile(newPackage), error))
+        return false;
+
+    const auto noCopySelection = toJuceFile(scratchRoot / "Chooser Save No Copy");
+    if (!beginSaveAsFromChooserSelection(noCopySelection, error))
+        return false;
+
+    projectname::ProjectPackageSaveAsCopyStatus saveAsStatus =
+        projectname::ProjectPackageSaveAsCopyStatus::copyFailed;
+    if (!finishSaveAsPackageCopyForSmoke(saveAsStatus, error))
+        return false;
+
+    if (saveAsStatus != projectname::ProjectPackageSaveAsCopyStatus::noCopyNeeded)
+        return fail("Save As no-copy smoke used an unexpected package copy path.");
+
+    if (!addProjectChooserSmokePackageAsset(error))
+        return false;
+
+    const auto copySelection = toJuceFile(scratchRoot / "Chooser Save Copy");
+    if (!beginSaveAsFromChooserSelection(copySelection, error))
+        return false;
+
+    if (!finishSaveAsPackageCopyForSmoke(saveAsStatus, error))
+        return false;
+
+    if (saveAsStatus != projectname::ProjectPackageSaveAsCopyStatus::completed)
+        return fail("Save As package-copy smoke did not complete an asset copy.");
+
+    const auto copyPackage = projectPackagePathFromChooserResult(copySelection, true);
+    if (!projectManifestExists(copyPackage))
+        return fail("Save As package-copy smoke did not create a target manifest.");
+
+    if (!std::filesystem::is_regular_file(copyPackage / "audio" / "chooser-smoke.wav", filesystemError))
+        return fail("Save As package-copy smoke did not copy package audio.");
+
+    filesystemError.clear();
+    if (!std::filesystem::is_regular_file(copyPackage / "analysis" / "chooser-smoke.waveform.json", filesystemError))
+        return fail("Save As package-copy smoke did not copy package analysis.");
+
+    if (packageMediaMaintenanceScan_.valid())
+        packageMediaMaintenanceScan_.wait();
+
+    std::filesystem::remove_all(scratchRoot, filesystemError);
+    if (filesystemError)
+        return fail("Chooser smoke passed but could not clean up scratch directory: " + filesystemError.message());
+
+    return true;
+}
+
 void MainComponent::paint(juce::Graphics& graphics)
 {
     graphics.fillAll(background);
@@ -2125,33 +2243,70 @@ void MainComponent::openProject()
 
 void MainComponent::handleProjectNewResult(const juce::FileChooser& chooser)
 {
-    const auto selectedFile = chooser.getResult();
+    auto selectedFile = chooser.getResult();
     projectNewChooser_.reset();
+
+    std::string error;
+    if (!createProjectFromChooserSelection(std::move(selectedFile), error))
+    {
+        setStatus(juce::String(error));
+        refreshAppCommandEnabledState();
+    }
+}
+
+void MainComponent::handleProjectSaveAsResult(const juce::FileChooser& chooser)
+{
+    auto selectedFile = chooser.getResult();
+    projectSaveAsChooser_.reset();
+
+    std::string error;
+    if (!beginSaveAsFromChooserSelection(std::move(selectedFile), error))
+    {
+        setStatus(juce::String(error));
+        refreshAppCommandEnabledState();
+    }
+}
+
+void MainComponent::handleProjectOpenResult(const juce::FileChooser& chooser)
+{
+    auto selectedFile = chooser.getResult();
+    projectOpenChooser_.reset();
+
+    std::string error;
+    if (!openProjectFromChooserSelection(std::move(selectedFile), error))
+    {
+        setStatus(juce::String(error));
+        refreshAppCommandEnabledState();
+        updateTransportLabels();
+    }
+}
+
+bool MainComponent::createProjectFromChooserSelection(juce::File selectedFile,
+                                                      std::string& error)
+{
+    error.clear();
 
     if (selectedFile == juce::File {})
     {
-        setStatus("New project cancelled");
-        refreshAppCommandEnabledState();
-        return;
+        error = "New project cancelled";
+        return false;
     }
 
     const auto packagePath = projectPackagePathFromChooserResult(selectedFile, true);
     if (projectManifestExists(packagePath))
     {
-        setStatus("New project cancelled: package already contains a manifest");
-        refreshAppCommandEnabledState();
-        return;
+        error = "New project cancelled: package already contains a manifest";
+        return false;
     }
 
     auto project = projectname::ProjectModel::createDefault();
     project.setName(projectNameFromPackagePath(packagePath));
 
-    std::string error;
-    if (!project.savePackage(packagePath, error))
+    std::string saveError;
+    if (!project.savePackage(packagePath, saveError))
     {
-        setStatus("New project failed: " + juce::String(error));
-        refreshAppCommandEnabledState();
-        return;
+        error = "New project failed: " + saveError;
+        return false;
     }
 
     session_.stop();
@@ -2160,18 +2315,24 @@ void MainComponent::handleProjectNewResult(const juce::FileChooser& chooser)
     selectedPackageMediaCleanupId_.clear();
     selectedPackageMediaRestoreOriginalPaths_.clear();
     refreshAfterProjectPackageChange("Created project package: " + juce::String(packagePath.string()));
+    return true;
 }
 
-void MainComponent::handleProjectSaveAsResult(const juce::FileChooser& chooser)
+bool MainComponent::beginSaveAsFromChooserSelection(juce::File selectedFile,
+                                                    std::string& error)
 {
-    const auto selectedFile = chooser.getResult();
-    projectSaveAsChooser_.reset();
+    error.clear();
 
     if (selectedFile == juce::File {})
     {
-        setStatus("Save As cancelled");
-        refreshAppCommandEnabledState();
-        return;
+        error = "Save As cancelled";
+        return false;
+    }
+
+    if (saveAsPackageCopyJob_ != nullptr)
+    {
+        error = "Save As is already running";
+        return false;
     }
 
     const auto packagePath = projectPackagePathFromChooserResult(selectedFile, true);
@@ -2187,30 +2348,28 @@ void MainComponent::handleProjectSaveAsResult(const juce::FileChooser& chooser)
     setStatus("Preparing Save As package copy");
     refreshAppCommandEnabledState();
     refreshBrowserPanel();
+    return true;
 }
 
-void MainComponent::handleProjectOpenResult(const juce::FileChooser& chooser)
+bool MainComponent::openProjectFromChooserSelection(juce::File selectedFile,
+                                                    std::string& error)
 {
-    const auto selectedFile = chooser.getResult();
-    projectOpenChooser_.reset();
+    error.clear();
 
     if (selectedFile == juce::File {})
     {
-        setStatus("Open cancelled");
-        refreshAppCommandEnabledState();
-        return;
+        error = "Open cancelled";
+        return false;
     }
 
     const auto packagePath = projectPackagePathFromChooserResult(selectedFile, false);
 
-    std::string error;
-    auto project = projectname::ProjectModel::loadPackage(packagePath, error);
+    std::string loadError;
+    auto project = projectname::ProjectModel::loadPackage(packagePath, loadError);
     if (!project.has_value())
     {
-        setStatus("Open failed: " + juce::String(error));
-        refreshAppCommandEnabledState();
-        updateTransportLabels();
-        return;
+        error = "Open failed: " + loadError;
+        return false;
     }
 
     session_.stop();
@@ -2219,6 +2378,88 @@ void MainComponent::handleProjectOpenResult(const juce::FileChooser& chooser)
     selectedPackageMediaCleanupId_.clear();
     selectedPackageMediaRestoreOriginalPaths_.clear();
     refreshAfterProjectPackageChange("Opened project package: " + juce::String(packagePath.string()));
+    return true;
+}
+
+bool MainComponent::finishSaveAsPackageCopyForSmoke(
+    projectname::ProjectPackageSaveAsCopyStatus& status,
+    std::string& error)
+{
+    error.clear();
+
+    if (saveAsPackageCopyJob_ == nullptr)
+    {
+        error = "Save As smoke expected an active package copy job.";
+        return false;
+    }
+
+    auto result = saveAsPackageCopyJob_->waitForResult();
+    saveAsPackageCopyJob_.reset();
+    canCancelSaveAsPackageCopy_ = false;
+
+    const auto targetPackage = result.targetPackageDirectory;
+    status = result.copy.status;
+    const auto resultMessage = result.error.empty()
+        ? projectname::describeProjectPackageSaveAsPlan(result.copy.plan)
+        : result.error;
+
+    applyCompletedSaveAsPackageCopy(std::move(result));
+    refreshAppCommandEnabledState();
+
+    if (!saveAsCopyStatusAllowsManifestSave(status))
+    {
+        error = "Save As smoke failed: " + resultMessage;
+        return false;
+    }
+
+    if (!projectManifestExists(targetPackage))
+    {
+        error = "Save As smoke did not create a manifest in " + targetPackage.string();
+        return false;
+    }
+
+    if (!packagePathsMatch(currentProjectPackagePath_, targetPackage))
+    {
+        error = "Save As smoke did not switch the active project package.";
+        return false;
+    }
+
+    return true;
+}
+
+bool MainComponent::addProjectChooserSmokePackageAsset(std::string& error)
+{
+    error.clear();
+
+    const auto packagePath = getCurrentProjectPackagePath();
+    if (!writeSmokeFile(packagePath / "audio" / "chooser-smoke.wav", "smoke audio", error))
+        return false;
+
+    if (!writeSmokeFile(packagePath / "analysis" / "chooser-smoke.waveform.json", "{}", error))
+        return false;
+
+    projectname::ProjectClip clip;
+    clip.id = "chooser-smoke-audio";
+    clip.name = "Chooser Smoke Audio";
+    clip.type = "audio-file";
+    clip.relativePath = "audio/chooser-smoke.wav";
+    clip.analysisPath = "analysis/chooser-smoke.waveform.json";
+    clip.startBeats = 0.0;
+    clip.lengthBeats = 1.0;
+
+    if (!session_.getProject().addClipToTrack("track-1", std::move(clip)))
+    {
+        error = "Could not attach the smoke audio clip to the default track.";
+        return false;
+    }
+
+    if (!session_.saveProjectPackage(packagePath, error))
+    {
+        error = "Could not save smoke fixture project: " + error;
+        return false;
+    }
+
+    return true;
 }
 
 void MainComponent::refreshAfterProjectPackageChange(juce::String status)

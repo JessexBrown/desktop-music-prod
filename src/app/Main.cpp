@@ -6,7 +6,11 @@
 
 #include <juce_gui_extra/juce_gui_extra.h>
 
+#include <filesystem>
+#include <iostream>
 #include <memory>
+#include <string>
+#include <system_error>
 
 class RabbingtonStudioApplication final : public juce::JUCEApplication
 {
@@ -31,9 +35,18 @@ public:
     void initialise(const juce::String& commandLine) override
     {
         smokeTestMode_ = commandLine.contains("--smoke-test");
+        projectChooserSmokeTestMode_ = commandLine.contains("--smoke-project-choosers");
         mainWindow_ = std::make_unique<MainWindow>(getApplicationName());
 
-        if (smokeTestMode_)
+        if (projectChooserSmokeTestMode_)
+        {
+            juce::Timer::callAfterDelay(500,
+                                        [this]
+                                        {
+                                            runProjectChooserSmokeTestAndQuit();
+                                        });
+        }
+        else if (smokeTestMode_)
         {
             juce::Timer::callAfterDelay(500, [] {
                 if (auto* app = juce::JUCEApplication::getInstance())
@@ -58,6 +71,36 @@ public:
     }
 
 private:
+    void runProjectChooserSmokeTestAndQuit()
+    {
+        std::string error;
+        std::error_code filesystemError;
+        const auto tempDirectory = std::filesystem::temp_directory_path(filesystemError);
+        auto passed = false;
+
+        if (filesystemError)
+        {
+            error = "Could not locate a temporary directory: " + filesystemError.message();
+        }
+        else
+        {
+            const auto scratchRoot =
+                tempDirectory
+                / ("rabbington-studio-project-chooser-smoke-"
+                   + std::to_string(juce::Time::currentTimeMillis()));
+            passed = mainWindow_ != nullptr
+                && mainWindow_->getMainComponent().runProjectChooserSmokeTest(scratchRoot, error);
+        }
+
+        if (!passed)
+        {
+            std::cerr << "Project chooser smoke failed: " << error << '\n';
+            setApplicationReturnValue(1);
+        }
+
+        systemRequestedQuit();
+    }
+
     class MainWindow final : public juce::DocumentWindow
     {
     public:
@@ -67,20 +110,30 @@ private:
                              juce::DocumentWindow::allButtons)
         {
             setUsingNativeTitleBar(true);
-            setContentOwned(new MainComponent(), true);
+            mainComponent_ = new MainComponent();
+            setContentOwned(mainComponent_, true);
             setResizable(true, true);
             centreWithSize(getWidth(), getHeight());
             setVisible(true);
+        }
+
+        MainComponent& getMainComponent() const noexcept
+        {
+            return *mainComponent_;
         }
 
         void closeButtonPressed() override
         {
             juce::JUCEApplication::getInstance()->systemRequestedQuit();
         }
+
+    private:
+        MainComponent* mainComponent_ = nullptr;
     };
 
     std::unique_ptr<MainWindow> mainWindow_;
     bool smokeTestMode_ = false;
+    bool projectChooserSmokeTestMode_ = false;
 };
 
 START_JUCE_APPLICATION(RabbingtonStudioApplication)

@@ -90,6 +90,8 @@ ctest --preset dev --output-on-failure
   prepared-buffer rendering through the fallback target.
 - `projectname_app_smoke` runs the desktop app launch smoke test when
   `PROJECTNAME_BUILD_APP=ON` and `BUILD_TESTING=ON`.
+- `projectname_project_chooser_smoke` runs the hidden JUCE app chooser-flow
+  smoke test for New/Open/Save As without opening native chooser dialogs.
 - `projectname_spdx_check` verifies first-party files either carry
   `SPDX-License-Identifier: AGPL-3.0-or-later` or are listed in
   `docs/SPDX_EXCEPTIONS.txt`.
@@ -100,8 +102,8 @@ ctest --preset dev --output-on-failure
 GitHub Actions currently runs two jobs on pushes and pull requests:
 
 - `Windows MSVC App` configures, builds, and tests the `dev` preset on
-  `windows-latest`. Its CTest run includes `projectname_app_smoke`, the SPDX
-  check, and the core unit tests.
+  `windows-latest`. Its CTest run includes `projectname_app_smoke`,
+  `projectname_project_chooser_smoke`, the SPDX check, and the core unit tests.
 - `Linux Core` configures, builds, and tests the `core-dev` preset on
   `ubuntu-latest` for second-host coverage before Linux app packaging work is
   ready.
