@@ -92,6 +92,8 @@ add_library(projectname_core
     src/core/ProjectAudioImport.h
     src/core/ProjectModel.cpp
     src/core/ProjectModel.h
+    src/core/ProjectPackageSaveAsPolicy.cpp
+    src/core/ProjectPackageSaveAsPolicy.h
     src/core/TimelineClipLane.cpp
     src/core/TimelineClipLane.h
     src/core/TimelinePlaybackPlan.cpp

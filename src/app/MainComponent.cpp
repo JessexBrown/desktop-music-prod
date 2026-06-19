@@ -9,6 +9,7 @@
 #include "core/PackageMediaCleanupBatchDiscovery.h"
 #include "core/PackageMediaMaintenanceBrowserRows.h"
 #include "core/PackageMediaMaintenanceViewModel.h"
+#include "core/ProjectPackageSaveAsPolicy.h"
 #include "core/ProductIdentity.h"
 #include "core/WorkspaceCommandRouter.h"
 
@@ -1977,6 +1978,16 @@ void MainComponent::handleProjectSaveAsResult(const juce::FileChooser& chooser)
     }
 
     const auto packagePath = projectPackagePathFromChooserResult(selectedFile, true);
+    const auto saveAsPlan = projectname::buildProjectPackageSaveAsPlan(
+        session_.getProject(),
+        getCurrentProjectPackagePath(),
+        packagePath);
+    if (!saveAsPlan.canSaveManifestOnly)
+    {
+        setStatus(juce::String(projectname::describeProjectPackageSaveAsPlan(saveAsPlan)));
+        refreshAppCommandEnabledState();
+        return;
+    }
 
     std::string error;
     if (session_.saveProjectPackage(packagePath, error))

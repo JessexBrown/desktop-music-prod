@@ -1,12 +1,13 @@
 # Next Issues
 
-## 1. Add Save As Package Asset Copy Policy
+## 1. Implement Save As Package Asset Copy Command
 
 Acceptance:
-- Define whether Save As clones package-local audio, analysis, samples, presets,
-  and backups or records a package relocation warning first.
-- Keep external media references explicit and recoverable.
-- Add tests or a documented UI test hook before copying package-local assets.
+- Copy package-local `audio/`, `analysis/`, `samples/`, and `presets/` from the
+  active source package into the target package before Save As switches paths.
+- Start target `backups/` fresh as defined by ADR-0091.
+- Preserve explicit external media references without copying them.
+- Reject or roll back conflicting/unsafe target writes with tests.
 - Do not perform package copying on the audio callback thread.
 
 ## 2. Persist Audio/MIDI Setup Preferences

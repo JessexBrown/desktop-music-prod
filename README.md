@@ -194,6 +194,9 @@ Third-party dependencies remain under their own licenses as recorded in
   project-package choosers. The deterministic demo package remains the initial
   Save target for smoke tests, and failed Open attempts keep the current
   project loaded.
+- A plain C++ Save As package relocation policy blocks manifest-only Save As
+  when package-local media must be copied first, preserves explicit external
+  references, and starts target-package backups fresh.
 - The Package Maintenance browser surface has a guarded Restore affordance for
   selected restorable cleanup batches. Restore runs through the background
   package media cleanup job and stays disabled with visible reasons for
@@ -240,8 +243,8 @@ Third-party dependencies remain under their own licenses as recorded in
   imported clip media relink preparation and cleanup behavior, background media
   relink preparation jobs, imported media package inventory classification,
   package media quarantine restore-manifest validation, preflight planning,
-  file-moving rollback behavior, restore/conflict behavior, and background
-  cleanup job status propagation,
+  file-moving rollback behavior, restore/conflict behavior, Save As package
+  relocation policy, and background cleanup job status propagation,
   workspace command routing, app command registry metadata, enablement, and
   dispatch results, timeline lane
   layout/hit-testing/placement/loop-range scaling, track voice scheduling
@@ -257,7 +260,8 @@ Third-party dependencies remain under their own licenses as recorded in
 ## What Does Not Exist Yet
 
 - AIFF/FLAC/MP3 import, automatic resampling, interactive waveform editing,
-  full Save As asset-package cloning, imported-media cleanup/restoration UI,
+  full Save As asset-package cloning beyond the current preflight warning,
+  imported-media cleanup/restoration UI,
   command-palette relink entries,
   timeline zoom/scroll, loop-region editing controls, or drag/drop clip
   placement.
@@ -523,5 +527,7 @@ or use `ctest --preset dev --output-on-failure`.
   project package chooser workflow and Save As asset-copy boundary.
 - `docs/adr/ADR-0090-audio-midi-first-run-setup-flow.md` records the
   first-run Audio/MIDI setup prompt and non-modal recovery path.
+- `docs/adr/ADR-0091-save-as-package-asset-copy-policy.md` records Save As
+  package asset-copy policy and the manifest-only relocation guard.
 - `docs/AUDIO_MIDI_SETUP_UX.md` documents the first-run device setup UX states.
 - `docs/issues/NEXT-ISSUES.md` lists the next five small tasks.

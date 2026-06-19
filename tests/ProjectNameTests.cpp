@@ -24,6 +24,7 @@
 #include "core/ProductIdentity.h"
 #include "core/ProjectAudioImport.h"
 #include "core/ProjectModel.h"
+#include "core/ProjectPackageSaveAsPolicy.h"
 #include "core/TimelineClipLane.h"
 #include "core/TimelinePlaybackPlan.h"
 #include "core/TimelinePlaybackPreparationCompletion.h"
@@ -112,6 +113,34 @@ std::string readTextFile(const std::filesystem::path& path)
         text += line;
 
     return text;
+}
+
+const projectname::ProjectPackageSaveAsFolderPolicy* findSaveAsFolderPolicy(
+    const projectname::ProjectPackageSaveAsPlan& plan,
+    const std::string& folderName)
+{
+    const auto match = std::find_if(plan.folders.begin(),
+                                    plan.folders.end(),
+                                    [&folderName](const projectname::ProjectPackageSaveAsFolderPolicy& folder)
+                                    {
+                                        return folder.folderName == folderName;
+                                    });
+
+    return match == plan.folders.end() ? nullptr : &*match;
+}
+
+const projectname::ProjectPackageSaveAsReference* findSaveAsReference(
+    const projectname::ProjectPackageSaveAsPlan& plan,
+    const std::string& path)
+{
+    const auto match = std::find_if(plan.references.begin(),
+                                    plan.references.end(),
+                                    [&path](const projectname::ProjectPackageSaveAsReference& reference)
+                                    {
+                                        return reference.path == path;
+                                    });
+
+    return match == plan.references.end() ? nullptr : &*match;
 }
 
 const projectname::ProjectClip* findClipById(const projectname::ProjectModel& project, const std::string& clipId)
@@ -679,6 +708,129 @@ void projectManifestRoundTrips()
     expect(loaded.has_value() && *loaded == project, "Loaded project equals saved project");
 
     expect(std::filesystem::remove_all(package) > 0, "Temporary project package deleted");
+}
+
+void projectPackageSaveAsPolicyBlocksManifestOnlyWhenPackageAssetsNeedCopy()
+{
+    auto project = projectname::ProjectModel::createDefault();
+
+    projectname::ProjectClip imported;
+    imported.id = "save-as-imported";
+    imported.name = "Save As Imported";
+    imported.type = "audio-file";
+    imported.relativePath = "audio/take.wav";
+    imported.analysisPath = "analysis/take.waveform.json";
+    imported.lengthBeats = 4.0;
+    expect(project.addClipToTrack("track-1", imported), "Save As policy test adds imported clip");
+
+    const auto sourcePackage = makeTemporaryPackagePath("projectname-save-as-source-test");
+    const auto targetPackage = makeTemporaryPackagePath("projectname-save-as-target-test");
+    writeTextFile(sourcePackage / imported.relativePath, "audio");
+    writeTextFile(sourcePackage / imported.analysisPath, "{}");
+    writeTextFile(sourcePackage / "samples" / "one-shot.wav", "sample");
+    writeTextFile(sourcePackage / "presets" / "starter.json", "{}");
+    writeTextFile(sourcePackage / "backups" / "manifest.previous.json", "{}");
+
+    const auto plan = projectname::buildProjectPackageSaveAsPlan(project, sourcePackage, targetPackage);
+
+    expect(!plan.samePackage, "Save As policy detects a different target package");
+    expect(plan.requiresPackageAssetCopy, "Save As policy requires package asset copy for local media");
+    expect(!plan.canSaveManifestOnly, "Save As policy blocks manifest-only relocation when package assets exist");
+    expect(plan.warning.find("package asset copy") != std::string::npos,
+           "Save As policy records a package relocation warning");
+
+    const auto* audioFolder = findSaveAsFolderPolicy(plan, "audio");
+    expect(audioFolder != nullptr
+               && audioFolder->action == projectname::ProjectPackageSaveAsFolderAction::cloneContents
+               && audioFolder->containsSourceContent,
+           "Save As policy plans to clone audio folder contents");
+
+    const auto* samplesFolder = findSaveAsFolderPolicy(plan, "samples");
+    expect(samplesFolder != nullptr
+               && samplesFolder->action == projectname::ProjectPackageSaveAsFolderAction::cloneContents
+               && samplesFolder->containsSourceContent,
+           "Save As policy plans to clone samples folder contents");
+
+    const auto* backupsFolder = findSaveAsFolderPolicy(plan, "backups");
+    expect(backupsFolder != nullptr
+               && backupsFolder->action == projectname::ProjectPackageSaveAsFolderAction::startFresh
+               && backupsFolder->containsSourceContent,
+           "Save As policy starts a fresh backup history in the target package");
+
+    const auto* audioReference = findSaveAsReference(plan, imported.relativePath);
+    expect(audioReference != nullptr
+               && audioReference->action == projectname::ProjectPackageSaveAsReferenceAction::clonePackageAsset
+               && audioReference->existsInSourcePackage,
+           "Save As policy marks existing imported audio for package copy");
+
+    const auto* analysisReference = findSaveAsReference(plan, imported.analysisPath);
+    expect(analysisReference != nullptr
+               && analysisReference->action == projectname::ProjectPackageSaveAsReferenceAction::clonePackageAsset
+               && analysisReference->existsInSourcePackage,
+           "Save As policy marks existing imported analysis for package copy");
+
+    expect(std::filesystem::remove_all(sourcePackage) > 0, "Temporary Save As source package deleted");
+    std::filesystem::remove_all(targetPackage);
+}
+
+void projectPackageSaveAsPolicyAllowsSamePackageManifestSave()
+{
+    auto project = projectname::ProjectModel::createDefault();
+
+    const auto package = makeTemporaryPackagePath("projectname-save-as-same-test");
+    writeTextFile(package / "audio" / "existing.wav", "audio");
+
+    const auto plan = projectname::buildProjectPackageSaveAsPlan(project, package, package);
+
+    expect(plan.samePackage, "Save As policy detects same-package target");
+    expect(!plan.requiresPackageAssetCopy, "Same-package save does not require package asset copy");
+    expect(plan.canSaveManifestOnly, "Same-package save can write manifest only");
+    expect(projectname::describeProjectPackageSaveAsPlan(plan).find("normal save is safe") != std::string::npos,
+           "Same-package Save As policy has a clear status description");
+
+    expect(std::filesystem::remove_all(package) > 0, "Temporary same-package Save As package deleted");
+}
+
+void projectPackageSaveAsPolicyPreservesExternalReferences()
+{
+    auto project = projectname::ProjectModel::createDefault();
+
+    const auto externalAudio = makeTemporaryAudioPath("projectname-save-as-external-test");
+    writeTextFile(externalAudio, "external");
+
+    projectname::ProjectClip imported;
+    imported.id = "save-as-external";
+    imported.name = "External Reference";
+    imported.type = "audio-file";
+    imported.relativePath = externalAudio.string();
+    imported.analysisPath = "../outside.waveform.json";
+    imported.lengthBeats = 4.0;
+    expect(project.addClipToTrack("track-1", imported), "Save As policy test adds external clip");
+
+    const auto sourcePackage = makeTemporaryPackagePath("projectname-save-as-external-source-test");
+    const auto targetPackage = makeTemporaryPackagePath("projectname-save-as-external-target-test");
+    const auto plan = projectname::buildProjectPackageSaveAsPlan(project, sourcePackage, targetPackage);
+
+    expect(!plan.requiresPackageAssetCopy, "External Save As references do not require package copy");
+    expect(plan.canSaveManifestOnly, "External Save As references can be preserved in the manifest");
+
+    const auto* audioReference = findSaveAsReference(plan, imported.relativePath);
+    expect(audioReference != nullptr
+               && audioReference->action
+                   == projectname::ProjectPackageSaveAsReferenceAction::preserveExternalReference,
+           "Save As policy preserves absolute external audio reference");
+
+    const auto* analysisReference = findSaveAsReference(plan, imported.analysisPath);
+    expect(analysisReference != nullptr
+               && analysisReference->action == projectname::ProjectPackageSaveAsReferenceAction::reportUnsafeReference,
+           "Save As policy reports unsafe analysis reference without copying it");
+
+    expect(plan.warning.find("preserve external") != std::string::npos,
+           "Save As policy warns that external references remain explicit");
+
+    expect(std::filesystem::remove(externalAudio), "Temporary external Save As audio deleted");
+    std::filesystem::remove_all(sourcePackage);
+    std::filesystem::remove_all(targetPackage);
 }
 
 void projectLoopRegionValidatesAndRoundTrips()
@@ -8016,6 +8168,9 @@ int main()
     appSessionLoadFailureKeepsCurrentProject();
     transportStateAdvancesOnlyWhilePlaying();
     projectManifestRoundTrips();
+    projectPackageSaveAsPolicyBlocksManifestOnlyWhenPackageAssetsNeedCopy();
+    projectPackageSaveAsPolicyAllowsSamePackageManifestSave();
+    projectPackageSaveAsPolicyPreservesExternalReferences();
     projectLoopRegionValidatesAndRoundTrips();
     projectImportedClipSelectionValidatesAndRoundTrips();
     projectTrackMixStateRoundTripsAndLoadsLegacyDefaults();

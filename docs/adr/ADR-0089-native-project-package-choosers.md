@@ -41,13 +41,12 @@ app smoke tests and deterministic local workflows stay available.
   current project/session.
 - Import, relink, timeline preparation, and package media maintenance now use
   the active project package path instead of always using the demo package.
-- Save As does not yet clone imported media assets from the previous package
-  into a new package. That remains a separate package-copy task before Save As
-  is considered a full project duplication feature.
+- ADR-0091 defines the Save As package asset copy policy. Until the copy command
+  exists, Save As refuses manifest-only relocation when package-local media
+  needs cloning.
 
 ## Follow-Ups
 
-- Add package asset cloning or relinking policy for Save As to a different
-  directory.
+- Implement the package asset copy command defined by ADR-0091.
 - Add automated UI-level smoke coverage for project New/Open/Save As once a
   deterministic chooser test hook exists.
