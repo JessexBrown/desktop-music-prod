@@ -29,6 +29,10 @@ startup feel blocked or modal-heavy.
 - The preferred output intent is persisted as a human-readable output summary
   plus JUCE device restore state when JUCE can provide it.
 - The top-bar Audio/MIDI command remains available after dismissal.
+- The Device Panel shows a Reset Prefs action after the first-run reminder is
+  not occupying the secondary action slot. Reset clears the saved reminder
+  dismissal and preferred output intent, but it does not stop the current output
+  device or modify project packages.
 
 ## Error And Unavailable States
 

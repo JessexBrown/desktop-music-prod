@@ -27,6 +27,9 @@ Third-party dependencies remain under their own licenses as recorded in
 - App-level Audio/MIDI setup preferences persist outside project packages in a
   per-user `Rabbington Studio/settings.json`, including first-run prompt
   dismissal, a readable output summary, and JUCE restore state when available.
+- The Device Panel exposes a visible `Reset Prefs` action that clears the saved
+  Audio/MIDI reminder dismissal and preferred output intent without touching
+  project packages or the current audio callback.
 - Play/Stop transport state with tempo, time signature, and timeline position.
 - Minimal core audio engine stub that renders a generated test tone and a
   duration-bounded generated clip through the Windows fallback smoke path, plus
@@ -240,7 +243,7 @@ Third-party dependencies remain under their own licenses as recorded in
   playback outside the render callback.
 - Unit tests for transport state, project serialization, tone rendering, audio
   engine generated-tone/generated-clip/prepared-buffer playback, app settings
-  serialization, scheduled clip
+  serialization/reset behavior, scheduled clip
   start offsets, imported clip playback planning/rendering, PCM16 WAV import,
   project-package audio import, imported timeline Play preparation/cache
   behavior, prepared-cache hit/miss/eviction/stale rejection, byte budgeting,
@@ -552,5 +555,9 @@ or use `ctest --preset dev --output-on-failure`.
   Audio/MIDI settings file and restore boundary.
 - `docs/adr/ADR-0095-package-maintenance-restore-keyboard-affordances.md`
   records Package Maintenance restore-entry keyboard focus and shortcuts.
+- `docs/adr/ADR-0096-deterministic-project-chooser-smoke-hooks.md` records the
+  hidden successful project chooser smoke path.
+- `docs/adr/ADR-0097-audio-midi-preference-reset-command.md` records the
+  visible Audio/MIDI preference reset command.
 - `docs/AUDIO_MIDI_SETUP_UX.md` documents the first-run device setup UX states.
 - `docs/issues/NEXT-ISSUES.md` lists the next five small tasks.

@@ -256,6 +256,7 @@ private:
     void refreshDevicePanel(bool force = false);
     void applyMixerControlChange();
     void showAudioSettings();
+    [[nodiscard]] projectname::AppCommandResult resetAudioSetupPreferences();
     void dismissAudioSetupPrompt();
     void loadApplicationSettings();
     [[nodiscard]] bool persistApplicationSettings(juce::String failureStatus);

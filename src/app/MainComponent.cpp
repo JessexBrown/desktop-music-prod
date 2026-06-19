@@ -1918,6 +1918,11 @@ projectname::AppCommandResult MainComponent::dispatchAppCommand(std::string_view
                         showAudioSettings();
                         return projectname::AppCommandResult::handled();
                     });
+    registerHandler(projectname::AppCommandIds::audioSettingsReset,
+                    [this]()
+                    {
+                        return resetAudioSetupPreferences();
+                    });
 
     auto result = dispatcher.dispatch(buildAppCommandRegistry(), commandId);
     handleAppCommandResult(result);
@@ -4052,13 +4057,28 @@ void MainComponent::refreshDevicePanel(bool force)
                                 {
                                     dispatchAppCommand(projectname::AppCommandIds::audioSettingsShow);
                                 });
-    devicePanel_.setSecondaryPanelAction(model.dismissActionVisible ? juce::String(model.dismissActionLabel) : juce::String {},
-                                         true,
-                                         juce::String(model.dismissActionTooltip),
-                                         [this]()
-                                         {
-                                             dismissAudioSetupPrompt();
-                                         });
+    if (model.dismissActionVisible)
+    {
+        devicePanel_.setSecondaryPanelAction(juce::String(model.dismissActionLabel),
+                                             true,
+                                             juce::String(model.dismissActionTooltip),
+                                             [this]()
+                                             {
+                                                 dismissAudioSetupPrompt();
+                                             });
+    }
+    else
+    {
+        const auto registry = buildAppCommandRegistry();
+        const auto* resetCommand = registry.findCommand(projectname::AppCommandIds::audioSettingsReset);
+        devicePanel_.setSecondaryPanelAction("Reset Prefs",
+                                             resetCommand != nullptr && resetCommand->enabled,
+                                             "Clear saved Audio/MIDI setup preferences",
+                                             [this]()
+                                             {
+                                                 dispatchAppCommand(projectname::AppCommandIds::audioSettingsReset);
+                                             });
+    }
 }
 
 void MainComponent::applyMixerControlChange()
@@ -4126,6 +4146,24 @@ void MainComponent::showAudioSettings()
         setStatus("Audio/MIDI setup opened - press Play to test output");
 }
 
+projectname::AppCommandResult MainComponent::resetAudioSetupPreferences()
+{
+    projectname::resetAudioSetupPreferences(appSettings_);
+    audioSetupPromptDismissed_ = false;
+
+    if (!persistApplicationSettings("Audio/MIDI preference reset failed"))
+    {
+        refreshDevicePanel(true);
+        return projectname::AppCommandResult::failed("Audio/MIDI preference reset failed");
+    }
+
+    lastAudioSetupStatusSignature_.clear();
+    refreshDevicePanel(true);
+    updateTransportLabels();
+    return projectname::AppCommandResult::handledWithStatus(
+        "Audio/MIDI preferences reset - current device remains active");
+}
+
 void MainComponent::dismissAudioSetupPrompt()
 {
     audioSetupPromptDismissed_ = true;
@@ -4167,6 +4205,9 @@ bool MainComponent::persistApplicationSettings(juce::String failureStatus)
 
 void MainComponent::persistAudioSetupPreferencesIfChanged(const projectname::AudioDeviceSummary& summary)
 {
+    if (!audioSetupPromptDismissed_)
+        return;
+
     if (!summary.isOpen || summary.outputChannels <= 0)
         return;
 

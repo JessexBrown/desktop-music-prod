@@ -241,6 +241,13 @@ AppCommandRegistry makePrototypeAppCommandRegistry(AppCommandAvailability availa
                              AppCommandScope::audioDevice,
                              availability.canShowAudioSettings,
                              "Audio/MIDI settings are unavailable.");
+    registerPrototypeCommand(registry,
+                             AppCommandIds::audioSettingsReset,
+                             "Reset Audio/MIDI Preferences",
+                             "Clear saved Audio/MIDI setup reminder and preferred output intent.",
+                             AppCommandScope::audioDevice,
+                             availability.canResetAudioSettings,
+                             "Audio/MIDI preference reset is unavailable.");
 
     return registry;
 }

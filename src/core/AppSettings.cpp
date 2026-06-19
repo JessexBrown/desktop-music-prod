@@ -243,4 +243,9 @@ bool saveAppSettings(const AppSettings& settings,
     std::filesystem::remove(temporaryPath, filesystemError);
     return true;
 }
+
+void resetAudioSetupPreferences(AppSettings& settings)
+{
+    settings.audioSetup = {};
+}
 } // namespace projectname

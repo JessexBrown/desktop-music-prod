@@ -50,4 +50,5 @@ struct AppSettings
 [[nodiscard]] bool saveAppSettings(const AppSettings& settings,
                                    const std::filesystem::path& settingsPath,
                                    std::string& error);
+void resetAudioSetupPreferences(AppSettings& settings);
 } // namespace projectname

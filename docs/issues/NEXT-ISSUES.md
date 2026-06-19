@@ -2,17 +2,7 @@
 
 # Next Issues
 
-## 1. Add Audio/MIDI Preference Reset Action
-
-Acceptance:
-- Add a visible app command to reset saved Audio/MIDI preferences without
-  deleting project packages.
-- Clear the persisted first-run dismissal and preferred output intent from the
-  app settings file.
-- Keep reset reads/writes off the audio callback thread.
-- Cover reset behavior with core settings tests and app command metadata tests.
-
-## 2. Add CI Action Pin Review Note
+## 1. Add CI Action Pin Review Note
 
 Acceptance:
 - Add a short scheduled-maintenance note or issue template for reviewing
@@ -22,7 +12,7 @@ Acceptance:
 - Keep this as a documentation/process task, not an automated updater.
 - Preserve the existing CI workflow jobs and cache behavior.
 
-## 3. Add Restore Conflict Recovery Detail Actions
+## 2. Add Restore Conflict Recovery Detail Actions
 
 Acceptance:
 - Add non-mutating detail actions for conflict and partial-failure restore
@@ -32,7 +22,7 @@ Acceptance:
 - Keep actions available from keyboard-focused Package Maintenance rows.
 - Cover conflict and partial-failure action availability with core tests.
 
-## 4. Continue SPDX Baseline Reduction for Root Config
+## 3. Continue SPDX Baseline Reduction for Root Config
 
 Acceptance:
 - Add SPDX headers to one small, reviewable group of remaining root/config
@@ -41,7 +31,7 @@ Acceptance:
 - Keep `projectname_spdx_check` passing.
 - Avoid changing document meaning or build behavior.
 
-## 5. Add Project Chooser Failure-State Smoke Coverage
+## 4. Add Project Chooser Failure-State Smoke Coverage
 
 Acceptance:
 - Extend hidden project chooser smoke coverage to cancelled selections, duplicate
@@ -49,3 +39,13 @@ Acceptance:
 - Verify failures leave the current project package unchanged.
 - Keep native chooser dialogs unavailable in automated tests.
 - Preserve the existing launch and successful chooser smoke tests.
+
+## 5. Add Audio/MIDI Reset App Smoke Coverage
+
+Acceptance:
+- Add a hidden app smoke hook that exercises the Audio/MIDI preference reset
+  command against an isolated temporary settings file.
+- Verify reset clears first-run dismissal and preferred output intent while
+  leaving the active project package path unchanged.
+- Keep the smoke hook unavailable in normal user workflows.
+- Preserve existing launch and project chooser smoke tests.

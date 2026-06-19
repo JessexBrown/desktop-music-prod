@@ -25,6 +25,7 @@ inline constexpr std::string_view audioImport = "audio.import";
 inline constexpr std::string_view audioImportCancel = "audio.import.cancel";
 inline constexpr std::string_view timelinePreparationCancel = "timeline.preparation.cancel";
 inline constexpr std::string_view audioSettingsShow = "audio.settings.show";
+inline constexpr std::string_view audioSettingsReset = "audio.settings.reset";
 } // namespace AppCommandIds
 
 enum class AppCommandScope
@@ -66,6 +67,7 @@ struct AppCommandAvailability
     bool canCancelImport = false;
     bool canCancelTimelinePreparation = false;
     bool canShowAudioSettings = true;
+    bool canResetAudioSettings = true;
 };
 
 enum class AppCommandResultStatus

@@ -777,6 +777,43 @@ void appSettingsRejectsUnsupportedVersion()
            "Unsupported app settings version reports readable error");
 }
 
+void appSettingsResetClearsAudioSetupPreferences()
+{
+    projectname::AppSettings settings;
+    settings.audioSetup.firstRunPromptDismissed = true;
+    settings.audioSetup.preferredOutput.hasOutputDevice = true;
+    settings.audioSetup.preferredOutput.deviceType = "Windows Audio";
+    settings.audioSetup.preferredOutput.deviceName = "Rabbington Output";
+    settings.audioSetup.preferredOutput.sampleRateHz = 48000.0;
+    settings.audioSetup.preferredOutput.bufferSizeSamples = 256;
+    settings.audioSetup.preferredOutput.outputChannelCount = 2;
+    settings.audioSetup.preferredOutput.juceDeviceStateXml =
+        R"(<DEVICESETUP deviceType="Windows Audio" audioOutputDeviceName="Rabbington Output"/>)";
+
+    projectname::resetAudioSetupPreferences(settings);
+
+    expect(settings.settingsVersion == projectname::appSettingsSchemaVersion,
+           "Audio setup reset preserves app settings schema version");
+    expect(!settings.audioSetup.firstRunPromptDismissed,
+           "Audio setup reset clears first-run dismissal");
+    expect(settings.audioSetup.preferredOutput == projectname::AudioOutputPreference {},
+           "Audio setup reset clears preferred output intent");
+
+    const auto settingsPath = makeTemporarySettingsPath("projectname-app-settings-reset-test");
+    std::string error;
+    expect(projectname::saveAppSettings(settings, settingsPath, error),
+           "Reset app settings save succeeds");
+
+    const auto loaded = projectname::loadAppSettings(settingsPath, error);
+    expect(loaded.has_value(), "Reset app settings load succeeds");
+    expect(loaded.has_value() && !loaded->audioSetup.firstRunPromptDismissed,
+           "Reset app settings file keeps first-run prompt visible");
+    expect(loaded.has_value() && loaded->audioSetup.preferredOutput == projectname::AudioOutputPreference {},
+           "Reset app settings file keeps preferred output unset");
+
+    expect(std::filesystem::remove(settingsPath), "Temporary reset app settings file deleted");
+}
+
 void projectPackageSaveAsPolicyBlocksManifestOnlyWhenPackageAssetsNeedCopy()
 {
     auto project = projectname::ProjectModel::createDefault();
@@ -6542,7 +6579,7 @@ void workspaceCommandRouterPreservesFocusedWorkspaceShortcuts()
 void appCommandRegistryDescribesPrototypeTopBarCommands()
 {
     const auto registry = projectname::makePrototypeAppCommandRegistry();
-    expect(registry.size() == 13, "App command registry exposes the prototype app actions");
+    expect(registry.size() == 14, "App command registry exposes the prototype app actions");
 
     auto expectCommand = [&registry](std::string_view id,
                                      std::string_view label,
@@ -6629,6 +6666,11 @@ void appCommandRegistryDescribesPrototypeTopBarCommands()
                   projectname::AppCommandScope::audioDevice,
                   true,
                   "App command registry contains Audio/MIDI Settings");
+    expectCommand(projectname::AppCommandIds::audioSettingsReset,
+                  "Reset Audio/MIDI Preferences",
+                  projectname::AppCommandScope::audioDevice,
+                  true,
+                  "App command registry contains Reset Audio/MIDI Preferences");
 
     expect(registry.findCommand("missing.command") == nullptr,
            "App command registry returns null for unknown commands");
@@ -6645,6 +6687,7 @@ void appCommandRegistryDescribesPrototypeTopBarCommands()
     availability.canImportAudio = false;
     availability.canCancelImport = true;
     availability.canCancelTimelinePreparation = true;
+    availability.canResetAudioSettings = false;
 
     const auto busyRegistry = projectname::makePrototypeAppCommandRegistry(availability);
     expect(busyRegistry.isEnabled(projectname::AppCommandIds::editUndo),
@@ -6665,6 +6708,8 @@ void appCommandRegistryDescribesPrototypeTopBarCommands()
            "App command registry enables cancel import from availability");
     expect(busyRegistry.isEnabled(projectname::AppCommandIds::timelinePreparationCancel),
            "App command registry enables cancel timeline preparation from availability");
+    expect(!busyRegistry.isEnabled(projectname::AppCommandIds::audioSettingsReset),
+           "App command registry disables Audio/MIDI preference reset from availability");
 
     const auto* disabledImport = busyRegistry.findCommand(projectname::AppCommandIds::audioImport);
     expect(disabledImport != nullptr && !disabledImport->disabledReason.empty(),
@@ -6677,6 +6722,10 @@ void appCommandRegistryDescribesPrototypeTopBarCommands()
     const auto* enabledCancel = busyRegistry.findCommand(projectname::AppCommandIds::audioImportCancel);
     expect(enabledCancel != nullptr && enabledCancel->disabledReason.empty(),
            "Enabled cancel command clears stale disabled status text");
+
+    const auto* disabledAudioReset = busyRegistry.findCommand(projectname::AppCommandIds::audioSettingsReset);
+    expect(disabledAudioReset != nullptr && !disabledAudioReset->disabledReason.empty(),
+           "Disabled Audio/MIDI reset command keeps a status reason");
 
     const auto* enabledSaveAsCancel = busyRegistry.findCommand(projectname::AppCommandIds::projectSaveAsCancel);
     expect(enabledSaveAsCancel != nullptr && enabledSaveAsCancel->disabledReason.empty(),
@@ -8574,6 +8623,7 @@ int main()
     appSettingsRoundTripsAudioSetupPreferences();
     appSettingsLoadsAudioSetupDefaultsFromMinimalJson();
     appSettingsRejectsUnsupportedVersion();
+    appSettingsResetClearsAudioSetupPreferences();
     projectPackageSaveAsPolicyBlocksManifestOnlyWhenPackageAssetsNeedCopy();
     projectPackageSaveAsPolicyAllowsSamePackageManifestSave();
     projectPackageSaveAsPolicyPreservesExternalReferences();
