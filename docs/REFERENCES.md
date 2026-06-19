@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
+
 # References to Verify During Development
 
 Use these as starting points. Always verify current licenses and APIs before shipping.

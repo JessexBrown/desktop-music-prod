@@ -11,10 +11,3 @@ CMakePresets.json
 CODEX_STARTING_PROMPT.md
 GOAL.md
 README.md
-docs/BUILDING.md
-docs/DEPENDENCIES.md
-docs/MILESTONES.md
-docs/PLUGIN_POLICY.md
-docs/REFERENCES.md
-docs/UX_PRINCIPLES.md
-docs/issues/NEXT-ISSUES.md

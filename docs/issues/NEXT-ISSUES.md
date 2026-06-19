@@ -1,13 +1,8 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
+
 # Next Issues
 
-## 1. Continue SPDX Baseline Reduction for Docs/Config
-
-Acceptance:
-- Add SPDX headers to one small, reviewable group of legacy docs or config files.
-- Remove those paths from `docs/SPDX_EXCEPTIONS.txt`.
-- Keep `projectname_spdx_check` passing.
-
-## 2. Add Project Chooser Smoke Test Hooks
+## 1. Add Project Chooser Smoke Test Hooks
 
 Acceptance:
 - Add a deterministic test or smoke hook for New/Open/Save As flows without
@@ -17,7 +12,7 @@ Acceptance:
 - Keep the hook unavailable in normal user workflows.
 - Preserve the existing `projectname_app_smoke` launch check.
 
-## 3. Add Audio/MIDI Preference Reset Action
+## 2. Add Audio/MIDI Preference Reset Action
 
 Acceptance:
 - Add a visible app command to reset saved Audio/MIDI preferences without
@@ -27,7 +22,7 @@ Acceptance:
 - Keep reset reads/writes off the audio callback thread.
 - Cover reset behavior with core settings tests and app command metadata tests.
 
-## 4. Add CI Action Pin Review Note
+## 3. Add CI Action Pin Review Note
 
 Acceptance:
 - Add a short scheduled-maintenance note or issue template for reviewing
@@ -37,7 +32,7 @@ Acceptance:
 - Keep this as a documentation/process task, not an automated updater.
 - Preserve the existing CI workflow jobs and cache behavior.
 
-## 5. Add Restore Conflict Recovery Detail Actions
+## 4. Add Restore Conflict Recovery Detail Actions
 
 Acceptance:
 - Add non-mutating detail actions for conflict and partial-failure restore
@@ -46,3 +41,12 @@ Acceptance:
   batches.
 - Keep actions available from keyboard-focused Package Maintenance rows.
 - Cover conflict and partial-failure action availability with core tests.
+
+## 5. Continue SPDX Baseline Reduction for Root Config
+
+Acceptance:
+- Add SPDX headers to one small, reviewable group of remaining root/config
+  exceptions.
+- Remove those paths from `docs/SPDX_EXCEPTIONS.txt`.
+- Keep `projectname_spdx_check` passing.
+- Avoid changing document meaning or build behavior.
