@@ -8,6 +8,8 @@
 #include <atomic>
 #include <cstdint>
 #include <memory>
+#include <string>
+#include <string_view>
 #include <vector>
 
 #include <juce_audio_devices/juce_audio_devices.h>
@@ -32,6 +34,7 @@ public:
     ~AudioDeviceService() override;
 
     juce::String initialiseDefaultDevice();
+    juce::String initialiseDevice(std::string_view savedDeviceStateXml);
     void shutdown();
 
     void setTestToneEnabled(bool shouldEnable);
@@ -49,6 +52,7 @@ public:
     void stopPlayback();
 
     [[nodiscard]] AudioDeviceSummary getDeviceSummary() const;
+    [[nodiscard]] std::string createDeviceStateXml() const;
 
     [[nodiscard]] juce::AudioDeviceManager& getDeviceManager() noexcept;
     [[nodiscard]] const juce::AudioDeviceManager& getDeviceManager() const noexcept;

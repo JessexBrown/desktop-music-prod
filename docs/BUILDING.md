@@ -214,6 +214,10 @@ combination. Use the `dev` preset for the JUCE desktop app on Windows and the
 When the JUCE app is built, it starts from a deterministic package named
 `Rabbington Studio Demo.project` in the current user's documents folder, and the
 Project menu can create, open, save, or Save As native `.project` packages.
+Application-level settings, including Audio/MIDI setup prompt dismissal and the
+preferred output intent, are stored separately under JUCE's per-user application
+data location as `Rabbington Studio/settings.json`; these settings are not part
+of project packages.
 Save As copies package-local `audio/`, `analysis/`, `samples/`, and `presets/`
 on a cancellable background job before writing the target manifest, while
 source-package `backups/` are not cloned. Import Audio uses a native WAV file

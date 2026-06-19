@@ -2,6 +2,7 @@
 
 #include "core/AppSession.h"
 #include "core/AppCommandRegistry.h"
+#include "core/AppSettings.h"
 #include "core/AudioSetupStatus.h"
 #include "core/AudioEngineStub.h"
 #include "core/BackgroundAudioImportJob.h"
@@ -88,6 +89,11 @@ std::filesystem::path makeTemporaryPackagePath(const std::string& prefix)
 std::filesystem::path makeTemporaryAudioPath(const std::string& prefix)
 {
     return std::filesystem::temp_directory_path() / (prefix + "-" + makeTemporaryPathSuffix() + ".wav");
+}
+
+std::filesystem::path makeTemporarySettingsPath(const std::string& prefix)
+{
+    return std::filesystem::temp_directory_path() / (prefix + "-" + makeTemporaryPathSuffix() + ".json");
 }
 
 void writeManifestText(const std::filesystem::path& package, const std::string& manifestText)
@@ -709,6 +715,66 @@ void projectManifestRoundTrips()
     expect(loaded.has_value() && *loaded == project, "Loaded project equals saved project");
 
     expect(std::filesystem::remove_all(package) > 0, "Temporary project package deleted");
+}
+
+void appSettingsRoundTripsAudioSetupPreferences()
+{
+    projectname::AppSettings settings;
+    settings.audioSetup.firstRunPromptDismissed = true;
+    settings.audioSetup.preferredOutput.hasOutputDevice = true;
+    settings.audioSetup.preferredOutput.deviceType = "Windows Audio";
+    settings.audioSetup.preferredOutput.deviceName = "Rabbington Output";
+    settings.audioSetup.preferredOutput.sampleRateHz = 48000.0;
+    settings.audioSetup.preferredOutput.bufferSizeSamples = 256;
+    settings.audioSetup.preferredOutput.outputChannelCount = 2;
+    settings.audioSetup.preferredOutput.juceDeviceStateXml =
+        R"(<DEVICESETUP deviceType="Windows Audio" audioOutputDeviceName="Rabbington Output"/>)";
+
+    const auto settingsPath = makeTemporarySettingsPath("projectname-app-settings-test");
+
+    std::string error;
+    expect(projectname::saveAppSettings(settings, settingsPath, error),
+           "App settings save writes settings file");
+    expect(error.empty(), "App settings save leaves error empty");
+
+    const auto settingsText = readTextFile(settingsPath);
+    expect(settingsText.find("\"settingsVersion\": 1") != std::string::npos,
+           "App settings file records schema version");
+    expect(settingsText.find("Rabbington Output") != std::string::npos,
+           "App settings file records readable output device name");
+
+    const auto loaded = projectname::loadAppSettings(settingsPath, error);
+    expect(loaded.has_value(), "App settings load succeeds");
+    expect(loaded.has_value() && *loaded == settings, "App settings round trip through JSON");
+
+    expect(std::filesystem::remove(settingsPath), "Temporary app settings file deleted");
+}
+
+void appSettingsLoadsAudioSetupDefaultsFromMinimalJson()
+{
+    std::string error;
+    const auto loaded = projectname::parseAppSettingsJson(
+        nlohmann::json { { "settingsVersion", projectname::appSettingsSchemaVersion } },
+        error);
+
+    expect(loaded.has_value(), "Minimal app settings JSON loads");
+    expect(error.empty(), "Minimal app settings JSON leaves error empty");
+    expect(loaded.has_value() && !loaded->audioSetup.firstRunPromptDismissed,
+           "Minimal app settings defaults setup prompt to visible");
+    expect(loaded.has_value() && !loaded->audioSetup.preferredOutput.hasOutputDevice,
+           "Minimal app settings defaults preferred output to unset");
+}
+
+void appSettingsRejectsUnsupportedVersion()
+{
+    std::string error;
+    const auto loaded = projectname::parseAppSettingsJson(
+        nlohmann::json { { "settingsVersion", projectname::appSettingsSchemaVersion + 1 } },
+        error);
+
+    expect(!loaded.has_value(), "App settings reject unsupported future version");
+    expect(error.find("Unsupported app settings version") != std::string::npos,
+           "Unsupported app settings version reports readable error");
 }
 
 void projectPackageSaveAsPolicyBlocksManifestOnlyWhenPackageAssetsNeedCopy()
@@ -8427,6 +8493,9 @@ int main()
     appSessionLoadFailureKeepsCurrentProject();
     transportStateAdvancesOnlyWhilePlaying();
     projectManifestRoundTrips();
+    appSettingsRoundTripsAudioSetupPreferences();
+    appSettingsLoadsAudioSetupDefaultsFromMinimalJson();
+    appSettingsRejectsUnsupportedVersion();
     projectPackageSaveAsPolicyBlocksManifestOnlyWhenPackageAssetsNeedCopy();
     projectPackageSaveAsPolicyAllowsSamePackageManifestSave();
     projectPackageSaveAsPolicyPreservesExternalReferences();

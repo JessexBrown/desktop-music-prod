@@ -7,6 +7,7 @@
 
 #include "core/AppCommandRegistry.h"
 #include "core/AppSession.h"
+#include "core/AppSettings.h"
 #include "core/AudioDeviceService.h"
 #include "core/BackgroundAudioImportJob.h"
 #include "core/BackgroundMediaRelinkPreparationJob.h"
@@ -231,13 +232,18 @@ private:
     void applyMixerControlChange();
     void showAudioSettings();
     void dismissAudioSetupPrompt();
+    void loadApplicationSettings();
+    [[nodiscard]] bool persistApplicationSettings(juce::String failureStatus);
+    void persistAudioSetupPreferencesIfChanged(const projectname::AudioDeviceSummary& summary);
     void setStatus(juce::String status);
+    [[nodiscard]] std::filesystem::path getDefaultApplicationSettingsPath() const;
     [[nodiscard]] std::filesystem::path getDefaultProjectPackagePath() const;
     [[nodiscard]] const std::filesystem::path& getCurrentProjectPackagePath() const noexcept;
     [[nodiscard]] bool hasProjectChooserOpen() const noexcept;
 
     projectname::AudioDeviceService audioService_;
     projectname::AppSession session_;
+    projectname::AppSettings appSettings_;
 
     juce::TextButton playButton_ { "Play" };
     juce::TextButton stopButton_ { "Stop" };
@@ -265,6 +271,7 @@ private:
     juce::ToggleButton soloToggle_ { "Solo" };
     juce::String statusText_;
     juce::String audioSetupInitializationError_;
+    std::filesystem::path appSettingsPath_;
     std::filesystem::path currentProjectPackagePath_;
     std::unique_ptr<juce::FileChooser> projectNewChooser_;
     std::unique_ptr<juce::FileChooser> projectSaveAsChooser_;
@@ -288,6 +295,7 @@ private:
     bool canCancelSaveAsPackageCopy_ = false;
     bool canCancelTimelinePlaybackPreparation_ = false;
     bool audioSetupPromptDismissed_ = false;
+    std::string lastPersistedAudioSetupPreferenceSignature_;
     std::string lastAudioSetupStatusSignature_;
 
     WorkspacePanel browserPanel_;

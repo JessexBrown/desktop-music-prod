@@ -41,12 +41,10 @@ Bind that model into the JUCE app by:
   top bar.
 - The flow remains intentionally separate from plugin scanning and does not add
   any new dependency.
-- Dismissal is per app session only; persisted onboarding preferences remain a
-  later task.
+- Dismissal was initially per app session only. ADR-0094 extends this flow with
+  persisted application settings.
 
 ## Follow-Ups
 
-- Persist device setup dismissal and preferred device intent after the project
-  has an application settings file.
 - Add deterministic UI smoke coverage for unavailable-device presentation if
   the app gains a test hook for simulated audio-device state.

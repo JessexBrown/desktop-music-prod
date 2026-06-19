@@ -45,6 +45,8 @@ endif()
 add_library(projectname_core
     src/core/AppCommandRegistry.cpp
     src/core/AppCommandRegistry.h
+    src/core/AppSettings.cpp
+    src/core/AppSettings.h
     src/core/AppSession.cpp
     src/core/AppSession.h
     src/core/AudioSetupStatus.cpp

@@ -348,6 +348,39 @@ void setButtonEnabledFromCommand(juce::Button& button,
     return summary.isOpen && summary.sampleRate > 0.0 ? summary.sampleRate : 0.0;
 }
 
+[[nodiscard]] projectname::AudioOutputPreference makeAudioOutputPreference(
+    const projectname::AudioDeviceSummary& summary,
+    std::string juceDeviceStateXml)
+{
+    projectname::AudioOutputPreference preference;
+    preference.hasOutputDevice = summary.isOpen && summary.outputChannels > 0;
+    preference.deviceType = summary.type.toStdString();
+    preference.deviceName = summary.name.toStdString();
+    preference.sampleRateHz = summary.sampleRate > 0.0 ? summary.sampleRate : 0.0;
+    preference.bufferSizeSamples = std::max(0, summary.bufferSizeSamples);
+    preference.outputChannelCount = std::max(0, summary.outputChannels);
+    preference.juceDeviceStateXml = std::move(juceDeviceStateXml);
+    return preference;
+}
+
+[[nodiscard]] std::string makeAudioSetupPreferenceSignature(
+    const projectname::AppSettings& settings)
+{
+    const auto& audioSetup = settings.audioSetup;
+    const auto& output = audioSetup.preferredOutput;
+
+    std::ostringstream signature;
+    signature << audioSetup.firstRunPromptDismissed << '|'
+              << output.hasOutputDevice << '|'
+              << output.deviceType << '|'
+              << output.deviceName << '|'
+              << output.sampleRateHz << '|'
+              << output.bufferSizeSamples << '|'
+              << output.outputChannelCount << '|'
+              << output.juceDeviceStateXml;
+    return signature.str();
+}
+
 [[nodiscard]] juce::String formatSampleRate(double sampleRateHz)
 {
     if (!std::isfinite(sampleRateHz) || sampleRateHz <= 0.0)
@@ -1127,6 +1160,7 @@ MainComponent::MainComponent()
                   { "Track mix", "Master" })
 {
     currentProjectPackagePath_ = getDefaultProjectPackagePath();
+    loadApplicationSettings();
     session_.getProject().setName(projectname::demoProjectName);
     configureControls();
     browserPanel_.setSelectableRowCallback(
@@ -1209,7 +1243,8 @@ MainComponent::MainComponent()
     refreshMixerControls();
     refreshBrowserPanel();
 
-    const auto error = audioService_.initialiseDefaultDevice();
+    const auto error =
+        audioService_.initialiseDevice(appSettings_.audioSetup.preferredOutput.juceDeviceStateXml);
     audioSetupInitializationError_ = error;
     refreshInspectorPanel();
     refreshDevicePanel(true);
@@ -3620,6 +3655,8 @@ void MainComponent::refreshDevicePanel(bool force)
     if (!force && nextSignature == lastAudioSetupStatusSignature_)
         return;
 
+    persistAudioSetupPreferencesIfChanged(summary);
+
     lastAudioSetupStatusSignature_ = nextSignature;
     devicePanel_.setSubtitle(juce::String(model.subtitle));
     devicePanel_.setLines(makeStringArray(model.lines));
@@ -3675,6 +3712,8 @@ void MainComponent::applyMixerControlChange()
 void MainComponent::showAudioSettings()
 {
     audioSetupPromptDismissed_ = true;
+    appSettings_.audioSetup.firstRunPromptDismissed = true;
+    const auto settingsSaved = persistApplicationSettings("Audio setup preference save failed");
     refreshDevicePanel(true);
 
     auto selector = std::make_unique<juce::AudioDeviceSelectorComponent>(audioService_.getDeviceManager(),
@@ -3697,20 +3736,83 @@ void MainComponent::showAudioSettings()
     options.useNativeTitleBar = true;
     options.resizable = true;
     options.launchAsync();
-    setStatus("Audio/MIDI setup opened - press Play to test output");
+
+    if (settingsSaved)
+        setStatus("Audio/MIDI setup opened - press Play to test output");
 }
 
 void MainComponent::dismissAudioSetupPrompt()
 {
     audioSetupPromptDismissed_ = true;
+    appSettings_.audioSetup.firstRunPromptDismissed = true;
+    const auto settingsSaved = persistApplicationSettings("Audio setup reminder could not be saved");
     refreshDevicePanel(true);
-    setStatus("Audio setup reminder dismissed");
+
+    if (settingsSaved)
+        setStatus("Audio setup reminder dismissed");
+}
+
+void MainComponent::loadApplicationSettings()
+{
+    appSettingsPath_ = getDefaultApplicationSettingsPath();
+
+    std::string error;
+    if (auto loadedSettings = projectname::loadAppSettings(appSettingsPath_, error))
+        appSettings_ = *loadedSettings;
+
+    audioSetupPromptDismissed_ = appSettings_.audioSetup.firstRunPromptDismissed;
+    lastPersistedAudioSetupPreferenceSignature_ = makeAudioSetupPreferenceSignature(appSettings_);
+}
+
+bool MainComponent::persistApplicationSettings(juce::String failureStatus)
+{
+    if (appSettingsPath_.empty())
+        appSettingsPath_ = getDefaultApplicationSettingsPath();
+
+    std::string error;
+    if (!projectname::saveAppSettings(appSettings_, appSettingsPath_, error))
+    {
+        setStatus(std::move(failureStatus) + ": " + juce::String(error));
+        return false;
+    }
+
+    lastPersistedAudioSetupPreferenceSignature_ = makeAudioSetupPreferenceSignature(appSettings_);
+    return true;
+}
+
+void MainComponent::persistAudioSetupPreferencesIfChanged(const projectname::AudioDeviceSummary& summary)
+{
+    if (!summary.isOpen || summary.outputChannels <= 0)
+        return;
+
+    auto nextSettings = appSettings_;
+    nextSettings.audioSetup.firstRunPromptDismissed = audioSetupPromptDismissed_;
+    nextSettings.audioSetup.preferredOutput =
+        makeAudioOutputPreference(summary, audioService_.createDeviceStateXml());
+
+    const auto nextSignature = makeAudioSetupPreferenceSignature(nextSettings);
+    if (nextSignature == lastPersistedAudioSetupPreferenceSignature_)
+        return;
+
+    appSettings_ = std::move(nextSettings);
+    if (!persistApplicationSettings("Audio setup preference save failed"))
+        return;
 }
 
 void MainComponent::setStatus(juce::String status)
 {
     statusText_ = std::move(status);
     statusLabel_.setText(statusText_, juce::dontSendNotification);
+}
+
+std::filesystem::path MainComponent::getDefaultApplicationSettingsPath() const
+{
+    const auto applicationDataDirectory =
+        juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory);
+    return std::filesystem::path(applicationDataDirectory.getChildFile(projectname::productName)
+                                     .getChildFile(projectname::appSettingsFileName)
+                                     .getFullPathName()
+                                     .toStdString());
 }
 
 std::filesystem::path MainComponent::getDefaultProjectPackagePath() const

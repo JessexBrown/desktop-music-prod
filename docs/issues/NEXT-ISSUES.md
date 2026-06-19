@@ -1,14 +1,6 @@
 # Next Issues
 
-## 1. Persist Audio/MIDI Setup Preferences
-
-Acceptance:
-- Define an application settings file location separate from project packages.
-- Persist the first-run Audio/MIDI setup dismissal and preferred output intent.
-- Keep device preference reads/writes off the audio callback thread.
-- Add tests for settings serialization before applying preferences at startup.
-
-## 2. Refresh GitHub Actions Node Runtime Usage
+## 1. Refresh GitHub Actions Node Runtime Usage
 
 Acceptance:
 - Review the hosted CI annotation about Node.js 20 actions being forced to
@@ -18,7 +10,7 @@ Acceptance:
 - Preserve the existing Linux core and Windows app build/test coverage.
 - Verify the workflow still passes on GitHub-hosted runners.
 
-## 3. Add Restore-Selection Keyboard Affordances
+## 2. Add Restore-Selection Keyboard Affordances
 
 Acceptance:
 - Add keyboard-accessible commands for select all, clear selection, and toggling
@@ -29,14 +21,14 @@ Acceptance:
 - Cover command availability and state transitions with core or app-session
   tests.
 
-## 4. Continue SPDX Baseline Reduction for Docs/Config
+## 3. Continue SPDX Baseline Reduction for Docs/Config
 
 Acceptance:
 - Add SPDX headers to one small, reviewable group of legacy docs or config files.
 - Remove those paths from `docs/SPDX_EXCEPTIONS.txt`.
 - Keep `projectname_spdx_check` passing.
 
-## 5. Add Project Chooser Smoke Test Hooks
+## 4. Add Project Chooser Smoke Test Hooks
 
 Acceptance:
 - Add a deterministic test or smoke hook for New/Open/Save As flows without
@@ -45,3 +37,13 @@ Acceptance:
   boundary.
 - Keep the hook unavailable in normal user workflows.
 - Preserve the existing `projectname_app_smoke` launch check.
+
+## 5. Add Audio/MIDI Preference Reset Action
+
+Acceptance:
+- Add a visible app command to reset saved Audio/MIDI preferences without
+  deleting project packages.
+- Clear the persisted first-run dismissal and preferred output intent from the
+  app settings file.
+- Keep reset reads/writes off the audio callback thread.
+- Cover reset behavior with core settings tests and app command metadata tests.

@@ -24,6 +24,9 @@ Third-party dependencies remain under their own licenses as recorded in
 - The Device Panel now shows a first-run Audio/MIDI setup prompt, ready/error
   output states, and a non-modal setup action that opens the existing JUCE
   selector without involving plugin scanning.
+- App-level Audio/MIDI setup preferences persist outside project packages in a
+  per-user `Rabbington Studio/settings.json`, including first-run prompt
+  dismissal, a readable output summary, and JUCE restore state when available.
 - Play/Stop transport state with tempo, time signature, and timeline position.
 - Minimal core audio engine stub that renders a generated test tone and a
   duration-bounded generated clip through the Windows fallback smoke path, plus
@@ -232,7 +235,8 @@ Third-party dependencies remain under their own licenses as recorded in
   progress, and cancel state, then hands the prepared mono buffer to audio
   playback outside the render callback.
 - Unit tests for transport state, project serialization, tone rendering, audio
-  engine generated-tone/generated-clip/prepared-buffer playback, scheduled clip
+  engine generated-tone/generated-clip/prepared-buffer playback, app settings
+  serialization, scheduled clip
   start offsets, imported clip playback planning/rendering, PCM16 WAV import,
   project-package audio import, imported timeline Play preparation/cache
   behavior, prepared-cache hit/miss/eviction/stale rejection, byte budgeting,
@@ -538,5 +542,7 @@ or use `ctest --preset dev --output-on-failure`.
   package asset-copy command and native Save As wiring.
 - `docs/adr/ADR-0093-background-save-as-package-copy-job.md` records the
   cancellable background Save As package-copy job.
+- `docs/adr/ADR-0094-audio-midi-setup-preferences.md` records the app-level
+  Audio/MIDI settings file and restore boundary.
 - `docs/AUDIO_MIDI_SETUP_UX.md` documents the first-run device setup UX states.
 - `docs/issues/NEXT-ISSUES.md` lists the next five small tasks.

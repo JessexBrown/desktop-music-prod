@@ -13,7 +13,16 @@ AudioDeviceService::~AudioDeviceService()
 
 juce::String AudioDeviceService::initialiseDefaultDevice()
 {
-    auto error = deviceManager_.initialise(0, 2, nullptr, true);
+    return initialiseDevice({});
+}
+
+juce::String AudioDeviceService::initialiseDevice(std::string_view savedDeviceStateXml)
+{
+    std::unique_ptr<juce::XmlElement> savedState;
+    if (!savedDeviceStateXml.empty())
+        savedState = juce::parseXML(juce::String(std::string(savedDeviceStateXml)));
+
+    auto error = deviceManager_.initialise(0, 2, savedState.get(), true);
 
     if (!audioCallbackRegistered_)
     {
@@ -202,6 +211,14 @@ AudioDeviceSummary AudioDeviceService::getDeviceSummary() const
     }
 
     return summary;
+}
+
+std::string AudioDeviceService::createDeviceStateXml() const
+{
+    if (const auto state = deviceManager_.createStateXml())
+        return state->toString().toStdString();
+
+    return {};
 }
 
 juce::AudioDeviceManager& AudioDeviceService::getDeviceManager() noexcept
