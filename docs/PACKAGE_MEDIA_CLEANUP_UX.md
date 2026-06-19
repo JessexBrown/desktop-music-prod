@@ -140,9 +140,10 @@ Rabbington Studio could not complete every restore step. The restore manifest
 has been updated so this batch can be reviewed again.
 ```
 
-Future UI may add reveal-in-folder and rename-assisted recovery actions, but
-the first implementation should only show the conflict state and preserve both
-files.
+The first review actions must stay non-mutating. Conflict and partial-failure
+rows can expose detail actions such as copying the package-relative original
+path and revealing or copying the restore manifest path, but they must not
+overwrite active media or re-run restore for review-blocked batches.
 
 ## Accessibility and Interaction
 
@@ -216,3 +217,10 @@ error counts plus package-relative original and quarantine path previews copied
 from the restore manifest. Completed, restored, conflict, partial-failure, and
 no-selection states remain reviewable without opening a modal dialog or moving
 files.
+
+Conflict and partial-failure restore-entry rows now carry non-mutating detail
+action metadata. The JUCE browser keeps those rows keyboard focusable even when
+restore selection is blocked, and focused review rows can copy the
+package-relative original path without touching package media. The core model
+also carries the restore manifest path as review evidence for future reveal or
+copy-manifest UI.

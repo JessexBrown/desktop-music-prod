@@ -73,6 +73,7 @@ public:
                                                 std::function<void()> activateCallback);
     void setRestoreSelectionKeyboardCallbacks(std::function<void()> selectAllCallback,
                                               std::function<void()> clearCallback);
+    void setFocusedRowDetailKeyboardCallback(std::function<void()> copyCallback);
     void setPanelAction(juce::String text,
                         bool enabled,
                         juce::String tooltip,
@@ -126,6 +127,7 @@ private:
     std::function<void()> activateFocusedSelectableRowRequested_;
     std::function<void()> restoreSelectionSelectAllRequested_;
     std::function<void()> restoreSelectionClearRequested_;
+    std::function<void()> copyFocusedRowDetailRequested_;
     std::function<void()> timelinePanLeftRequested_;
     std::function<void()> timelinePanRightRequested_;
     std::function<void()> timelineZoomInRequested_;

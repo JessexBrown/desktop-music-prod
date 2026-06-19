@@ -372,6 +372,32 @@ bool hasMaintenanceBrowserRowText(
     return false;
 }
 
+bool hasMaintenanceBrowserDetailAction(
+    const projectname::PackageMediaMaintenanceBrowserRow& row,
+    projectname::PackageMediaMaintenanceDetailActionKind kind,
+    const std::string& value)
+{
+    return std::any_of(row.detailActions.begin(),
+                       row.detailActions.end(),
+                       [kind, &value](const projectname::PackageMediaMaintenanceDetailAction& action)
+                       {
+                           return action.kind == kind && action.value == value;
+                       });
+}
+
+bool hasMaintenanceBrowserFocusedDetailAction(
+    const projectname::PackageMediaMaintenanceBrowserRows& rows,
+    projectname::PackageMediaMaintenanceDetailActionKind kind,
+    const std::string& value)
+{
+    return std::any_of(rows.focusedDetailActions.begin(),
+                       rows.focusedDetailActions.end(),
+                       [kind, &value](const projectname::PackageMediaMaintenanceDetailAction& action)
+                       {
+                           return action.kind == kind && action.value == value;
+                       });
+}
+
 std::size_t countSelectableMaintenanceBrowserRows(
     const projectname::PackageMediaMaintenanceBrowserRows& rows)
 {
@@ -4604,6 +4630,43 @@ void packageMediaMaintenanceBrowserRowsRenderSelectableBatchState()
                projectname::PackageMediaMaintenanceBrowserRowKind::selectedBatchEntryPath,
                "partial restore failure"),
            "Maintenance browser rows mark partial-failure entry path state");
+    const auto partialDetailSelectionId =
+        std::string(projectname::packageMediaMaintenanceBrowserSelectionIds::restoreDetailPrefix)
+        + "audio/orphan.wav";
+    const auto partialManifestPath =
+        (package / "backups" / "media-trash" / partialId / "restore-manifest.json").string();
+    const auto* partialFailureEntry =
+        findMaintenanceBrowserRestoreEntryRow(staleSelectionRows, "audio/orphan.wav");
+    expect(partialFailureEntry != nullptr
+               && partialFailureEntry->selectable
+               && partialFailureEntry->selectionId == partialDetailSelectionId,
+           "Maintenance browser rows make partial-failure entries focusable for detail actions");
+    expect(partialFailureEntry != nullptr
+               && hasMaintenanceBrowserDetailAction(
+                   *partialFailureEntry,
+                   projectname::PackageMediaMaintenanceDetailActionKind::copyPackageRelativePath,
+                   "audio/orphan.wav")
+               && hasMaintenanceBrowserDetailAction(
+                   *partialFailureEntry,
+                   projectname::PackageMediaMaintenanceDetailActionKind::revealRestoreManifest,
+                   partialManifestPath),
+           "Maintenance browser rows expose non-mutating partial-failure detail actions");
+    projectname::PackageMediaMaintenanceBrowserRowsOptions partialDetailFocusOptions;
+    partialDetailFocusOptions.hasSnapshot = true;
+    partialDetailFocusOptions.focusedSelectionId = partialDetailSelectionId;
+    const auto partialDetailFocusedRows = projectname::buildPackageMediaMaintenanceBrowserRows(
+        staleSelectionModel,
+        std::move(partialDetailFocusOptions));
+    const auto* focusedPartialFailureEntry =
+        findMaintenanceBrowserRestoreEntryRow(partialDetailFocusedRows, "audio/orphan.wav");
+    expect(focusedPartialFailureEntry != nullptr
+               && focusedPartialFailureEntry->keyboardFocused
+               && !partialDetailFocusedRows.restoreToggleFocusedEntryKeyboardEnabled
+               && hasMaintenanceBrowserFocusedDetailAction(
+                   partialDetailFocusedRows,
+                   projectname::PackageMediaMaintenanceDetailActionKind::copyPackageRelativePath,
+                   "audio/orphan.wav"),
+           "Maintenance browser rows keep partial-failure detail actions available from keyboard focus");
 
     auto conflictSelectionModel =
         projectname::selectPackageMediaMaintenanceBatch(staleSelectionModel, conflictId);
@@ -4629,6 +4692,43 @@ void packageMediaMaintenanceBrowserRowsRenderSelectableBatchState()
                projectname::PackageMediaMaintenanceBrowserRowKind::selectedBatchEntryPath,
                "restore conflict"),
            "Maintenance browser rows mark conflict entry path state");
+    const auto conflictDetailSelectionId =
+        std::string(projectname::packageMediaMaintenanceBrowserSelectionIds::restoreDetailPrefix)
+        + "audio/orphan.wav";
+    const auto conflictManifestPath =
+        (package / "backups" / "media-trash" / conflictId / "restore-manifest.json").string();
+    const auto* conflictFailureEntry =
+        findMaintenanceBrowserRestoreEntryRow(conflictRows, "audio/orphan.wav");
+    expect(conflictFailureEntry != nullptr
+               && conflictFailureEntry->selectable
+               && conflictFailureEntry->selectionId == conflictDetailSelectionId,
+           "Maintenance browser rows make conflict entries focusable for detail actions");
+    expect(conflictFailureEntry != nullptr
+               && hasMaintenanceBrowserDetailAction(
+                   *conflictFailureEntry,
+                   projectname::PackageMediaMaintenanceDetailActionKind::copyPackageRelativePath,
+                   "audio/orphan.wav")
+               && hasMaintenanceBrowserDetailAction(
+                   *conflictFailureEntry,
+                   projectname::PackageMediaMaintenanceDetailActionKind::revealRestoreManifest,
+                   conflictManifestPath),
+           "Maintenance browser rows expose non-mutating conflict detail actions");
+    projectname::PackageMediaMaintenanceBrowserRowsOptions conflictDetailFocusOptions;
+    conflictDetailFocusOptions.hasSnapshot = true;
+    conflictDetailFocusOptions.focusedSelectionId = conflictDetailSelectionId;
+    const auto conflictDetailFocusedRows = projectname::buildPackageMediaMaintenanceBrowserRows(
+        conflictSelectionModel,
+        std::move(conflictDetailFocusOptions));
+    const auto* focusedConflictEntry =
+        findMaintenanceBrowserRestoreEntryRow(conflictDetailFocusedRows, "audio/orphan.wav");
+    expect(focusedConflictEntry != nullptr
+               && focusedConflictEntry->keyboardFocused
+               && !conflictDetailFocusedRows.restoreToggleFocusedEntryKeyboardEnabled
+               && hasMaintenanceBrowserFocusedDetailAction(
+                   conflictDetailFocusedRows,
+                   projectname::PackageMediaMaintenanceDetailActionKind::copyPackageRelativePath,
+                   "audio/orphan.wav"),
+           "Maintenance browser rows keep conflict detail actions available from keyboard focus");
 
     const auto restoredSelectionModel =
         projectname::selectPackageMediaMaintenanceBatch(conflictSelectionModel, restoredId);

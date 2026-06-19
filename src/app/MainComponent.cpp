@@ -504,6 +504,20 @@ void setButtonEnabledFromCommand(juce::Button& button,
     return panelRows;
 }
 
+[[nodiscard]] const projectname::PackageMediaMaintenanceDetailAction* findPackageMediaMaintenanceDetailAction(
+    const std::vector<projectname::PackageMediaMaintenanceDetailAction>& actions,
+    projectname::PackageMediaMaintenanceDetailActionKind kind)
+{
+    const auto found = std::find_if(actions.begin(),
+                                    actions.end(),
+                                    [kind](const projectname::PackageMediaMaintenanceDetailAction& action)
+                                    {
+                                        return action.kind == kind;
+                                    });
+
+    return found == actions.end() ? nullptr : &*found;
+}
+
 [[nodiscard]] PackageMediaMaintenanceScanResult runPackageMediaMaintenanceScan(
     std::filesystem::path packageDirectory,
     std::string selectedCleanupId,
@@ -737,6 +751,7 @@ bool WorkspacePanel::shouldPaintKeyboardFocus() const
             || previousSelectableRowFocusRequested_ || nextSelectableRowFocusRequested_
             || activateFocusedSelectableRowRequested_
             || restoreSelectionSelectAllRequested_ || restoreSelectionClearRequested_
+            || copyFocusedRowDetailRequested_
             || timelinePanLeftRequested_ || timelinePanRightRequested_
             || timelineZoomInRequested_ || timelineZoomOutRequested_)
         && hasKeyboardFocus(true);
@@ -877,6 +892,15 @@ bool WorkspacePanel::keyPressed(const juce::KeyPress& key)
         && restoreSelectionSelectAllRequested_)
     {
         restoreSelectionSelectAllRequested_();
+        return true;
+    }
+
+    if (key.getModifiers().isCommandDown()
+        && (key.getTextCharacter() == 'c' || key.getTextCharacter() == 'C'
+            || keyCode == 'c' || keyCode == 'C')
+        && copyFocusedRowDetailRequested_)
+    {
+        copyFocusedRowDetailRequested_();
         return true;
     }
 
@@ -1067,6 +1091,12 @@ void WorkspacePanel::setRestoreSelectionKeyboardCallbacks(std::function<void()> 
 {
     restoreSelectionSelectAllRequested_ = std::move(selectAllCallback);
     restoreSelectionClearRequested_ = std::move(clearCallback);
+    repaint();
+}
+
+void WorkspacePanel::setFocusedRowDetailKeyboardCallback(std::function<void()> copyCallback)
+{
+    copyFocusedRowDetailRequested_ = std::move(copyCallback);
     repaint();
 }
 
@@ -1308,6 +1338,7 @@ MainComponent::MainComponent()
         {
             clearPackageMediaRestoreEntries();
         });
+    browserPanel_.setFocusedRowDetailKeyboardCallback({});
     workspacePanel_.setTimelineClipSelectedCallback(
         [this](std::string clipId)
         {
@@ -3367,6 +3398,9 @@ void MainComponent::refreshBrowserPanel()
         packageMediaMaintenanceViewModel_,
         std::move(rowOptions));
     packageMediaBrowserFocusedSelectionId_ = modelRows.focusedSelectionId;
+    const auto* focusedCopyAction = findPackageMediaMaintenanceDetailAction(
+        modelRows.focusedDetailActions,
+        projectname::PackageMediaMaintenanceDetailActionKind::copyPackageRelativePath);
 
     auto cleanupEnabled = modelRows.cleanupAction.enabled && !scanRunning && !hasActivePackageFileWork();
     auto cleanupTooltip = juce::String("Move cleanup candidates to media trash");
@@ -3412,6 +3446,17 @@ void MainComponent::refreshBrowserPanel()
                                   ? "Project assets and media scan running"
                                   : "Project assets and media maintenance");
     browserPanel_.setRows(makePackageMediaMaintenancePanelRows(modelRows));
+    std::function<void()> focusedCopyCallback;
+    if (focusedCopyAction != nullptr)
+    {
+        focusedCopyCallback = [this, path = juce::String(focusedCopyAction->value)]()
+        {
+            juce::SystemClipboard::copyTextToClipboard(path);
+            setStatus("Copied package media path: " + path);
+        };
+    }
+
+    browserPanel_.setFocusedRowDetailKeyboardCallback(std::move(focusedCopyCallback));
     browserPanel_.setSecondaryPanelAction(modelRows.cleanupAction.visible
                                               ? juce::String(modelRows.cleanupAction.text)
                                               : juce::String(),
@@ -3437,6 +3482,8 @@ void MainComponent::handlePackageMediaBrowserSelection(std::string selectionId)
     const auto batchPrefix = std::string(projectname::packageMediaMaintenanceBrowserSelectionIds::batchPrefix);
     const auto restoreEntryPrefix =
         std::string(projectname::packageMediaMaintenanceBrowserSelectionIds::restoreEntryPrefix);
+    const auto restoreDetailPrefix =
+        std::string(projectname::packageMediaMaintenanceBrowserSelectionIds::restoreDetailPrefix);
 
     packageMediaBrowserFocusedSelectionId_ = selectionId;
 
@@ -3449,6 +3496,15 @@ void MainComponent::handlePackageMediaBrowserSelection(std::string selectionId)
     if (selectionId == std::string(projectname::packageMediaMaintenanceBrowserSelectionIds::restoreClearSelection))
     {
         clearPackageMediaRestoreEntries();
+        return;
+    }
+
+    if (selectionId.rfind(restoreDetailPrefix, 0) == 0)
+    {
+        const auto originalRelativePath = juce::String(selectionId.substr(restoreDetailPrefix.size()));
+        juce::SystemClipboard::copyTextToClipboard(originalRelativePath);
+        setStatus("Copied package media path: " + originalRelativePath);
+        refreshBrowserPanel();
         return;
     }
 

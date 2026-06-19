@@ -99,6 +99,8 @@ PackageMediaRestoreEntrySelection buildPackageMediaRestoreEntrySelection(
         item.restorable = entryIsRestorable(entry);
         item.selected = item.restorable
             && requestedSelections.erase(entry.originalRelativePath) > 0;
+        item.hasRestoreConflict = entry.restoreConflict;
+        item.hasPartialFailure = !entry.error.empty();
         item.unavailableReason = entryUnavailableReason(entry);
 
         if (item.restorable)

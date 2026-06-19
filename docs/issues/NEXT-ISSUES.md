@@ -2,17 +2,7 @@
 
 # Next Issues
 
-## 1. Add Restore Conflict Recovery Detail Actions
-
-Acceptance:
-- Add non-mutating detail actions for conflict and partial-failure restore
-  entries, such as reveal manifest path or copy package-relative path.
-- Do not overwrite active package media or re-run restore for review-blocked
-  batches.
-- Keep actions available from keyboard-focused Package Maintenance rows.
-- Cover conflict and partial-failure action availability with core tests.
-
-## 2. Continue SPDX Baseline Reduction for Root Config
+## 1. Continue SPDX Baseline Reduction for Root Config
 
 Acceptance:
 - Add SPDX headers to one small, reviewable group of remaining root/config
@@ -21,7 +11,7 @@ Acceptance:
 - Keep `projectname_spdx_check` passing.
 - Avoid changing document meaning or build behavior.
 
-## 3. Add Project Chooser Failure-State Smoke Coverage
+## 2. Add Project Chooser Failure-State Smoke Coverage
 
 Acceptance:
 - Extend hidden project chooser smoke coverage to cancelled selections, duplicate
@@ -30,7 +20,7 @@ Acceptance:
 - Keep native chooser dialogs unavailable in automated tests.
 - Preserve the existing launch and successful chooser smoke tests.
 
-## 4. Add Audio/MIDI Reset App Smoke Coverage
+## 3. Add Audio/MIDI Reset App Smoke Coverage
 
 Acceptance:
 - Add a hidden app smoke hook that exercises the Audio/MIDI preference reset
@@ -40,7 +30,7 @@ Acceptance:
 - Keep the smoke hook unavailable in normal user workflows.
 - Preserve existing launch and project chooser smoke tests.
 
-## 5. Add Linux JUCE App CI Prerequisite Note
+## 4. Add Linux JUCE App CI Prerequisite Note
 
 Acceptance:
 - Document the Linux desktop/audio system packages expected before enabling a
@@ -48,3 +38,13 @@ Acceptance:
 - Keep the current `Linux Core` workflow job unchanged.
 - Link the note from `docs/BUILDING.md`.
 - Do not add or install packages in CI yet.
+
+## 5. Add Restore Manifest Reveal App Wiring
+
+Acceptance:
+- Wire the restore detail model's manifest-path action to a platform-aware
+  reveal action or a copy-manifest-path fallback.
+- Keep the action non-mutating and unavailable for rows without conflict or
+  partial-failure review details.
+- Cover the focused-row action mapping with a small app or core test.
+- Do not re-run restore or touch package media from the reveal/copy path.

@@ -15,6 +15,8 @@ struct PackageMediaRestoreEntrySelectionItem
     std::string originalRelativePath;
     bool restorable = false;
     bool selected = false;
+    bool hasRestoreConflict = false;
+    bool hasPartialFailure = false;
     std::string unavailableReason;
 };
 

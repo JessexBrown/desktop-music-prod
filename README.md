@@ -218,6 +218,9 @@ Third-party dependencies remain under their own licenses as recorded in
 - The Package Maintenance browser now shows selected cleanup batch detail rows
   with moved/restored/restorable counts, conflict/error counts, and
   package-relative path previews copied from the restore manifest.
+- Conflict and partial-failure restore entries expose non-mutating review
+  detail actions: package-relative paths can be copied from focused browser
+  rows while repeat restore stays disabled for review-blocked batches.
 - Restore-entry selection in the Package Maintenance browser is keyboard
   reachable: Up/Down keeps cleanup-batch navigation, Tab/Shift-Tab moves browser
   row focus, Enter/Space activates the focused row, Command/Ctrl+A selects all
@@ -559,6 +562,9 @@ or use `ctest --preset dev --output-on-failure`.
   hidden successful project chooser smoke path.
 - `docs/adr/ADR-0097-audio-midi-preference-reset-command.md` records the
   visible Audio/MIDI preference reset command.
+- `docs/adr/ADR-0098-package-maintenance-restore-detail-actions.md` records
+  non-mutating restore review detail actions for conflict and partial-failure
+  entries.
 - `docs/AUDIO_MIDI_SETUP_UX.md` documents the first-run device setup UX states.
 - `docs/CI_ACTION_PIN_REVIEW.md` documents the scheduled review checklist for
   GitHub-maintained CI action major pins.

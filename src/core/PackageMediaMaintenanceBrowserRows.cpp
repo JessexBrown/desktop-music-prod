@@ -260,6 +260,44 @@ void addRow(PackageMediaMaintenanceBrowserRows& rows,
         + originalRelativePath;
 }
 
+[[nodiscard]] std::string makeRestoreDetailSelectionId(const std::string& originalRelativePath)
+{
+    return std::string(packageMediaMaintenanceBrowserSelectionIds::restoreDetailPrefix)
+        + originalRelativePath;
+}
+
+[[nodiscard]] bool restoreEntryNeedsReviewDetails(
+    const PackageMediaRestoreEntrySelectionItem& entry)
+{
+    return entry.hasRestoreConflict || entry.hasPartialFailure;
+}
+
+[[nodiscard]] std::vector<PackageMediaMaintenanceDetailAction> makeRestoreEntryDetailActions(
+    const PackageMediaRestoreEntrySelectionItem& entry,
+    const PackageMediaMaintenanceBatchRow& selectedBatch)
+{
+    if (!restoreEntryNeedsReviewDetails(entry))
+        return {};
+
+    std::vector<PackageMediaMaintenanceDetailAction> actions;
+    PackageMediaMaintenanceDetailAction copyPath;
+    copyPath.kind = PackageMediaMaintenanceDetailActionKind::copyPackageRelativePath;
+    copyPath.text = "Copy Path";
+    copyPath.value = entry.originalRelativePath;
+    actions.push_back(std::move(copyPath));
+
+    if (!selectedBatch.manifestPath.empty())
+    {
+        PackageMediaMaintenanceDetailAction revealManifest;
+        revealManifest.kind = PackageMediaMaintenanceDetailActionKind::revealRestoreManifest;
+        revealManifest.text = "Reveal Manifest";
+        revealManifest.value = selectedBatch.manifestPath.string();
+        actions.push_back(std::move(revealManifest));
+    }
+
+    return actions;
+}
+
 void addSelectableRow(PackageMediaMaintenanceBrowserRows& rows,
                       PackageMediaMaintenanceBrowserRowKind kind,
                       std::string text,
@@ -337,8 +375,18 @@ void addSelectedBatchDetailRows(PackageMediaMaintenanceBrowserRows& rows,
         row.kind = PackageMediaMaintenanceBrowserRowKind::selectedBatchEntryPath;
         row.text = selectedBatchEntryPath(entry, index);
         row.restoreOriginalRelativePath = entry.originalRelativePath;
-        row.selectionId = makeRestoreEntrySelectionId(entry.originalRelativePath);
-        row.selectable = restoreSelectionInteractive && entry.restorable;
+        row.detailActions = makeRestoreEntryDetailActions(entry, selected);
+        if (restoreSelectionInteractive && entry.restorable)
+        {
+            row.selectionId = makeRestoreEntrySelectionId(entry.originalRelativePath);
+            row.selectable = true;
+        }
+        else if (!row.detailActions.empty())
+        {
+            row.selectionId = makeRestoreDetailSelectionId(entry.originalRelativePath);
+            row.selectable = true;
+        }
+
         row.selected = entry.selected;
         rows.rows.push_back(std::move(row));
     }
@@ -504,6 +552,7 @@ PackageMediaMaintenanceBrowserRows buildPackageMediaMaintenanceBrowserRows(
             && focusedIndex->kind == PackageMediaMaintenanceBrowserRowKind::selectedBatchEntryPath
             && focusedIndex->selectable;
         rows.focusedRestoreEntryOriginalRelativePath = focusedIndex->restoreOriginalRelativePath;
+        rows.focusedDetailActions = focusedIndex->detailActions;
     }
 
     return rows;

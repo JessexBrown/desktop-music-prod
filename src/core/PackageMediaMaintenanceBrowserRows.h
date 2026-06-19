@@ -15,9 +15,23 @@ namespace packageMediaMaintenanceBrowserSelectionIds
 {
 inline constexpr std::string_view batchPrefix = "batch:";
 inline constexpr std::string_view restoreEntryPrefix = "restore-entry:";
+inline constexpr std::string_view restoreDetailPrefix = "restore-detail:";
 inline constexpr std::string_view restoreSelectAll = "restore-select-all";
 inline constexpr std::string_view restoreClearSelection = "restore-clear-selection";
 } // namespace packageMediaMaintenanceBrowserSelectionIds
+
+enum class PackageMediaMaintenanceDetailActionKind
+{
+    copyPackageRelativePath,
+    revealRestoreManifest,
+};
+
+struct PackageMediaMaintenanceDetailAction
+{
+    PackageMediaMaintenanceDetailActionKind kind = PackageMediaMaintenanceDetailActionKind::copyPackageRelativePath;
+    std::string text;
+    std::string value;
+};
 
 enum class PackageMediaMaintenanceBrowserRowKind
 {
@@ -45,6 +59,7 @@ struct PackageMediaMaintenanceBrowserRow
     std::string selectionId;
     std::string cleanupId;
     std::string restoreOriginalRelativePath;
+    std::vector<PackageMediaMaintenanceDetailAction> detailActions;
     bool selectable = false;
     bool selected = false;
     bool keyboardFocused = false;
@@ -80,6 +95,7 @@ struct PackageMediaMaintenanceBrowserRows
     bool restoreClearSelectionKeyboardEnabled = false;
     bool restoreToggleFocusedEntryKeyboardEnabled = false;
     std::string focusedRestoreEntryOriginalRelativePath;
+    std::vector<PackageMediaMaintenanceDetailAction> focusedDetailActions;
 };
 
 enum class PackageMediaMaintenanceBrowserSelectionDirection
