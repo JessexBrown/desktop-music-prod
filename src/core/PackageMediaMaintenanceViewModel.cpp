@@ -108,7 +108,8 @@ namespace
 }
 
 [[nodiscard]] PackageMediaMaintenanceBatchRow makeBatchRow(
-    const PackageMediaCleanupBatch& batch)
+    const PackageMediaCleanupBatch& batch,
+    const std::vector<std::string>& selectedRestoreOriginalRelativePaths = {})
 {
     PackageMediaMaintenanceBatchRow row;
     row.cleanupId = batch.cleanupId;
@@ -121,6 +122,8 @@ namespace
     row.conflictCount = countConflictedEntries(batch.manifest);
     row.errorCount = countEntryErrors(batch.manifest);
     row.restorableEntryCount = countRestorableEntries(batch.manifest);
+    row.restoreEntrySelection =
+        buildPackageMediaRestoreEntrySelection(batch.manifest, selectedRestoreOriginalRelativePaths);
     row.entryPreviews.reserve(batch.manifest.movedEntries.size());
     for (const auto& entry : batch.manifest.movedEntries)
     {
@@ -157,6 +160,26 @@ namespace
 
     return 0;
 }
+
+void refreshModelRestoreSelection(PackageMediaMaintenanceViewModel& model)
+{
+    model.restoreEntrySelection = {};
+    model.restoreActionEnabled = false;
+    model.restoreUnavailableReason.clear();
+
+    if (!model.hasSelectedBatch)
+    {
+        model.restoreUnavailableReason = "Select a cleanup batch to restore.";
+        return;
+    }
+
+    auto& selected = model.batches[static_cast<std::size_t>(model.selectedBatchIndex)];
+    model.restoreEntrySelection = selected.restoreEntrySelection;
+    model.restoreActionEnabled = model.restoreEntrySelection.restoreActionEnabled;
+    model.restoreUnavailableReason = model.restoreEntrySelection.restoreUnavailableReason;
+    if (model.restoreUnavailableReason.empty() && !selected.restoreUnavailableReason.empty())
+        model.restoreUnavailableReason = selected.restoreUnavailableReason;
+}
 } // namespace
 
 PackageMediaMaintenanceViewModel buildPackageMediaMaintenanceViewModel(
@@ -177,7 +200,15 @@ PackageMediaMaintenanceViewModel buildPackageMediaMaintenanceViewModel(
 
     model.batches.reserve(request.discovery.batches.size());
     for (const auto& batch : request.discovery.batches)
-        model.batches.push_back(makeBatchRow(batch));
+    {
+        const auto useSelectedRestorePaths = !request.selectedCleanupId.empty()
+            && batch.cleanupId == request.selectedCleanupId;
+        model.batches.push_back(
+            makeBatchRow(batch,
+                         useSelectedRestorePaths
+                             ? request.selectedRestoreOriginalRelativePaths
+                             : std::vector<std::string> {}));
+    }
 
     return selectPackageMediaMaintenanceBatch(std::move(model), std::move(request.selectedCleanupId));
 }
@@ -192,20 +223,71 @@ PackageMediaMaintenanceViewModel selectPackageMediaMaintenanceBatch(
     model.selectedCleanupId.clear();
     model.selectedBatchIndex = findSelectedBatchIndex(model.batches, selectedCleanupId);
     model.hasSelectedBatch = model.selectedBatchIndex >= 0;
-    model.restoreActionEnabled = false;
-    model.restoreUnavailableReason.clear();
 
     if (!model.hasSelectedBatch)
     {
-        model.restoreUnavailableReason = "Select a cleanup batch to restore.";
+        refreshModelRestoreSelection(model);
         return model;
     }
 
     auto& selected = model.batches[static_cast<std::size_t>(model.selectedBatchIndex)];
     selected.selected = true;
     model.selectedCleanupId = selected.cleanupId;
-    model.restoreActionEnabled = selected.restoreActionEnabled;
-    model.restoreUnavailableReason = selected.restoreUnavailableReason;
+    if (selected.cleanupId != selectedCleanupId)
+        selected.restoreEntrySelection =
+            clearPackageMediaRestoreEntrySelection(std::move(selected.restoreEntrySelection));
+
+    refreshModelRestoreSelection(model);
+    return model;
+}
+
+PackageMediaMaintenanceViewModel selectAllPackageMediaRestoreEntriesInSelectedBatch(
+    PackageMediaMaintenanceViewModel model)
+{
+    if (!model.hasSelectedBatch)
+    {
+        refreshModelRestoreSelection(model);
+        return model;
+    }
+
+    auto& selected = model.batches[static_cast<std::size_t>(model.selectedBatchIndex)];
+    selected.restoreEntrySelection =
+        selectAllPackageMediaRestoreEntries(std::move(selected.restoreEntrySelection));
+    refreshModelRestoreSelection(model);
+    return model;
+}
+
+PackageMediaMaintenanceViewModel clearPackageMediaRestoreEntriesInSelectedBatch(
+    PackageMediaMaintenanceViewModel model)
+{
+    if (!model.hasSelectedBatch)
+    {
+        refreshModelRestoreSelection(model);
+        return model;
+    }
+
+    auto& selected = model.batches[static_cast<std::size_t>(model.selectedBatchIndex)];
+    selected.restoreEntrySelection =
+        clearPackageMediaRestoreEntrySelection(std::move(selected.restoreEntrySelection));
+    refreshModelRestoreSelection(model);
+    return model;
+}
+
+PackageMediaMaintenanceViewModel togglePackageMediaRestoreEntryInSelectedBatch(
+    PackageMediaMaintenanceViewModel model,
+    const std::string& originalRelativePath)
+{
+    if (!model.hasSelectedBatch)
+    {
+        refreshModelRestoreSelection(model);
+        return model;
+    }
+
+    auto& selected = model.batches[static_cast<std::size_t>(model.selectedBatchIndex)];
+    selected.restoreEntrySelection =
+        togglePackageMediaRestoreEntrySelection(std::move(selected.restoreEntrySelection),
+                                                originalRelativePath);
+    refreshModelRestoreSelection(model);
     return model;
 }
 } // namespace projectname

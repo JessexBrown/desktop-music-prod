@@ -6,10 +6,19 @@
 
 #include <cstddef>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace projectname
 {
+namespace packageMediaMaintenanceBrowserSelectionIds
+{
+inline constexpr std::string_view batchPrefix = "batch:";
+inline constexpr std::string_view restoreEntryPrefix = "restore-entry:";
+inline constexpr std::string_view restoreSelectAll = "restore-select-all";
+inline constexpr std::string_view restoreClearSelection = "restore-clear-selection";
+} // namespace packageMediaMaintenanceBrowserSelectionIds
+
 enum class PackageMediaMaintenanceBrowserRowKind
 {
     library,
@@ -21,6 +30,8 @@ enum class PackageMediaMaintenanceBrowserRowKind
     selectedBatch,
     selectedBatchEntrySummary,
     selectedBatchReviewSummary,
+    restoreSelectAll,
+    restoreClearSelection,
     selectedBatchEntryPath,
     restoreSummary,
     batch,
@@ -31,7 +42,9 @@ struct PackageMediaMaintenanceBrowserRow
 {
     PackageMediaMaintenanceBrowserRowKind kind = PackageMediaMaintenanceBrowserRowKind::library;
     std::string text;
+    std::string selectionId;
     std::string cleanupId;
+    std::string restoreOriginalRelativePath;
     bool selectable = false;
     bool selected = false;
 };

@@ -5,6 +5,7 @@
 #include "ImportedMediaPackageInventory.h"
 #include "PackageMediaCleanupBatchDiscovery.h"
 #include "PackageMediaCleanupStatus.h"
+#include "PackageMediaRestoreEntrySelection.h"
 
 #include <cstddef>
 #include <filesystem>
@@ -35,6 +36,7 @@ struct PackageMediaMaintenanceBatchRow
     std::size_t errorCount = 0;
     std::size_t restorableEntryCount = 0;
     std::vector<PackageMediaMaintenanceBatchEntryPreview> entryPreviews;
+    PackageMediaRestoreEntrySelection restoreEntrySelection;
     bool selected = false;
     bool restoreActionEnabled = false;
     std::string restoreUnavailableReason;
@@ -45,6 +47,7 @@ struct PackageMediaMaintenanceViewModelRequest
     ImportedMediaPackageInventory inventory;
     PackageMediaCleanupBatchDiscoveryResult discovery;
     std::string selectedCleanupId;
+    std::vector<std::string> selectedRestoreOriginalRelativePaths;
 };
 
 struct PackageMediaMaintenanceViewModel
@@ -64,6 +67,7 @@ struct PackageMediaMaintenanceViewModel
     std::string selectedCleanupId;
     int selectedBatchIndex = -1;
     bool hasSelectedBatch = false;
+    PackageMediaRestoreEntrySelection restoreEntrySelection;
     bool restoreActionEnabled = false;
     std::string restoreActionText = "Restore Batch";
     std::string restoreUnavailableReason;
@@ -75,4 +79,14 @@ struct PackageMediaMaintenanceViewModel
 [[nodiscard]] PackageMediaMaintenanceViewModel selectPackageMediaMaintenanceBatch(
     PackageMediaMaintenanceViewModel model,
     std::string selectedCleanupId);
+
+[[nodiscard]] PackageMediaMaintenanceViewModel selectAllPackageMediaRestoreEntriesInSelectedBatch(
+    PackageMediaMaintenanceViewModel model);
+
+[[nodiscard]] PackageMediaMaintenanceViewModel clearPackageMediaRestoreEntriesInSelectedBatch(
+    PackageMediaMaintenanceViewModel model);
+
+[[nodiscard]] PackageMediaMaintenanceViewModel togglePackageMediaRestoreEntryInSelectedBatch(
+    PackageMediaMaintenanceViewModel model,
+    const std::string& originalRelativePath);
 } // namespace projectname

@@ -60,20 +60,28 @@ namespace
 [[nodiscard]] std::string restoreSummary(const PackageMediaMaintenanceViewModel& model)
 {
     if (model.restoreActionEnabled)
-        return "Restore: available";
+    {
+        return "Restore: "
+            + std::to_string(model.restoreEntrySelection.selectedRestorableEntryCount)
+            + " selected";
+    }
 
     if (!model.hasSelectedBatch)
         return "Restore: select batch";
 
     const auto& row = model.batches[static_cast<std::size_t>(model.selectedBatchIndex)];
-    if (row.conflictCount > 0)
-        return "Restore: conflict review";
 
     if (row.errorCount > 0)
         return "Restore: failure review";
 
+    if (row.conflictCount > 0 || model.restoreEntrySelection.blockedByReviewState)
+        return "Restore: conflict review";
+
     if (row.movedEntryCount > 0 && row.restoredEntryCount == row.movedEntryCount)
         return "Restore: already restored";
+
+    if (model.restoreEntrySelection.hasRestorableEntries)
+        return "Restore: select entries";
 
     return "Restore: unavailable";
 }
@@ -154,23 +162,9 @@ namespace
     return line;
 }
 
-[[nodiscard]] std::string entryStateLabel(
-    const PackageMediaMaintenanceBatchEntryPreview& entry)
-{
-    if (entry.restoreConflict)
-        return "conflict";
-
-    if (entry.hasError)
-        return "error";
-
-    if (entry.restored)
-        return "restored";
-
-    return "restorable";
-}
-
 [[nodiscard]] std::string selectedBatchEntrySummary(
-    const PackageMediaMaintenanceBatchRow& row)
+    const PackageMediaMaintenanceBatchRow& row,
+    const PackageMediaRestoreEntrySelection& selection)
 {
     return "Entries: "
         + std::to_string(row.movedEntryCount)
@@ -178,7 +172,9 @@ namespace
         + std::to_string(row.restoredEntryCount)
         + " restored / "
         + std::to_string(row.restorableEntryCount)
-        + " restorable";
+        + " restorable / "
+        + std::to_string(selection.selectedRestorableEntryCount)
+        + " selected";
 }
 
 [[nodiscard]] std::string selectedBatchReviewSummary(
@@ -192,17 +188,21 @@ namespace
 }
 
 [[nodiscard]] std::string selectedBatchEntryPath(
-    const PackageMediaMaintenanceBatchEntryPreview& entry,
+    const PackageMediaRestoreEntrySelectionItem& entry,
     std::size_t entryIndex)
 {
+    auto state = entry.restorable ? std::string("restorable") : std::string("unavailable");
+    if (entry.selected)
+        state = "selected";
+    else if (!entry.unavailableReason.empty())
+        state = entry.unavailableReason;
+
     return "Entry "
         + std::to_string(entryIndex + 1)
         + ": "
-        + entryStateLabel(entry)
+        + state
         + " | "
-        + entry.originalRelativePath
-        + " -> "
-        + entry.quarantineRelativePath;
+        + entry.originalRelativePath;
 }
 
 [[nodiscard]] std::vector<std::size_t> makeVisibleBatchIndexes(
@@ -239,6 +239,49 @@ void addRow(PackageMediaMaintenanceBrowserRows& rows,
     rows.rows.push_back(std::move(row));
 }
 
+[[nodiscard]] std::string makeBatchSelectionId(const std::string& cleanupId)
+{
+    return std::string(packageMediaMaintenanceBrowserSelectionIds::batchPrefix) + cleanupId;
+}
+
+[[nodiscard]] std::string makeRestoreEntrySelectionId(const std::string& originalRelativePath)
+{
+    return std::string(packageMediaMaintenanceBrowserSelectionIds::restoreEntryPrefix)
+        + originalRelativePath;
+}
+
+void addSelectableRow(PackageMediaMaintenanceBrowserRows& rows,
+                      PackageMediaMaintenanceBrowserRowKind kind,
+                      std::string text,
+                      std::string selectionId,
+                      bool selected = false)
+{
+    PackageMediaMaintenanceBrowserRow row;
+    row.kind = kind;
+    row.text = std::move(text);
+    row.selectionId = std::move(selectionId);
+    row.selectable = true;
+    row.selected = selected;
+    rows.rows.push_back(std::move(row));
+}
+
+void addRestoreSelectionControlRows(PackageMediaMaintenanceBrowserRows& rows,
+                                    const PackageMediaRestoreEntrySelection& selection)
+{
+    if (!selection.hasRestorableEntries)
+        return;
+
+    addSelectableRow(rows,
+                     PackageMediaMaintenanceBrowserRowKind::restoreSelectAll,
+                     "Restore entries: select all",
+                     std::string(packageMediaMaintenanceBrowserSelectionIds::restoreSelectAll));
+
+    addSelectableRow(rows,
+                     PackageMediaMaintenanceBrowserRowKind::restoreClearSelection,
+                     "Restore entries: clear selection",
+                     std::string(packageMediaMaintenanceBrowserSelectionIds::restoreClearSelection));
+}
+
 void addSelectedBatchDetailRows(PackageMediaMaintenanceBrowserRows& rows,
                                 const PackageMediaMaintenanceViewModel& model,
                                 std::size_t maxEntryPreviewRows)
@@ -260,12 +303,13 @@ void addSelectedBatchDetailRows(PackageMediaMaintenanceBrowserRows& rows,
     const auto& selected = model.batches[static_cast<std::size_t>(model.selectedBatchIndex)];
     addRow(rows,
            PackageMediaMaintenanceBrowserRowKind::selectedBatchEntrySummary,
-           selectedBatchEntrySummary(selected));
+           selectedBatchEntrySummary(selected, model.restoreEntrySelection));
     addRow(rows,
            PackageMediaMaintenanceBrowserRowKind::selectedBatchReviewSummary,
            selectedBatchReviewSummary(selected));
+    addRestoreSelectionControlRows(rows, model.restoreEntrySelection);
 
-    if (selected.entryPreviews.empty() || maxEntryPreviewRows == 0)
+    if (model.restoreEntrySelection.entries.empty() || maxEntryPreviewRows == 0)
     {
         addRow(rows,
                PackageMediaMaintenanceBrowserRowKind::selectedBatchEntryPath,
@@ -273,20 +317,26 @@ void addSelectedBatchDetailRows(PackageMediaMaintenanceBrowserRows& rows,
         return;
     }
 
-    const auto previewCount = std::min(maxEntryPreviewRows, selected.entryPreviews.size());
+    const auto previewCount = std::min(maxEntryPreviewRows, model.restoreEntrySelection.entries.size());
     for (std::size_t index = 0; index < previewCount; ++index)
     {
-        addRow(rows,
-               PackageMediaMaintenanceBrowserRowKind::selectedBatchEntryPath,
-               selectedBatchEntryPath(selected.entryPreviews[index], index));
+        const auto& entry = model.restoreEntrySelection.entries[index];
+        PackageMediaMaintenanceBrowserRow row;
+        row.kind = PackageMediaMaintenanceBrowserRowKind::selectedBatchEntryPath;
+        row.text = selectedBatchEntryPath(entry, index);
+        row.restoreOriginalRelativePath = entry.originalRelativePath;
+        row.selectionId = makeRestoreEntrySelectionId(entry.originalRelativePath);
+        row.selectable = entry.restorable;
+        row.selected = entry.selected;
+        rows.rows.push_back(std::move(row));
     }
 
-    if (selected.entryPreviews.size() > previewCount)
+    if (model.restoreEntrySelection.entries.size() > previewCount)
     {
         addRow(rows,
                PackageMediaMaintenanceBrowserRowKind::selectedBatchEntryPath,
                "Entry paths: +"
-                   + std::to_string(selected.entryPreviews.size() - previewCount)
+                   + std::to_string(model.restoreEntrySelection.entries.size() - previewCount)
                    + " more");
     }
 }
@@ -368,6 +418,7 @@ PackageMediaMaintenanceBrowserRows buildPackageMediaMaintenanceBrowserRows(
         PackageMediaMaintenanceBrowserRow row;
         row.kind = PackageMediaMaintenanceBrowserRowKind::batch;
         row.text = makeBatchLine(batch, index);
+        row.selectionId = makeBatchSelectionId(batch.cleanupId);
         row.cleanupId = batch.cleanupId;
         row.selectable = true;
         row.selected = batch.selected;

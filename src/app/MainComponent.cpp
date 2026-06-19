@@ -389,7 +389,7 @@ void setButtonEnabledFromCommand(juce::Button& button,
     {
         WorkspacePanelRow panelRow;
         panelRow.text = juce::String(row.text);
-        panelRow.selectionId = row.cleanupId;
+        panelRow.selectionId = row.selectionId.empty() ? row.cleanupId : row.selectionId;
         panelRow.selectable = row.selectable;
         panelRow.selected = row.selected;
         panelRows.push_back(std::move(panelRow));
@@ -401,6 +401,7 @@ void setButtonEnabledFromCommand(juce::Button& button,
 [[nodiscard]] PackageMediaMaintenanceScanResult runPackageMediaMaintenanceScan(
     std::filesystem::path packageDirectory,
     std::string selectedCleanupId,
+    std::vector<std::string> selectedRestoreOriginalRelativePaths,
     bool packageWorkInProgress,
     int generation)
 {
@@ -411,6 +412,7 @@ void setButtonEnabledFromCommand(juce::Button& button,
     request.inventory = projectname::buildImportedMediaPackageInventory(packageDirectory, inventoryOptions);
     request.discovery = projectname::discoverPackageMediaCleanupBatches(packageDirectory);
     request.selectedCleanupId = std::move(selectedCleanupId);
+    request.selectedRestoreOriginalRelativePaths = std::move(selectedRestoreOriginalRelativePaths);
 
     PackageMediaMaintenanceScanResult result;
     result.generation = generation;
@@ -1094,9 +1096,9 @@ MainComponent::MainComponent()
     session_.getProject().setName(projectname::demoProjectName);
     configureControls();
     browserPanel_.setSelectableRowCallback(
-        [this](std::string cleanupId)
+        [this](std::string selectionId)
         {
-            selectPackageMediaCleanupBatch(std::move(cleanupId));
+            handlePackageMediaBrowserSelection(std::move(selectionId));
         });
     browserPanel_.setSelectableRowKeyboardSelectionCallbacks(
         [this]()
@@ -1956,6 +1958,7 @@ void MainComponent::handleProjectNewResult(const juce::FileChooser& chooser)
     session_.replaceProject(std::move(project));
     currentProjectPackagePath_ = packagePath;
     selectedPackageMediaCleanupId_.clear();
+    selectedPackageMediaRestoreOriginalPaths_.clear();
     refreshAfterProjectPackageChange("Created project package: " + juce::String(packagePath.string()));
 }
 
@@ -1978,6 +1981,7 @@ void MainComponent::handleProjectSaveAsResult(const juce::FileChooser& chooser)
     {
         currentProjectPackagePath_ = packagePath;
         selectedPackageMediaCleanupId_.clear();
+        selectedPackageMediaRestoreOriginalPaths_.clear();
         refreshAfterProjectPackageChange("Saved project package as: " + juce::String(packagePath.string()));
     }
     else
@@ -2015,6 +2019,7 @@ void MainComponent::handleProjectOpenResult(const juce::FileChooser& chooser)
     session_.replaceProject(std::move(*project));
     currentProjectPackagePath_ = packagePath;
     selectedPackageMediaCleanupId_.clear();
+    selectedPackageMediaRestoreOriginalPaths_.clear();
     refreshAfterProjectPackageChange("Opened project package: " + juce::String(packagePath.string()));
 }
 
@@ -2648,6 +2653,7 @@ void MainComponent::applyCompletedPackageMediaCleanup(
         && result.quarantine.restoreManifest.has_value())
     {
         selectedPackageMediaCleanupId_ = result.quarantine.restoreManifest->cleanupId;
+        selectedPackageMediaRestoreOriginalPaths_.clear();
     }
 
     requestPackageMediaMaintenanceRefresh();
@@ -2727,12 +2733,14 @@ void MainComponent::requestPackageMediaMaintenanceRefresh()
     const auto generation = ++packageMediaMaintenanceScanGeneration_;
     const auto packageDirectory = getCurrentProjectPackagePath();
     const auto selectedCleanupId = selectedPackageMediaCleanupId_;
+    const auto selectedRestoreOriginalRelativePaths = selectedPackageMediaRestoreOriginalPaths_;
     const auto packageWorkInProgress = hasActivePackageFileWork();
 
     packageMediaMaintenanceScan_ = std::async(std::launch::async,
                                               runPackageMediaMaintenanceScan,
                                               packageDirectory,
                                               selectedCleanupId,
+                                              selectedRestoreOriginalRelativePaths,
                                               packageWorkInProgress,
                                               generation);
     refreshBrowserPanel();
@@ -2762,6 +2770,8 @@ void MainComponent::applyPackageMediaMaintenanceScanResult(PackageMediaMaintenan
     packageMediaMaintenanceViewModel_ = std::move(result.viewModel);
     hasPackageMediaMaintenanceSnapshot_ = true;
     selectedPackageMediaCleanupId_ = packageMediaMaintenanceViewModel_.selectedCleanupId;
+    selectedPackageMediaRestoreOriginalPaths_ =
+        packageMediaMaintenanceViewModel_.restoreEntrySelection.selectedOriginalRelativePaths;
     refreshBrowserPanel();
 }
 
@@ -2838,6 +2848,39 @@ void MainComponent::refreshBrowserPanel()
                                  });
 }
 
+void MainComponent::handlePackageMediaBrowserSelection(std::string selectionId)
+{
+    const auto batchPrefix = std::string(projectname::packageMediaMaintenanceBrowserSelectionIds::batchPrefix);
+    const auto restoreEntryPrefix =
+        std::string(projectname::packageMediaMaintenanceBrowserSelectionIds::restoreEntryPrefix);
+
+    if (selectionId == std::string(projectname::packageMediaMaintenanceBrowserSelectionIds::restoreSelectAll))
+    {
+        selectAllPackageMediaRestoreEntries();
+        return;
+    }
+
+    if (selectionId == std::string(projectname::packageMediaMaintenanceBrowserSelectionIds::restoreClearSelection))
+    {
+        clearPackageMediaRestoreEntries();
+        return;
+    }
+
+    if (selectionId.rfind(restoreEntryPrefix, 0) == 0)
+    {
+        togglePackageMediaRestoreEntry(selectionId.substr(restoreEntryPrefix.size()));
+        return;
+    }
+
+    if (selectionId.rfind(batchPrefix, 0) == 0)
+    {
+        selectPackageMediaCleanupBatch(selectionId.substr(batchPrefix.size()));
+        return;
+    }
+
+    selectPackageMediaCleanupBatch(std::move(selectionId));
+}
+
 void MainComponent::selectPackageMediaCleanupBatch(std::string cleanupId)
 {
     if (!hasPackageMediaMaintenanceSnapshot_ || packageMediaMaintenanceViewModel_.batches.empty())
@@ -2851,6 +2894,8 @@ void MainComponent::selectPackageMediaCleanupBatch(std::string cleanupId)
         projectname::selectPackageMediaMaintenanceBatch(std::move(packageMediaMaintenanceViewModel_),
                                                         std::move(cleanupId));
     selectedPackageMediaCleanupId_ = packageMediaMaintenanceViewModel_.selectedCleanupId;
+    selectedPackageMediaRestoreOriginalPaths_ =
+        packageMediaMaintenanceViewModel_.restoreEntrySelection.selectedOriginalRelativePaths;
     refreshBrowserPanel();
 
     if (selectedPackageMediaCleanupId_.empty())
@@ -2863,6 +2908,67 @@ void MainComponent::selectPackageMediaCleanupBatch(std::string cleanupId)
         ? juce::String("Selected cleanup batch: ")
         : juce::String("Selected newest cleanup batch: ");
     setStatus(prefix + juce::String(selectedPackageMediaCleanupId_));
+}
+
+void MainComponent::selectAllPackageMediaRestoreEntries()
+{
+    if (!hasPackageMediaMaintenanceSnapshot_ || !packageMediaMaintenanceViewModel_.hasSelectedBatch)
+    {
+        setStatus("No cleanup batch selected");
+        return;
+    }
+
+    packageMediaMaintenanceViewModel_ =
+        projectname::selectAllPackageMediaRestoreEntriesInSelectedBatch(
+            std::move(packageMediaMaintenanceViewModel_));
+    selectedPackageMediaRestoreOriginalPaths_ =
+        packageMediaMaintenanceViewModel_.restoreEntrySelection.selectedOriginalRelativePaths;
+    refreshBrowserPanel();
+
+    setStatus("Selected "
+              + juce::String(static_cast<int>(selectedPackageMediaRestoreOriginalPaths_.size()))
+              + " package media item"
+              + (selectedPackageMediaRestoreOriginalPaths_.size() == 1 ? "" : "s")
+              + " to restore");
+}
+
+void MainComponent::clearPackageMediaRestoreEntries()
+{
+    if (!hasPackageMediaMaintenanceSnapshot_ || !packageMediaMaintenanceViewModel_.hasSelectedBatch)
+    {
+        setStatus("No cleanup batch selected");
+        return;
+    }
+
+    packageMediaMaintenanceViewModel_ =
+        projectname::clearPackageMediaRestoreEntriesInSelectedBatch(
+            std::move(packageMediaMaintenanceViewModel_));
+    selectedPackageMediaRestoreOriginalPaths_.clear();
+    refreshBrowserPanel();
+    setStatus("Cleared package media restore selection");
+}
+
+void MainComponent::togglePackageMediaRestoreEntry(std::string originalRelativePath)
+{
+    if (!hasPackageMediaMaintenanceSnapshot_ || !packageMediaMaintenanceViewModel_.hasSelectedBatch)
+    {
+        setStatus("No cleanup batch selected");
+        return;
+    }
+
+    packageMediaMaintenanceViewModel_ =
+        projectname::togglePackageMediaRestoreEntryInSelectedBatch(
+            std::move(packageMediaMaintenanceViewModel_),
+            originalRelativePath);
+    selectedPackageMediaRestoreOriginalPaths_ =
+        packageMediaMaintenanceViewModel_.restoreEntrySelection.selectedOriginalRelativePaths;
+    refreshBrowserPanel();
+
+    setStatus("Restore selection: "
+              + juce::String(static_cast<int>(selectedPackageMediaRestoreOriginalPaths_.size()))
+              + " item"
+              + (selectedPackageMediaRestoreOriginalPaths_.size() == 1 ? "" : "s")
+              + " selected");
 }
 
 void MainComponent::selectAdjacentPackageMediaCleanupBatch(
@@ -2931,6 +3037,7 @@ void MainComponent::startPackageMediaCleanup()
     request.packageWorkInProgress = false;
 
     selectedPackageMediaCleanupId_ = request.cleanupId;
+    selectedPackageMediaRestoreOriginalPaths_.clear();
     packageMediaCleanupJob_ =
         std::make_unique<projectname::BackgroundPackageMediaCleanupJob>(std::move(request));
     packageMediaCleanupJob_->start();
@@ -2964,9 +3071,16 @@ void MainComponent::startPackageMediaRestore()
     if (!packageMediaMaintenanceViewModel_.restoreActionEnabled)
     {
         auto reason = packageMediaMaintenanceViewModel_.restoreUnavailableReason.empty()
-            ? juce::String("selected cleanup batch cannot be restored")
+            ? juce::String("select package media entries to restore")
             : juce::String(packageMediaMaintenanceViewModel_.restoreUnavailableReason);
         setStatus("Package media restore unavailable: " + reason);
+        refreshBrowserPanel();
+        return;
+    }
+
+    if (selectedPackageMediaRestoreOriginalPaths_.empty())
+    {
+        setStatus("Package media restore unavailable: select package media entries");
         refreshBrowserPanel();
         return;
     }
@@ -2999,13 +3113,19 @@ void MainComponent::startPackageMediaRestore()
     request.operation = projectname::BackgroundPackageMediaCleanupOperation::restore;
     request.packageDirectory = getCurrentProjectPackagePath();
     request.restoreManifestPath = selectedBatch.manifestPath;
+    request.selectedRestoreOriginalRelativePaths = selectedPackageMediaRestoreOriginalPaths_;
 
     packageMediaCleanupJob_ =
         std::make_unique<projectname::BackgroundPackageMediaCleanupJob>(std::move(request));
     packageMediaCleanupJob_->start();
     refreshAppCommandEnabledState();
     refreshBrowserPanel();
-    setStatus("Restoring cleanup batch: " + juce::String(selectedBatch.cleanupId));
+    setStatus("Restoring "
+              + juce::String(static_cast<int>(selectedPackageMediaRestoreOriginalPaths_.size()))
+              + " package media item"
+              + (selectedPackageMediaRestoreOriginalPaths_.size() == 1 ? "" : "s")
+              + " from cleanup batch: "
+              + juce::String(selectedBatch.cleanupId));
 }
 
 void MainComponent::refreshWorkspaceTimelineLane()

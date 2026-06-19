@@ -194,9 +194,13 @@ private:
     void requestPackageMediaMaintenanceRefresh();
     void applyPackageMediaMaintenanceScanResult(PackageMediaMaintenanceScanResult result);
     void refreshBrowserPanel();
+    void handlePackageMediaBrowserSelection(std::string selectionId);
     void selectPackageMediaCleanupBatch(std::string cleanupId);
     void selectAdjacentPackageMediaCleanupBatch(
         projectname::PackageMediaMaintenanceBrowserSelectionDirection direction);
+    void selectAllPackageMediaRestoreEntries();
+    void clearPackageMediaRestoreEntries();
+    void togglePackageMediaRestoreEntry(std::string originalRelativePath);
     void startPackageMediaRestore();
     void startPackageMediaCleanup();
     [[nodiscard]] bool hasActivePackageFileWork() const;
@@ -268,6 +272,7 @@ private:
     bool packageMediaMaintenanceRefreshPending_ = false;
     int packageMediaMaintenanceScanGeneration_ = 0;
     std::string selectedPackageMediaCleanupId_;
+    std::vector<std::string> selectedPackageMediaRestoreOriginalPaths_;
     bool canCancelAudioImport_ = false;
     bool canCancelMediaRelinkPreparation_ = false;
     bool canCancelTimelinePlaybackPreparation_ = false;
