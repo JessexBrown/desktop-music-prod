@@ -227,17 +227,15 @@ void reportProgress(const ProjectAudioImportOptions& options,
     options.progressCallback(progress);
 }
 
-[[nodiscard]] std::filesystem::path chooseStagingDirectory(const std::filesystem::path& packageDirectory,
-                                                           const std::filesystem::path& finalAudioPath)
+[[nodiscard]] std::filesystem::path chooseStagingDirectory(const std::filesystem::path& packageDirectory)
 {
     const auto stagingRoot = packageDirectory / ".projectname-staging";
-    const auto stem = sanitizeFileStem(finalAudioPath.stem().string());
 
-    auto candidate = stagingRoot / ("audio-import-" + stem);
+    auto candidate = stagingRoot / "audio-import";
     auto suffix = 2;
     while (std::filesystem::exists(candidate))
     {
-        candidate = stagingRoot / ("audio-import-" + stem + "-" + std::to_string(suffix));
+        candidate = stagingRoot / ("audio-import-" + std::to_string(suffix));
         ++suffix;
     }
 
@@ -368,7 +366,7 @@ std::optional<ProjectAudioImportResult> commitPreparedAudioImportToProjectPackag
 
     const auto copiedAudioPath = chooseUniqueAudioPath(packageDirectory / "audio", sourceAudioPath);
     const auto waveformSummaryPath = chooseUniqueWaveformSummaryPath(packageDirectory / "analysis", copiedAudioPath);
-    const auto stagingDirectory = chooseStagingDirectory(packageDirectory, copiedAudioPath);
+    const auto stagingDirectory = chooseStagingDirectory(packageDirectory);
     std::filesystem::create_directories(stagingDirectory, filesystemError);
     if (filesystemError)
     {

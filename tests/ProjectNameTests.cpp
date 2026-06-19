@@ -61,16 +61,28 @@ void expect(bool condition, const char* message)
     }
 }
 
+void expect(bool condition, const std::string& message)
+{
+    expect(condition, message.c_str());
+}
+
+std::string makeTemporaryPathSuffix()
+{
+    static std::atomic_uint64_t sequence { 0 };
+
+    const auto counter = sequence.fetch_add(1, std::memory_order_relaxed);
+    const auto randomValue = std::random_device {}();
+    return std::to_string(counter) + "-" + std::to_string(randomValue);
+}
+
 std::filesystem::path makeTemporaryPackagePath(const std::string& prefix)
 {
-    return std::filesystem::temp_directory_path()
-        / (prefix + "-" + std::to_string(std::random_device {}()) + ".project");
+    return std::filesystem::temp_directory_path() / (prefix + "-" + makeTemporaryPathSuffix() + ".project");
 }
 
 std::filesystem::path makeTemporaryAudioPath(const std::string& prefix)
 {
-    return std::filesystem::temp_directory_path()
-        / (prefix + "-" + std::to_string(std::random_device {}()) + ".wav");
+    return std::filesystem::temp_directory_path() / (prefix + "-" + makeTemporaryPathSuffix() + ".wav");
 }
 
 void writeManifestText(const std::filesystem::path& package, const std::string& manifestText)
@@ -3841,7 +3853,8 @@ void importedClipInspectorReportsSelectedOrFirstImportedClipMetadata()
     secondImportOptions.requestedStartBeats = 8.0;
     auto secondResult =
         projectname::importPcm16WavIntoProjectPackage(project, package, secondWavPath, secondImportOptions, error);
-    expect(secondResult.has_value(), "Imported clip inspector test imports second PCM16 WAV");
+    expect(secondResult.has_value(),
+           "Imported clip inspector test imports second PCM16 WAV: " + error);
 
     auto inspector = projectname::buildFirstImportedAudioClipInspector(project, package, 44100.0);
     expect(inspector.status == projectname::ImportedClipInspectorStatus::ready,
@@ -6613,7 +6626,7 @@ void appSessionPreparesImportedTimelinePlaybackFromPlay()
 
     std::string error;
     auto imported = session.importPcm16WavIntoProjectPackage(package, wavPath, 2.0, error);
-    expect(imported.has_value(), "Session timeline playback test imports PCM16 WAV");
+    expect(imported.has_value(), "Session timeline playback test imports PCM16 WAV: " + error);
     if (imported.has_value())
     {
         projectname::AppSession staleSession;

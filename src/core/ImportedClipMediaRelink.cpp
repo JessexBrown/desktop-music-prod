@@ -140,17 +140,15 @@ void reportProgress(const ImportedClipMediaRelinkPreparationRequest& request,
 }
 
 [[nodiscard]] std::filesystem::path chooseStagingDirectory(
-    const std::filesystem::path& packageDirectory,
-    const std::filesystem::path& finalAudioPath)
+    const std::filesystem::path& packageDirectory)
 {
     const auto stagingRoot = packageDirectory / ".projectname-staging";
-    const auto stem = sanitizeFileStem(finalAudioPath.stem().string());
 
-    auto candidate = stagingRoot / ("media-relink-" + stem);
+    auto candidate = stagingRoot / "media-relink";
     auto suffix = 2;
     while (std::filesystem::exists(candidate))
     {
-        candidate = stagingRoot / ("media-relink-" + stem + "-" + std::to_string(suffix));
+        candidate = stagingRoot / ("media-relink-" + std::to_string(suffix));
         ++suffix;
     }
 
@@ -407,7 +405,7 @@ ImportedClipMediaRelinkPreparationResult prepareImportedClipMediaRelink(
                                                      request.sourceWavPath);
     const auto finalAnalysisPath = chooseUniqueWaveformSummaryPath(request.packageDirectory / "analysis",
                                                                    finalAudioPath);
-    const auto stagingDirectory = chooseStagingDirectory(request.packageDirectory, finalAudioPath);
+    const auto stagingDirectory = chooseStagingDirectory(request.packageDirectory);
 
     std::error_code filesystemError;
     std::filesystem::create_directories(stagingDirectory, filesystemError);
