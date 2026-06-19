@@ -253,6 +253,30 @@ void setButtonEnabledFromCommand(juce::Button& button,
     return "Preparing media relink";
 }
 
+[[nodiscard]] juce::String formatSaveAsPackageCopyPhase(
+    projectname::BackgroundSaveAsPackageCopyPhase phase)
+{
+    switch (phase)
+    {
+        case projectname::BackgroundSaveAsPackageCopyPhase::pending:
+            return "Preparing Save As";
+        case projectname::BackgroundSaveAsPackageCopyPhase::planning:
+            return "Planning Save As package copy";
+        case projectname::BackgroundSaveAsPackageCopyPhase::preflight:
+            return "Checking Save As target";
+        case projectname::BackgroundSaveAsPackageCopyPhase::copying:
+            return "Copying Save As package assets";
+        case projectname::BackgroundSaveAsPackageCopyPhase::completed:
+            return "Save As package copy completed";
+        case projectname::BackgroundSaveAsPackageCopyPhase::failed:
+            return "Save As package copy failed";
+        case projectname::BackgroundSaveAsPackageCopyPhase::cancelled:
+            return "Save As package copy cancelled";
+    }
+
+    return "Preparing Save As";
+}
+
 [[nodiscard]] juce::String formatPackageMediaCleanupPhase(
     projectname::BackgroundPackageMediaCleanupPhase phase)
 {
@@ -1205,6 +1229,8 @@ MainComponent::~MainComponent()
         audioImportJob_->requestCancel();
     if (mediaRelinkPreparationJob_ != nullptr)
         mediaRelinkPreparationJob_->requestCancel();
+    if (saveAsPackageCopyJob_ != nullptr)
+        saveAsPackageCopyJob_->requestCancel();
     if (timelinePlaybackPreparationJob_ != nullptr)
         timelinePlaybackPreparationJob_->requestCancel();
     if (packageMediaCleanupJob_ != nullptr)
@@ -1212,6 +1238,7 @@ MainComponent::~MainComponent()
 
     audioImportJob_.reset();
     mediaRelinkPreparationJob_.reset();
+    saveAsPackageCopyJob_.reset();
     timelinePlaybackPreparationJob_.reset();
     packageMediaCleanupJob_.reset();
     if (packageMediaMaintenanceScan_.valid())
@@ -1250,6 +1277,8 @@ void MainComponent::resized()
     audioButton_.setBounds(topBar.removeFromRight(110).reduced(0, 10));
     topBar.removeFromRight(8);
     cancelTimelinePreparationButton_.setBounds(topBar.removeFromRight(104).reduced(0, 10));
+    topBar.removeFromRight(8);
+    cancelSaveAsButton_.setBounds(topBar.removeFromRight(98).reduced(0, 10));
     topBar.removeFromRight(8);
     cancelImportButton_.setBounds(topBar.removeFromRight(76).reduced(0, 10));
     topBar.removeFromRight(8);
@@ -1340,6 +1369,10 @@ void MainComponent::buttonClicked(juce::Button* button)
     {
         dispatchAppCommand(projectname::AppCommandIds::audioImportCancel);
     }
+    else if (button == &cancelSaveAsButton_)
+    {
+        dispatchAppCommand(projectname::AppCommandIds::projectSaveAsCancel);
+    }
     else if (button == &cancelTimelinePreparationButton_)
     {
         dispatchAppCommand(projectname::AppCommandIds::timelinePreparationCancel);
@@ -1373,6 +1406,7 @@ void MainComponent::timerCallback()
 {
     pollAudioImportJob();
     pollMediaRelinkPreparationJob();
+    pollSaveAsPackageCopyJob();
     pollTimelinePlaybackPreparationJob();
     pollPackageMediaCleanupJob();
     pollPackageMediaMaintenanceScan();
@@ -1393,6 +1427,7 @@ void MainComponent::configureControls()
     addAndMakeVisible(projectButton_);
     addAndMakeVisible(importButton_);
     addAndMakeVisible(cancelImportButton_);
+    addAndMakeVisible(cancelSaveAsButton_);
     addAndMakeVisible(cancelTimelinePreparationButton_);
     addAndMakeVisible(audioButton_);
     addAndMakeVisible(tempoSlider_);
@@ -1424,6 +1459,7 @@ void MainComponent::configureControls()
     configureButton(inspectorRelinkButton_, juce::Colour(0xffc6ccd5));
     configureButton(inspectorCancelRelinkButton_, accentWarm);
     configureButton(cancelImportButton_, accentWarm);
+    configureButton(cancelSaveAsButton_, accentWarm);
     configureButton(cancelTimelinePreparationButton_, accentWarm);
     configureButton(audioButton_, juce::Colour(0xffc6ccd5));
 
@@ -1434,6 +1470,7 @@ void MainComponent::configureControls()
     inspectorRelinkButton_.addListener(this);
     inspectorCancelRelinkButton_.addListener(this);
     cancelImportButton_.addListener(this);
+    cancelSaveAsButton_.addListener(this);
     cancelTimelinePreparationButton_.addListener(this);
     audioButton_.addListener(this);
     muteToggle_.addListener(this);
@@ -1504,6 +1541,7 @@ projectname::AppCommandRegistry MainComponent::buildAppCommandRegistry() const
     const auto projectFileWorkActive =
         audioImportJob_ != nullptr
         || mediaRelinkPreparationJob_ != nullptr
+        || saveAsPackageCopyJob_ != nullptr
         || timelinePlaybackPreparationJob_ != nullptr
         || packageMediaCleanupJob_ != nullptr;
     const auto projectChooserAvailable =
@@ -1515,6 +1553,7 @@ projectname::AppCommandRegistry MainComponent::buildAppCommandRegistry() const
     availability.canNewProject = projectChooserAvailable;
     availability.canSave = !projectChooserOpen && !projectFileWorkActive;
     availability.canSaveAs = projectChooserAvailable;
+    availability.canCancelSaveAs = saveAsPackageCopyJob_ != nullptr && canCancelSaveAsPackageCopy_;
     availability.canOpen = projectChooserAvailable;
     availability.canUndoImportedClipEdit = session_.canUndoImportedClipEdit();
     availability.canRedoImportedClipEdit = session_.canRedoImportedClipEdit();
@@ -1538,6 +1577,7 @@ void MainComponent::refreshAppCommandEnabledState()
                               || registry.isEnabled(projectname::AppCommandIds::projectSaveAs));
     setButtonEnabledFromCommand(importButton_, registry, projectname::AppCommandIds::audioImport);
     setButtonEnabledFromCommand(cancelImportButton_, registry, projectname::AppCommandIds::audioImportCancel);
+    setButtonEnabledFromCommand(cancelSaveAsButton_, registry, projectname::AppCommandIds::projectSaveAsCancel);
     setButtonEnabledFromCommand(cancelTimelinePreparationButton_,
                                 registry,
                                 projectname::AppCommandIds::timelinePreparationCancel);
@@ -1586,6 +1626,12 @@ projectname::AppCommandResult MainComponent::dispatchAppCommand(std::string_view
                     [this]()
                     {
                         saveProjectAs();
+                        return projectname::AppCommandResult::handled();
+                    });
+    registerHandler(projectname::AppCommandIds::projectSaveAsCancel,
+                    [this]()
+                    {
+                        cancelSaveAsPackageCopy();
                         return projectname::AppCommandResult::handled();
                     });
     registerHandler(projectname::AppCommandIds::projectOpen,
@@ -1835,6 +1881,12 @@ void MainComponent::newProject()
         return;
     }
 
+    if (hasActivePackageFileWork())
+    {
+        setStatus("Finish the active package file operation first");
+        return;
+    }
+
     const auto initialPackage = toJuceFile(getCurrentProjectPackagePath());
     projectNewChooser_ = std::make_unique<juce::FileChooser>("Create a Rabbington Studio project package",
                                                              initialPackage,
@@ -1881,6 +1933,12 @@ void MainComponent::saveProjectAs()
         return;
     }
 
+    if (hasActivePackageFileWork())
+    {
+        setStatus("Finish the active package file operation first");
+        return;
+    }
+
     const auto initialPackage = toJuceFile(getCurrentProjectPackagePath());
     projectSaveAsChooser_ = std::make_unique<juce::FileChooser>("Save Rabbington Studio project as",
                                                                 initialPackage,
@@ -1908,6 +1966,12 @@ void MainComponent::openProject()
     if (hasProjectChooserOpen())
     {
         setStatus("Finish the current project chooser first");
+        return;
+    }
+
+    if (hasActivePackageFileWork())
+    {
+        setStatus("Finish the active package file operation first");
         return;
     }
 
@@ -1985,34 +2049,18 @@ void MainComponent::handleProjectSaveAsResult(const juce::FileChooser& chooser)
     }
 
     const auto packagePath = projectPackagePathFromChooserResult(selectedFile, true);
-    auto copyResult = projectname::copyProjectPackageAssetsForSaveAs({
-        session_.getProject(),
-        getCurrentProjectPackagePath(),
-        packagePath,
-    });
-    if (!saveAsCopyStatusAllowsManifestSave(copyResult.status))
-    {
-        auto message = copyResult.error.empty()
-            ? projectname::describeProjectPackageSaveAsPlan(copyResult.plan)
-            : copyResult.error;
-        setStatus("Save As failed: " + juce::String(message));
-        refreshAppCommandEnabledState();
-        return;
-    }
 
-    std::string error;
-    if (session_.saveProjectPackage(packagePath, error))
-    {
-        currentProjectPackagePath_ = packagePath;
-        selectedPackageMediaCleanupId_.clear();
-        selectedPackageMediaRestoreOriginalPaths_.clear();
-        refreshAfterProjectPackageChange("Saved project package as: " + juce::String(packagePath.string()));
-    }
-    else
-    {
-        setStatus("Save As failed: " + juce::String(error));
-        refreshAppCommandEnabledState();
-    }
+    projectname::BackgroundSaveAsPackageCopyRequest request;
+    request.project = session_.getProject();
+    request.sourcePackageDirectory = getCurrentProjectPackagePath();
+    request.targetPackageDirectory = packagePath;
+
+    saveAsPackageCopyJob_ = std::make_unique<projectname::BackgroundSaveAsPackageCopyJob>(std::move(request));
+    saveAsPackageCopyJob_->start();
+    canCancelSaveAsPackageCopy_ = true;
+    setStatus("Preparing Save As package copy");
+    refreshAppCommandEnabledState();
+    refreshBrowserPanel();
 }
 
 void MainComponent::handleProjectOpenResult(const juce::FileChooser& chooser)
@@ -2120,6 +2168,12 @@ void MainComponent::importAudio()
         return;
     }
 
+    if (saveAsPackageCopyJob_ != nullptr)
+    {
+        setStatus("Finish or cancel Save As before importing audio");
+        return;
+    }
+
     const auto initialDirectory = juce::File::getSpecialLocation(juce::File::userMusicDirectory);
     audioImportChooser_ = std::make_unique<juce::FileChooser>("Import a PCM16 WAV file",
                                                               initialDirectory,
@@ -2167,6 +2221,12 @@ void MainComponent::relinkSelectedClipMedia()
         return;
     }
 
+    if (saveAsPackageCopyJob_ != nullptr)
+    {
+        setStatus("Finish or cancel Save As before relinking media");
+        return;
+    }
+
     if (timelinePlaybackPreparationJob_ != nullptr)
     {
         setStatus("Finish or cancel timeline audio preparation before relinking media");
@@ -2207,6 +2267,22 @@ void MainComponent::cancelAudioImport()
     canCancelAudioImport_ = false;
     refreshAppCommandEnabledState();
     setStatus("Cancelling import before package write if possible");
+}
+
+void MainComponent::cancelSaveAsPackageCopy()
+{
+    if (saveAsPackageCopyJob_ == nullptr)
+    {
+        setStatus("No Save As copy is running");
+        canCancelSaveAsPackageCopy_ = false;
+        refreshAppCommandEnabledState();
+        return;
+    }
+
+    saveAsPackageCopyJob_->requestCancel();
+    canCancelSaveAsPackageCopy_ = false;
+    refreshAppCommandEnabledState();
+    setStatus("Cancelling Save As package copy");
 }
 
 void MainComponent::cancelMediaRelinkPreparation()
@@ -2343,6 +2419,24 @@ void MainComponent::pollMediaRelinkPreparationJob()
     applyCompletedMediaRelinkPreparation(std::move(result));
 }
 
+void MainComponent::pollSaveAsPackageCopyJob()
+{
+    if (saveAsPackageCopyJob_ == nullptr)
+        return;
+
+    updateSaveAsPackageCopyProgress(saveAsPackageCopyJob_->getProgress());
+
+    if (!saveAsPackageCopyJob_->isReady())
+        return;
+
+    auto result = saveAsPackageCopyJob_->waitForResult();
+    saveAsPackageCopyJob_.reset();
+    canCancelSaveAsPackageCopy_ = false;
+    refreshAppCommandEnabledState();
+    refreshBrowserPanel();
+    applyCompletedSaveAsPackageCopy(std::move(result));
+}
+
 void MainComponent::applyCompletedMediaRelinkPreparation(
     projectname::BackgroundMediaRelinkPreparationResult result)
 {
@@ -2399,6 +2493,44 @@ void MainComponent::applyCompletedMediaRelinkPreparation(
         status += " - playback cache was not refreshed";
 
     setStatus(status);
+}
+
+void MainComponent::applyCompletedSaveAsPackageCopy(
+    projectname::BackgroundSaveAsPackageCopyResult result)
+{
+    if (result.cancelled)
+    {
+        requestPackageMediaMaintenanceRefresh();
+        setStatus("Save As cancelled");
+        return;
+    }
+
+    if (!saveAsCopyStatusAllowsManifestSave(result.copy.status))
+    {
+        const auto message = result.error.empty()
+            ? projectname::describeProjectPackageSaveAsPlan(result.copy.plan)
+            : result.error;
+        requestPackageMediaMaintenanceRefresh();
+        setStatus("Save As failed: " + juce::String(message));
+        refreshAppCommandEnabledState();
+        return;
+    }
+
+    std::string error;
+    if (session_.saveProjectPackage(result.targetPackageDirectory, error))
+    {
+        currentProjectPackagePath_ = result.targetPackageDirectory;
+        selectedPackageMediaCleanupId_.clear();
+        selectedPackageMediaRestoreOriginalPaths_.clear();
+        refreshAfterProjectPackageChange(
+            "Saved project package as: " + juce::String(result.targetPackageDirectory.string()));
+    }
+    else
+    {
+        requestPackageMediaMaintenanceRefresh();
+        setStatus("Save As failed: " + juce::String(error));
+        refreshAppCommandEnabledState();
+    }
 }
 
 void MainComponent::pollTimelinePlaybackPreparationJob()
@@ -2524,6 +2656,52 @@ void MainComponent::updateMediaRelinkPreparationProgress(
     setStatus(status);
 }
 
+void MainComponent::updateSaveAsPackageCopyProgress(
+    const projectname::BackgroundSaveAsPackageCopyProgress& progress)
+{
+    const auto canCancel =
+        progress.phase == projectname::BackgroundSaveAsPackageCopyPhase::pending
+        || progress.phase == projectname::BackgroundSaveAsPackageCopyPhase::planning
+        || progress.phase == projectname::BackgroundSaveAsPackageCopyPhase::preflight
+        || progress.phase == projectname::BackgroundSaveAsPackageCopyPhase::copying;
+    canCancelSaveAsPackageCopy_ = canCancel && !progress.cancelRequested;
+    refreshAppCommandEnabledState();
+
+    auto status = formatSaveAsPackageCopyPhase(progress.phase)
+        + " - " + juce::String(progress.percent) + "%";
+
+    if (progress.cancelRequested && canCancel)
+        status = "Cancelling Save As package copy - " + juce::String(progress.percent) + "%";
+
+    if (progress.phase == projectname::BackgroundSaveAsPackageCopyPhase::copying)
+    {
+        if (progress.bytesTotal > 0)
+        {
+            const auto copiedKiB = static_cast<double>(progress.bytesCopied) / 1024.0;
+            const auto totalKiB = static_cast<double>(progress.bytesTotal) / 1024.0;
+            status += " ("
+                + juce::String(static_cast<int>(progress.filesCopied))
+                + "/"
+                + juce::String(static_cast<int>(progress.filesTotal))
+                + " files, "
+                + juce::String(copiedKiB, 1)
+                + "/"
+                + juce::String(totalKiB, 1)
+                + " KiB)";
+        }
+        else if (progress.filesTotal > 0)
+        {
+            status += " ("
+                + juce::String(static_cast<int>(progress.filesCopied))
+                + "/"
+                + juce::String(static_cast<int>(progress.filesTotal))
+                + " files)";
+        }
+    }
+
+    setStatus(status);
+}
+
 void MainComponent::updateTimelinePlaybackPreparationProgress(
     const projectname::BackgroundTimelinePlaybackPreparationProgress& progress)
 {
@@ -2633,6 +2811,7 @@ bool MainComponent::hasActivePackageFileWork() const
 {
     return audioImportJob_ != nullptr
         || mediaRelinkPreparationJob_ != nullptr
+        || saveAsPackageCopyJob_ != nullptr
         || timelinePlaybackPreparationJob_ != nullptr
         || packageMediaCleanupJob_ != nullptr;
 }
@@ -3214,6 +3393,7 @@ void MainComponent::refreshInspectorRelinkButtonState()
         && mediaRelinkChooser_ == nullptr
         && audioImportJob_ == nullptr
         && mediaRelinkPreparationJob_ == nullptr
+        && saveAsPackageCopyJob_ == nullptr
         && timelinePlaybackPreparationJob_ == nullptr
         && packageMediaCleanupJob_ == nullptr;
 

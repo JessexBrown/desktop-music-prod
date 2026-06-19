@@ -11,6 +11,7 @@
 #include "core/BackgroundAudioImportJob.h"
 #include "core/BackgroundMediaRelinkPreparationJob.h"
 #include "core/BackgroundPackageMediaCleanupJob.h"
+#include "core/BackgroundSaveAsPackageCopyJob.h"
 #include "core/BackgroundTimelinePlaybackPreparationJob.h"
 #include "core/ImportedClipInspector.h"
 #include "core/ImportedClipInspectorEditDraft.h"
@@ -174,23 +175,28 @@ private:
     void relinkSelectedClipMedia();
     void cancelMediaRelinkPreparation();
     void cancelAudioImport();
+    void cancelSaveAsPackageCopy();
     void cancelTimelinePlaybackPreparation();
     void handleAudioImportResult(const juce::FileChooser& chooser);
     void handleMediaRelinkResult(const juce::FileChooser& chooser);
     void pollAudioImportJob();
     void pollMediaRelinkPreparationJob();
+    void pollSaveAsPackageCopyJob();
     void pollTimelinePlaybackPreparationJob();
     void pollPackageMediaCleanupJob();
     void pollPackageMediaMaintenanceScan();
     void updateAudioImportProgress(const projectname::BackgroundAudioImportProgress& progress);
     void updateMediaRelinkPreparationProgress(
         const projectname::BackgroundMediaRelinkPreparationProgress& progress);
+    void updateSaveAsPackageCopyProgress(
+        const projectname::BackgroundSaveAsPackageCopyProgress& progress);
     void updateTimelinePlaybackPreparationProgress(
         const projectname::BackgroundTimelinePlaybackPreparationProgress& progress);
     void updatePackageMediaCleanupProgress(
         const projectname::BackgroundPackageMediaCleanupProgress& progress);
     void applyCompletedAudioImport(projectname::BackgroundAudioImportResult result);
     void applyCompletedMediaRelinkPreparation(projectname::BackgroundMediaRelinkPreparationResult result);
+    void applyCompletedSaveAsPackageCopy(projectname::BackgroundSaveAsPackageCopyResult result);
     void applyCompletedTimelinePlaybackPreparation(projectname::BackgroundTimelinePlaybackPreparationResult result);
     void applyCompletedPackageMediaCleanup(projectname::BackgroundPackageMediaCleanupResult result);
     void requestPackageMediaMaintenanceRefresh();
@@ -238,6 +244,7 @@ private:
     juce::TextButton projectButton_ { "Project" };
     juce::TextButton importButton_ { "Import" };
     juce::TextButton cancelImportButton_ { "Cancel" };
+    juce::TextButton cancelSaveAsButton_ { "Cancel Save" };
     juce::TextButton cancelTimelinePreparationButton_ { "Cancel Prep" };
     juce::TextButton audioButton_ { "Audio/MIDI" };
     juce::Slider tempoSlider_;
@@ -266,6 +273,7 @@ private:
     std::unique_ptr<juce::FileChooser> mediaRelinkChooser_;
     std::unique_ptr<projectname::BackgroundAudioImportJob> audioImportJob_;
     std::unique_ptr<projectname::BackgroundMediaRelinkPreparationJob> mediaRelinkPreparationJob_;
+    std::unique_ptr<projectname::BackgroundSaveAsPackageCopyJob> saveAsPackageCopyJob_;
     std::unique_ptr<projectname::BackgroundTimelinePlaybackPreparationJob> timelinePlaybackPreparationJob_;
     std::unique_ptr<projectname::BackgroundPackageMediaCleanupJob> packageMediaCleanupJob_;
     std::future<PackageMediaMaintenanceScanResult> packageMediaMaintenanceScan_;
@@ -277,6 +285,7 @@ private:
     std::vector<std::string> selectedPackageMediaRestoreOriginalPaths_;
     bool canCancelAudioImport_ = false;
     bool canCancelMediaRelinkPreparation_ = false;
+    bool canCancelSaveAsPackageCopy_ = false;
     bool canCancelTimelinePlaybackPreparation_ = false;
     bool audioSetupPromptDismissed_ = false;
     std::string lastAudioSetupStatusSignature_;

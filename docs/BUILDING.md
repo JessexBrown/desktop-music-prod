@@ -215,10 +215,10 @@ When the JUCE app is built, it starts from a deterministic package named
 `Rabbington Studio Demo.project` in the current user's documents folder, and the
 Project menu can create, open, save, or Save As native `.project` packages.
 Save As copies package-local `audio/`, `analysis/`, `samples/`, and `presets/`
-before writing the target manifest, while source-package `backups/` are not
-cloned. Import Audio uses a native WAV file chooser and a background import job
-with frame-level decode progress, byte-level staged-copy progress, and cancel
-state.
+on a cancellable background job before writing the target manifest, while
+source-package `backups/` are not cloned. Import Audio uses a native WAV file
+chooser and a background import job with frame-level decode progress, byte-level
+staged-copy progress, and cancel state.
 The right inspector's selected-clip Relink button uses a native WAV chooser and
 a cancellable background job for staged relink preparation before committing
 current-selection results on the UI thread.

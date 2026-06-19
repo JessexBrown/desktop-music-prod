@@ -198,6 +198,9 @@ Third-party dependencies remain under their own licenses as recorded in
   package-local `audio/`, `analysis/`, `samples/`, and `presets/` before the
   target manifest is saved, preserve explicit external references, and start
   target-package backups fresh.
+- Save As package asset copying runs on a cancellable background job with
+  phase, file-count, and byte-count progress, plus a guarded top-bar Cancel
+  Save affordance.
 - The Package Maintenance browser surface has a guarded Restore affordance for
   selected restorable cleanup batches. Restore runs through the background
   package media cleanup job and stays disabled with visible reasons for
@@ -245,7 +248,8 @@ Third-party dependencies remain under their own licenses as recorded in
   relink preparation jobs, imported media package inventory classification,
   package media quarantine restore-manifest validation, preflight planning,
   file-moving rollback behavior, restore/conflict behavior, Save As package
-  relocation/copy policy, and background cleanup job status propagation,
+  relocation/copy policy/background job progress and cancellation, and
+  background cleanup job status propagation,
   workspace command routing, app command registry metadata, enablement, and
   dispatch results, timeline lane
   layout/hit-testing/placement/loop-range scaling, track voice scheduling
@@ -261,7 +265,7 @@ Third-party dependencies remain under their own licenses as recorded in
 ## What Does Not Exist Yet
 
 - AIFF/FLAC/MP3 import, automatic resampling, interactive waveform editing,
-  background progress/cancel UI for large Save As package copies,
+  deterministic chooser-level smoke coverage for New/Open/Save As,
   imported-media cleanup/restoration UI,
   command-palette relink entries,
   timeline zoom/scroll, loop-region editing controls, or drag/drop clip
@@ -532,5 +536,7 @@ or use `ctest --preset dev --output-on-failure`.
   package asset-copy policy and the original manifest-only relocation guard.
 - `docs/adr/ADR-0092-save-as-package-asset-copy-command.md` records the Save As
   package asset-copy command and native Save As wiring.
+- `docs/adr/ADR-0093-background-save-as-package-copy-job.md` records the
+  cancellable background Save As package-copy job.
 - `docs/AUDIO_MIDI_SETUP_UX.md` documents the first-run device setup UX states.
 - `docs/issues/NEXT-ISSUES.md` lists the next five small tasks.

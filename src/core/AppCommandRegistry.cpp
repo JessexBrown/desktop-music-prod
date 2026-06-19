@@ -186,6 +186,13 @@ AppCommandRegistry makePrototypeAppCommandRegistry(AppCommandAvailability availa
                              availability.canSaveAs,
                              "Project Save As is unavailable.");
     registerPrototypeCommand(registry,
+                             AppCommandIds::projectSaveAsCancel,
+                             "Cancel Save As",
+                             "Cancel the active Save As package copy when possible.",
+                             AppCommandScope::project,
+                             availability.canCancelSaveAs,
+                             "No cancellable Save As is running.");
+    registerPrototypeCommand(registry,
                              AppCommandIds::projectOpen,
                              "Open",
                              "Open a project package with a native chooser.",

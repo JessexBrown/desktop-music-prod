@@ -51,6 +51,5 @@ warning instead of creating a misleading target package.
 
 ## Follow-Ups
 
-- Add background progress and cancellation for large package copies.
 - Add automated UI-level smoke coverage for project New/Open/Save As once a
   deterministic chooser test hook exists.

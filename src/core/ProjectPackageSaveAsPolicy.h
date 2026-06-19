@@ -4,8 +4,11 @@
 
 #include "ProjectModel.h"
 
+#include <atomic>
 #include <cstddef>
+#include <cstdint>
 #include <filesystem>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -57,6 +60,7 @@ enum class ProjectPackageSaveAsCopyStatus
 {
     completed,
     noCopyNeeded,
+    cancelled,
     invalidRequest,
     targetConflict,
     unsupportedSourceEntry,
@@ -64,11 +68,34 @@ enum class ProjectPackageSaveAsCopyStatus
     rollbackFailed,
 };
 
+enum class ProjectPackageSaveAsCopyProgressStage
+{
+    planning,
+    preflight,
+    copying,
+    completed,
+    failed,
+    cancelled,
+};
+
+struct ProjectPackageSaveAsCopyProgress
+{
+    ProjectPackageSaveAsCopyProgressStage stage =
+        ProjectPackageSaveAsCopyProgressStage::planning;
+    int percent = 0;
+    std::size_t filesCopied = 0;
+    std::size_t filesTotal = 0;
+    std::uintmax_t bytesCopied = 0;
+    std::uintmax_t bytesTotal = 0;
+};
+
 struct ProjectPackageSaveAsCopyRequest
 {
     ProjectModel project;
     std::filesystem::path sourcePackageDirectory;
     std::filesystem::path targetPackageDirectory;
+    std::atomic_bool* cancelRequested = nullptr;
+    std::function<void(const ProjectPackageSaveAsCopyProgress&)> progressCallback;
 };
 
 struct ProjectPackageSaveAsCopyResult
@@ -78,6 +105,9 @@ struct ProjectPackageSaveAsCopyResult
     ProjectPackageSaveAsPlan plan;
     std::size_t copiedFileCount = 0;
     std::size_t copiedDirectoryCount = 0;
+    std::size_t totalFileCount = 0;
+    std::uintmax_t copiedBytes = 0;
+    std::uintmax_t totalBytes = 0;
     std::vector<std::filesystem::path> createdPaths;
 };
 

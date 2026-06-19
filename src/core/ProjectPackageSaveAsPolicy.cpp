@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <fstream>
 #include <system_error>
 #include <utility>
 #include <vector>
@@ -17,6 +18,7 @@ namespace
 {
 const std::array<const char*, 4> cloneFolderNames { "audio", "analysis", "samples", "presets" };
 constexpr const char* backupsFolderName = "backups";
+constexpr std::size_t copyBufferSizeBytes = 64U * 1024U;
 
 enum class CopyEntryKind
 {
@@ -30,6 +32,7 @@ struct CopyEntry
     std::filesystem::path sourcePath;
     std::filesystem::path targetPath;
     std::filesystem::path packageRelativePath;
+    std::uintmax_t byteSize = 0;
 };
 
 [[nodiscard]] std::string normalisedPathKey(const std::filesystem::path& path)
@@ -74,6 +77,92 @@ struct CopyEntry
         || error == std::errc::not_a_directory;
 }
 
+[[nodiscard]] bool copyWasCancelled(const std::atomic_bool* cancelRequested) noexcept
+{
+    return cancelRequested != nullptr
+        && cancelRequested->load(std::memory_order_acquire);
+}
+
+void emitCopyProgress(const ProjectPackageSaveAsCopyRequest& request,
+                      ProjectPackageSaveAsCopyProgressStage stage,
+                      int percent,
+                      std::size_t filesCopied,
+                      std::size_t filesTotal,
+                      std::uintmax_t bytesCopied,
+                      std::uintmax_t bytesTotal)
+{
+    if (!request.progressCallback)
+        return;
+
+    ProjectPackageSaveAsCopyProgress progress;
+    progress.stage = stage;
+    progress.percent = std::clamp(percent, 0, 100);
+    progress.filesCopied = filesCopied;
+    progress.filesTotal = filesTotal;
+    progress.bytesCopied = bytesCopied;
+    progress.bytesTotal = bytesTotal;
+    request.progressCallback(progress);
+}
+
+[[nodiscard]] std::size_t countFileEntries(const std::vector<CopyEntry>& entries) noexcept
+{
+    return static_cast<std::size_t>(
+        std::count_if(entries.begin(),
+                      entries.end(),
+                      [](const CopyEntry& entry)
+                      {
+                          return entry.kind == CopyEntryKind::file;
+                      }));
+}
+
+[[nodiscard]] std::uintmax_t countEntryBytes(const std::vector<CopyEntry>& entries) noexcept
+{
+    std::uintmax_t bytes = 0;
+    for (const auto& entry : entries)
+    {
+        if (entry.kind == CopyEntryKind::file)
+            bytes += entry.byteSize;
+    }
+
+    return bytes;
+}
+
+[[nodiscard]] int copyPercent(std::uintmax_t copiedBytes,
+                              std::uintmax_t totalBytes,
+                              std::size_t copiedFiles,
+                              std::size_t totalFiles) noexcept
+{
+    if (totalBytes > 0)
+    {
+        const auto clampedBytes = std::min(copiedBytes, totalBytes);
+        return 25 + static_cast<int>((clampedBytes * 70U) / totalBytes);
+    }
+
+    if (totalFiles > 0)
+    {
+        const auto clampedFiles = std::min(copiedFiles, totalFiles);
+        return 25 + static_cast<int>((clampedFiles * 70U) / totalFiles);
+    }
+
+    return 95;
+}
+
+[[nodiscard]] int cancellationPercent(const ProjectPackageSaveAsCopyResult& result) noexcept
+{
+    if (result.status == ProjectPackageSaveAsCopyStatus::rollbackFailed)
+        return 100;
+
+    if (result.totalBytes > 0 || result.totalFileCount > 0)
+    {
+        return copyPercent(result.copiedBytes,
+                           result.totalBytes,
+                           result.copiedFileCount,
+                           result.totalFileCount);
+    }
+
+    return 0;
+}
+
 [[nodiscard]] ProjectPackageSaveAsCopyResult makeCopyResult(
     ProjectPackageSaveAsCopyStatus status,
     std::string error,
@@ -95,6 +184,9 @@ struct CopyEntry
 
         case ProjectPackageSaveAsCopyStatus::noCopyNeeded:
             return "Save As package asset copy was not needed";
+
+        case ProjectPackageSaveAsCopyStatus::cancelled:
+            return "Save As package asset copy was cancelled";
 
         case ProjectPackageSaveAsCopyStatus::invalidRequest:
             return "Save As package asset copy request is invalid";
@@ -192,6 +284,14 @@ struct CopyEntry
         else if (std::filesystem::is_regular_file(entryStatus))
         {
             entry.kind = CopyEntryKind::file;
+            entry.byteSize = std::filesystem::file_size(iterator->path(), filesystemError);
+            if (filesystemError)
+            {
+                error = "Could not inspect source package file size: "
+                    + iterator->path().lexically_relative(sourcePackageDirectory).generic_string()
+                    + ": " + filesystemError.message() + ".";
+                return false;
+            }
         }
         else
         {
@@ -363,28 +463,148 @@ struct CopyEntry
     return true;
 }
 
+void rollbackCopyResult(ProjectPackageSaveAsCopyResult& result,
+                        ProjectPackageSaveAsCopyStatus failureStatus)
+{
+    std::string rollbackError;
+    result.status = failureStatus;
+    if (!rollbackCreatedPaths(result.createdPaths, rollbackError))
+    {
+        result.status = ProjectPackageSaveAsCopyStatus::rollbackFailed;
+        if (!result.error.empty())
+            result.error += " ";
+        result.error += rollbackError;
+    }
+}
+
+[[nodiscard]] bool copyFileContents(const CopyEntry& entry,
+                                    const ProjectPackageSaveAsCopyRequest& request,
+                                    ProjectPackageSaveAsCopyResult& result)
+{
+    std::ifstream source(entry.sourcePath, std::ios::binary);
+    if (!source)
+    {
+        result.error = "Could not open package asset for copying: "
+            + entry.packageRelativePath.generic_string() + ".";
+        return false;
+    }
+
+    std::ofstream target(entry.targetPath, std::ios::binary | std::ios::trunc);
+    if (!target)
+    {
+        result.error = "Could not open Save As copy target: "
+            + entry.packageRelativePath.generic_string() + ".";
+        return false;
+    }
+
+    result.createdPaths.push_back(entry.targetPath);
+
+    std::vector<char> buffer(copyBufferSizeBytes);
+    while (source)
+    {
+        if (copyWasCancelled(request.cancelRequested))
+        {
+            result.error = "Save As package asset copy was cancelled.";
+            return false;
+        }
+
+        source.read(buffer.data(), static_cast<std::streamsize>(buffer.size()));
+        const auto bytesRead = source.gcount();
+        if (bytesRead <= 0)
+            break;
+
+        target.write(buffer.data(), bytesRead);
+        if (!target)
+        {
+            result.error = "Could not write Save As package asset: "
+                + entry.packageRelativePath.generic_string() + ".";
+            return false;
+        }
+
+        result.copiedBytes += static_cast<std::uintmax_t>(bytesRead);
+        emitCopyProgress(request,
+                         ProjectPackageSaveAsCopyProgressStage::copying,
+                         copyPercent(result.copiedBytes,
+                                     result.totalBytes,
+                                     result.copiedFileCount,
+                                     result.totalFileCount),
+                         result.copiedFileCount,
+                         result.totalFileCount,
+                         result.copiedBytes,
+                         result.totalBytes);
+    }
+
+    if (!source.eof())
+    {
+        result.error = "Could not read package asset: "
+            + entry.packageRelativePath.generic_string() + ".";
+        return false;
+    }
+
+    target.close();
+    if (!target)
+    {
+        result.error = "Could not finish Save As package asset: "
+            + entry.packageRelativePath.generic_string() + ".";
+        return false;
+    }
+
+    ++result.copiedFileCount;
+    result.copiedBytes = std::min(result.copiedBytes, result.totalBytes);
+    emitCopyProgress(request,
+                     ProjectPackageSaveAsCopyProgressStage::copying,
+                     copyPercent(result.copiedBytes,
+                                 result.totalBytes,
+                                 result.copiedFileCount,
+                                 result.totalFileCount),
+                     result.copiedFileCount,
+                     result.totalFileCount,
+                     result.copiedBytes,
+                     result.totalBytes);
+    return true;
+}
+
 [[nodiscard]] ProjectPackageSaveAsCopyResult copyEntries(
     ProjectPackageSaveAsPlan plan,
-    const std::vector<CopyEntry>& entries)
+    const std::vector<CopyEntry>& entries,
+    const ProjectPackageSaveAsCopyRequest& request)
 {
     ProjectPackageSaveAsCopyResult result;
     result.status = ProjectPackageSaveAsCopyStatus::completed;
     result.plan = std::move(plan);
+    result.totalFileCount = countFileEntries(entries);
+    result.totalBytes = countEntryBytes(entries);
 
     for (const auto& entry : entries)
     {
+        if (copyWasCancelled(request.cancelRequested))
+        {
+            result.error = "Save As package asset copy was cancelled.";
+            rollbackCopyResult(result, ProjectPackageSaveAsCopyStatus::cancelled);
+            emitCopyProgress(request,
+                             result.status == ProjectPackageSaveAsCopyStatus::rollbackFailed
+                                 ? ProjectPackageSaveAsCopyProgressStage::failed
+                                 : ProjectPackageSaveAsCopyProgressStage::cancelled,
+                             cancellationPercent(result),
+                             result.copiedFileCount,
+                             result.totalFileCount,
+                             result.copiedBytes,
+                             result.totalBytes);
+            return result;
+        }
+
         if (entry.kind == CopyEntryKind::directory)
         {
             if (!ensureDirectoryForCopy(entry.targetPath, result.createdPaths, result.error))
             {
-                result.status = ProjectPackageSaveAsCopyStatus::copyFailed;
-                std::string rollbackError;
-                if (!rollbackCreatedPaths(result.createdPaths, rollbackError))
-                {
-                    result.status = ProjectPackageSaveAsCopyStatus::rollbackFailed;
-                    result.error += " " + rollbackError;
-                }
-
+                rollbackCopyResult(result, ProjectPackageSaveAsCopyStatus::copyFailed);
+                emitCopyProgress(request,
+                                 ProjectPackageSaveAsCopyProgressStage::failed,
+                                 100,
+                                 result.copiedFileCount,
+                                 result.totalFileCount,
+                                 result.copiedBytes,
+                                 result.totalBytes);
                 return result;
             }
 
@@ -394,40 +614,48 @@ struct CopyEntry
 
         if (!ensureDirectoryForCopy(entry.targetPath.parent_path(), result.createdPaths, result.error))
         {
-            result.status = ProjectPackageSaveAsCopyStatus::copyFailed;
-            std::string rollbackError;
-            if (!rollbackCreatedPaths(result.createdPaths, rollbackError))
-            {
-                result.status = ProjectPackageSaveAsCopyStatus::rollbackFailed;
-                result.error += " " + rollbackError;
-            }
-
+            rollbackCopyResult(result, ProjectPackageSaveAsCopyStatus::copyFailed);
+            emitCopyProgress(request,
+                             ProjectPackageSaveAsCopyProgressStage::failed,
+                             100,
+                             result.copiedFileCount,
+                             result.totalFileCount,
+                             result.copiedBytes,
+                             result.totalBytes);
             return result;
         }
 
-        std::error_code filesystemError;
-        const auto copied = std::filesystem::copy_file(entry.sourcePath, entry.targetPath, filesystemError);
-        if (!copied || filesystemError)
+        if (!copyFileContents(entry, request, result))
         {
-            result.status = ProjectPackageSaveAsCopyStatus::copyFailed;
-            result.error = "Could not copy package asset: "
-                + entry.packageRelativePath.generic_string() + ": "
-                + (filesystemError ? filesystemError.message() : std::string("target already exists")) + ".";
-
-            std::string rollbackError;
-            if (!rollbackCreatedPaths(result.createdPaths, rollbackError))
-            {
-                result.status = ProjectPackageSaveAsCopyStatus::rollbackFailed;
-                result.error += " " + rollbackError;
-            }
-
+            rollbackCopyResult(result,
+                               copyWasCancelled(request.cancelRequested)
+                                   ? ProjectPackageSaveAsCopyStatus::cancelled
+                                   : ProjectPackageSaveAsCopyStatus::copyFailed);
+            emitCopyProgress(request,
+                             result.status == ProjectPackageSaveAsCopyStatus::cancelled
+                                 ? ProjectPackageSaveAsCopyProgressStage::cancelled
+                                 : ProjectPackageSaveAsCopyProgressStage::failed,
+                             result.status == ProjectPackageSaveAsCopyStatus::cancelled
+                                 ? copyPercent(result.copiedBytes,
+                                               result.totalBytes,
+                                               result.copiedFileCount,
+                                               result.totalFileCount)
+                                 : 100,
+                             result.copiedFileCount,
+                             result.totalFileCount,
+                             result.copiedBytes,
+                             result.totalBytes);
             return result;
         }
-
-        result.createdPaths.push_back(entry.targetPath);
-        ++result.copiedFileCount;
     }
 
+    emitCopyProgress(request,
+                     ProjectPackageSaveAsCopyProgressStage::completed,
+                     100,
+                     result.copiedFileCount,
+                     result.totalFileCount,
+                     result.copiedBytes,
+                     result.totalBytes);
     return result;
 }
 
@@ -608,10 +836,21 @@ std::string describeProjectPackageSaveAsPlan(const ProjectPackageSaveAsPlan& pla
 ProjectPackageSaveAsCopyResult copyProjectPackageAssetsForSaveAs(
     ProjectPackageSaveAsCopyRequest request)
 {
+    emitCopyProgress(request, ProjectPackageSaveAsCopyProgressStage::planning, 5, 0, 0, 0, 0);
+
     if (request.sourcePackageDirectory.empty() || request.targetPackageDirectory.empty())
     {
+        emitCopyProgress(request, ProjectPackageSaveAsCopyProgressStage::failed, 100, 0, 0, 0, 0);
         return makeCopyResult(ProjectPackageSaveAsCopyStatus::invalidRequest,
                               "Save As package asset copy requires source and target package directories.",
+                              {});
+    }
+
+    if (copyWasCancelled(request.cancelRequested))
+    {
+        emitCopyProgress(request, ProjectPackageSaveAsCopyProgressStage::cancelled, 0, 0, 0, 0, 0);
+        return makeCopyResult(ProjectPackageSaveAsCopyStatus::cancelled,
+                              "Save As package asset copy was cancelled before it started.",
                               {});
     }
 
@@ -622,6 +861,7 @@ ProjectPackageSaveAsCopyResult copyProjectPackageAssetsForSaveAs(
 
     if (plan.samePackage || !plan.requiresPackageAssetCopy)
     {
+        emitCopyProgress(request, ProjectPackageSaveAsCopyProgressStage::completed, 100, 0, 0, 0, 0);
         return makeCopyResult(ProjectPackageSaveAsCopyStatus::noCopyNeeded,
                               describeProjectPackageSaveAsPlan(plan),
                               std::move(plan));
@@ -631,14 +871,24 @@ ProjectPackageSaveAsCopyResult copyProjectPackageAssetsForSaveAs(
     const auto targetKey = normalisedPathKey(request.targetPackageDirectory);
     if (pathKeyIsSameOrChild(sourceKey, targetKey))
     {
+        emitCopyProgress(request, ProjectPackageSaveAsCopyProgressStage::failed, 100, 0, 0, 0, 0);
         return makeCopyResult(ProjectPackageSaveAsCopyStatus::invalidRequest,
                               "Save As target package cannot be inside the source package.",
                               std::move(plan));
     }
 
+    emitCopyProgress(request, ProjectPackageSaveAsCopyProgressStage::preflight, 15, 0, 0, 0, 0);
     std::vector<CopyEntry> entries;
     for (const auto& folder : plan.folders)
     {
+        if (copyWasCancelled(request.cancelRequested))
+        {
+            emitCopyProgress(request, ProjectPackageSaveAsCopyProgressStage::cancelled, 15, 0, 0, 0, 0);
+            return makeCopyResult(ProjectPackageSaveAsCopyStatus::cancelled,
+                                  "Save As package asset copy was cancelled before preflight completed.",
+                                  std::move(plan));
+        }
+
         if (folder.action != ProjectPackageSaveAsFolderAction::cloneContents
             || !folder.containsSourceContent)
         {
@@ -652,6 +902,7 @@ ProjectPackageSaveAsCopyResult copyProjectPackageAssetsForSaveAs(
                                          entries,
                                          error))
         {
+            emitCopyProgress(request, ProjectPackageSaveAsCopyProgressStage::failed, 100, 0, 0, 0, 0);
             return makeCopyResult(ProjectPackageSaveAsCopyStatus::unsupportedSourceEntry,
                                   std::move(error),
                                   std::move(plan));
@@ -660,19 +911,42 @@ ProjectPackageSaveAsCopyResult copyProjectPackageAssetsForSaveAs(
 
     if (entries.empty())
     {
+        emitCopyProgress(request, ProjectPackageSaveAsCopyProgressStage::completed, 100, 0, 0, 0, 0);
         return makeCopyResult(ProjectPackageSaveAsCopyStatus::noCopyNeeded,
                               describeProjectPackageSaveAsPlan(plan),
                               std::move(plan));
     }
 
+    const auto totalFiles = countFileEntries(entries);
+    const auto totalBytes = countEntryBytes(entries);
+    emitCopyProgress(request, ProjectPackageSaveAsCopyProgressStage::preflight, 20, 0, totalFiles, 0, totalBytes);
+
     ProjectPackageSaveAsCopyStatus preflightStatus = ProjectPackageSaveAsCopyStatus::completed;
     std::string preflightError;
     if (!preflightCopyEntries(entries, preflightStatus, preflightError))
     {
+        emitCopyProgress(request,
+                         preflightStatus == ProjectPackageSaveAsCopyStatus::cancelled
+                             ? ProjectPackageSaveAsCopyProgressStage::cancelled
+                             : ProjectPackageSaveAsCopyProgressStage::failed,
+                         preflightStatus == ProjectPackageSaveAsCopyStatus::cancelled ? 20 : 100,
+                         0,
+                         totalFiles,
+                         0,
+                         totalBytes);
         return makeCopyResult(preflightStatus, std::move(preflightError), std::move(plan));
     }
 
-    auto result = copyEntries(std::move(plan), entries);
+    if (copyWasCancelled(request.cancelRequested))
+    {
+        emitCopyProgress(request, ProjectPackageSaveAsCopyProgressStage::cancelled, 20, 0, totalFiles, 0, totalBytes);
+        return makeCopyResult(ProjectPackageSaveAsCopyStatus::cancelled,
+                              "Save As package asset copy was cancelled before package mutation.",
+                              std::move(plan));
+    }
+
+    emitCopyProgress(request, ProjectPackageSaveAsCopyProgressStage::copying, 25, 0, totalFiles, 0, totalBytes);
+    auto result = copyEntries(std::move(plan), entries, request);
     if (result.error.empty())
         result.error = copyStatusPrefix(result.status);
     return result;

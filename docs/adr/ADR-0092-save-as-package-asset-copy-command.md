@@ -44,12 +44,10 @@ manifest save path and switching the active package path.
   producing a manifest that points at missing target-package files.
 - Target backup history starts fresh because source `backups/` are never copied.
 - Conflict failures happen before partial target copies.
-- The implementation is still synchronous from the UI callback, so very large
-  package copies need a later background progress/cancel wrapper.
+- ADR-0093 wraps the copy command in a background job with progress and
+  cancellation for the JUCE app.
 
 ## Follow-Ups
 
-- Move package copy execution behind a cancellable background job with progress
-  reporting.
 - Add deterministic chooser-level smoke coverage for New/Open/Save As once the
   app has a test hook for native chooser results.

@@ -7,6 +7,7 @@
 #include "core/BackgroundAudioImportJob.h"
 #include "core/BackgroundMediaRelinkPreparationJob.h"
 #include "core/BackgroundPackageMediaCleanupJob.h"
+#include "core/BackgroundSaveAsPackageCopyJob.h"
 #include "core/BackgroundTimelinePlaybackPreparationJob.h"
 #include "core/BackgroundWaveformAnalysisJob.h"
 #include "core/ImportedClipInspectorEditDraft.h"
@@ -937,6 +938,146 @@ void projectPackageSaveAsCopyCommandRejectsTargetInsideSource()
 
     expect(std::filesystem::remove_all(sourcePackage) > 0,
            "Temporary Save As nested source package deleted");
+}
+
+void projectPackageSaveAsCopyCommandCancelsAndRollsBackPartialTarget()
+{
+    auto project = projectname::ProjectModel::createDefault();
+
+    projectname::ProjectClip imported;
+    imported.id = "save-as-cancel-imported";
+    imported.name = "Save As Cancel Imported";
+    imported.type = "audio-file";
+    imported.relativePath = "audio/large.wav";
+    imported.lengthBeats = 4.0;
+    expect(project.addClipToTrack("track-1", imported), "Save As cancel test adds imported clip");
+
+    const auto sourcePackage = makeTemporaryPackagePath("projectname-save-as-cancel-source-test");
+    const auto targetPackage = makeTemporaryPackagePath("projectname-save-as-cancel-target-test");
+    writeTextFile(sourcePackage / imported.relativePath, std::string(200000, 'x'));
+
+    std::atomic_bool cancelRequested { false };
+    auto sawCopyProgress = false;
+
+    projectname::ProjectPackageSaveAsCopyRequest request;
+    request.project = project;
+    request.sourcePackageDirectory = sourcePackage;
+    request.targetPackageDirectory = targetPackage;
+    request.cancelRequested = &cancelRequested;
+    request.progressCallback =
+        [&cancelRequested, &sawCopyProgress](const projectname::ProjectPackageSaveAsCopyProgress& progress)
+        {
+            if (progress.stage == projectname::ProjectPackageSaveAsCopyProgressStage::copying
+                && progress.bytesCopied > 0)
+            {
+                sawCopyProgress = true;
+                cancelRequested.store(true, std::memory_order_release);
+            }
+        };
+
+    const auto result = projectname::copyProjectPackageAssetsForSaveAs(std::move(request));
+
+    expect(sawCopyProgress, "Save As copy command reports chunk progress before cancellation");
+    expect(result.status == projectname::ProjectPackageSaveAsCopyStatus::cancelled,
+           "Save As copy command reports cancellation");
+    expect(!std::filesystem::exists(targetPackage / imported.relativePath),
+           "Save As copy command rolls back partially copied target files");
+
+    expect(std::filesystem::remove_all(sourcePackage) > 0,
+           "Temporary Save As cancel source package deleted");
+    std::filesystem::remove_all(targetPackage);
+}
+
+void backgroundSaveAsPackageCopyJobCopiesAssetsAndReportsProgress()
+{
+    auto project = projectname::ProjectModel::createDefault();
+
+    projectname::ProjectClip imported;
+    imported.id = "save-as-background-imported";
+    imported.name = "Save As Background Imported";
+    imported.type = "audio-file";
+    imported.relativePath = "audio/background.wav";
+    imported.analysisPath = "analysis/background.waveform.json";
+    imported.lengthBeats = 4.0;
+    expect(project.addClipToTrack("track-1", imported), "Background Save As test adds imported clip");
+
+    const auto sourcePackage = makeTemporaryPackagePath("projectname-save-as-background-source-test");
+    const auto targetPackage = makeTemporaryPackagePath("projectname-save-as-background-target-test");
+    writeTextFile(sourcePackage / imported.relativePath, "audio");
+    writeTextFile(sourcePackage / imported.analysisPath, "{}");
+
+    projectname::BackgroundSaveAsPackageCopyRequest request;
+    request.project = project;
+    request.sourcePackageDirectory = sourcePackage;
+    request.targetPackageDirectory = targetPackage;
+
+    projectname::BackgroundSaveAsPackageCopyJob job(std::move(request));
+    job.start();
+    auto result = job.waitForResult();
+    const auto progress = job.getProgress();
+
+    expect(!result.cancelled, "Background Save As copy job is not cancelled");
+    expect(result.copy.status == projectname::ProjectPackageSaveAsCopyStatus::completed,
+           "Background Save As copy job completes");
+    expect(progress.phase == projectname::BackgroundSaveAsPackageCopyPhase::completed,
+           "Background Save As copy progress reports completed");
+    expect(progress.percent == 100, "Background Save As copy progress reaches 100 percent");
+    expect(progress.filesTotal == 2 && progress.filesCopied == 2,
+           "Background Save As copy progress counts copied files");
+    expect(std::filesystem::exists(targetPackage / imported.relativePath),
+           "Background Save As copy job copies audio");
+    expect(std::filesystem::exists(targetPackage / imported.analysisPath),
+           "Background Save As copy job copies analysis");
+
+    expect(std::filesystem::remove_all(sourcePackage) > 0,
+           "Temporary background Save As source package deleted");
+    expect(std::filesystem::remove_all(targetPackage) > 0,
+           "Temporary background Save As target package deleted");
+}
+
+void backgroundSaveAsPackageCopyJobCancelsBeforeStart()
+{
+    auto project = projectname::ProjectModel::createDefault();
+
+    projectname::ProjectClip imported;
+    imported.id = "save-as-background-cancel-imported";
+    imported.name = "Save As Background Cancel Imported";
+    imported.type = "audio-file";
+    imported.relativePath = "audio/background-cancel.wav";
+    imported.lengthBeats = 4.0;
+    expect(project.addClipToTrack("track-1", imported), "Background Save As cancel test adds imported clip");
+
+    const auto sourcePackage = makeTemporaryPackagePath("projectname-save-as-background-cancel-source-test");
+    const auto targetPackage = makeTemporaryPackagePath("projectname-save-as-background-cancel-target-test");
+    writeTextFile(sourcePackage / imported.relativePath, "audio");
+
+    projectname::BackgroundSaveAsPackageCopyRequest request;
+    request.project = project;
+    request.sourcePackageDirectory = sourcePackage;
+    request.targetPackageDirectory = targetPackage;
+
+    projectname::BackgroundSaveAsPackageCopyJob job(std::move(request));
+    job.requestCancel();
+    const auto requestedProgress = job.getProgress();
+    expect(requestedProgress.cancelRequested,
+           "Background Save As copy progress records cancellation request before start");
+    expect(requestedProgress.phase == projectname::BackgroundSaveAsPackageCopyPhase::cancelled,
+           "Background Save As copy pre-start progress reports cancelled");
+
+    job.start();
+    auto result = job.waitForResult();
+    const auto cancelledProgress = job.getProgress();
+
+    expect(result.cancelled, "Background Save As copy job reports cancellation");
+    expect(result.copy.status == projectname::ProjectPackageSaveAsCopyStatus::cancelled,
+           "Background Save As copy command result reports cancellation");
+    expect(cancelledProgress.phase == projectname::BackgroundSaveAsPackageCopyPhase::cancelled,
+           "Background Save As copy progress stays cancelled");
+    expect(!std::filesystem::exists(targetPackage),
+           "Background Save As copy cancellation does not create the target package");
+
+    expect(std::filesystem::remove_all(sourcePackage) > 0,
+           "Temporary background Save As cancel source package deleted");
 }
 
 void projectLoopRegionValidatesAndRoundTrips()
@@ -6257,7 +6398,7 @@ void workspaceCommandRouterPreservesFocusedWorkspaceShortcuts()
 void appCommandRegistryDescribesPrototypeTopBarCommands()
 {
     const auto registry = projectname::makePrototypeAppCommandRegistry();
-    expect(registry.size() == 12, "App command registry exposes the prototype app actions");
+    expect(registry.size() == 13, "App command registry exposes the prototype app actions");
 
     auto expectCommand = [&registry](std::string_view id,
                                      std::string_view label,
@@ -6304,6 +6445,11 @@ void appCommandRegistryDescribesPrototypeTopBarCommands()
                   projectname::AppCommandScope::project,
                   true,
                   "App command registry contains Save As");
+    expectCommand(projectname::AppCommandIds::projectSaveAsCancel,
+                  "Cancel Save As",
+                  projectname::AppCommandScope::project,
+                  false,
+                  "App command registry contains Cancel Save As");
     expectCommand(projectname::AppCommandIds::projectOpen,
                   "Open",
                   projectname::AppCommandScope::project,
@@ -6349,6 +6495,7 @@ void appCommandRegistryDescribesPrototypeTopBarCommands()
     availability.canNewProject = false;
     availability.canSaveAs = false;
     availability.canOpen = false;
+    availability.canCancelSaveAs = true;
     availability.canUndoImportedClipEdit = true;
     availability.canRedoImportedClipEdit = true;
     availability.canImportAudio = false;
@@ -6364,6 +6511,8 @@ void appCommandRegistryDescribesPrototypeTopBarCommands()
            "App command registry disables New Project from project availability");
     expect(!busyRegistry.isEnabled(projectname::AppCommandIds::projectSaveAs),
            "App command registry disables Save As from project availability");
+    expect(busyRegistry.isEnabled(projectname::AppCommandIds::projectSaveAsCancel),
+           "App command registry enables cancel Save As from availability");
     expect(!busyRegistry.isEnabled(projectname::AppCommandIds::projectOpen),
            "App command registry disables Open from project availability");
     expect(!busyRegistry.isEnabled(projectname::AppCommandIds::audioImport),
@@ -6384,6 +6533,10 @@ void appCommandRegistryDescribesPrototypeTopBarCommands()
     const auto* enabledCancel = busyRegistry.findCommand(projectname::AppCommandIds::audioImportCancel);
     expect(enabledCancel != nullptr && enabledCancel->disabledReason.empty(),
            "Enabled cancel command clears stale disabled status text");
+
+    const auto* enabledSaveAsCancel = busyRegistry.findCommand(projectname::AppCommandIds::projectSaveAsCancel);
+    expect(enabledSaveAsCancel != nullptr && enabledSaveAsCancel->disabledReason.empty(),
+           "Enabled Save As cancel command clears stale disabled status text");
 
     projectname::AppCommandRegistry manualRegistry;
     expect(manualRegistry.registerCommand({ "app.test",
@@ -8280,6 +8433,9 @@ int main()
     projectPackageSaveAsCopyCommandCopiesPackageAssetsAndStartsFreshBackups();
     projectPackageSaveAsCopyCommandRejectsTargetConflictsBeforeCopy();
     projectPackageSaveAsCopyCommandRejectsTargetInsideSource();
+    projectPackageSaveAsCopyCommandCancelsAndRollsBackPartialTarget();
+    backgroundSaveAsPackageCopyJobCopiesAssetsAndReportsProgress();
+    backgroundSaveAsPackageCopyJobCancelsBeforeStart();
     projectLoopRegionValidatesAndRoundTrips();
     projectImportedClipSelectionValidatesAndRoundTrips();
     projectTrackMixStateRoundTripsAndLoadsLegacyDefaults();

@@ -17,6 +17,7 @@ inline constexpr std::string_view transportStop = "transport.stop";
 inline constexpr std::string_view projectNew = "project.new";
 inline constexpr std::string_view projectSave = "project.save";
 inline constexpr std::string_view projectSaveAs = "project.saveAs";
+inline constexpr std::string_view projectSaveAsCancel = "project.saveAs.cancel";
 inline constexpr std::string_view projectOpen = "project.open";
 inline constexpr std::string_view editUndo = "edit.undo";
 inline constexpr std::string_view editRedo = "edit.redo";
@@ -57,6 +58,7 @@ struct AppCommandAvailability
     bool canNewProject = true;
     bool canSave = true;
     bool canSaveAs = true;
+    bool canCancelSaveAs = false;
     bool canOpen = true;
     bool canUndoImportedClipEdit = false;
     bool canRedoImportedClipEdit = false;
