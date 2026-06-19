@@ -1,10 +1,10 @@
 # Next Issues
 
-## 1. Continue SPDX Baseline Reduction for App/Core Sources
+## 1. Continue SPDX Baseline Reduction for Session/Project Sources
 
 Acceptance:
-- Add SPDX headers to one small, reviewable group of legacy app or core source
-  files.
+- Add SPDX headers to the legacy `src/core/AppSession.*` and
+  `src/core/ProjectModel.*` files.
 - Remove those paths from `docs/SPDX_EXCEPTIONS.txt`.
 - Keep `projectname_spdx_check` passing.
 

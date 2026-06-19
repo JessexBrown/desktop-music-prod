@@ -25,13 +25,7 @@ src/core/AppSession.cpp
 src/core/AppSession.h
 src/core/AudioDeviceService.cpp
 src/core/AudioDeviceService.h
-src/core/AudioEngineStub.cpp
-src/core/AudioEngineStub.h
 src/core/ProjectModel.cpp
 src/core/ProjectModel.h
-src/core/ToneRenderer.cpp
-src/core/ToneRenderer.h
-src/core/TransportState.cpp
-src/core/TransportState.h
 src/platform/win32/Win32FallbackApp.cpp
 tests/ProjectNameTests.cpp
