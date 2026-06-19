@@ -1,24 +1,13 @@
 # Next Issues
 
-## 1. Add Restore-Selection Keyboard Affordances
-
-Acceptance:
-- Add keyboard-accessible commands for select all, clear selection, and toggling
-  the focused restore entry without requiring pointer input.
-- Keep batch navigation predictable when restore-entry rows are present.
-- Preserve restore disabled states for empty selection, package-busy,
-  conflict-review, and partial-failure-review batches.
-- Cover command availability and state transitions with core or app-session
-  tests.
-
-## 2. Continue SPDX Baseline Reduction for Docs/Config
+## 1. Continue SPDX Baseline Reduction for Docs/Config
 
 Acceptance:
 - Add SPDX headers to one small, reviewable group of legacy docs or config files.
 - Remove those paths from `docs/SPDX_EXCEPTIONS.txt`.
 - Keep `projectname_spdx_check` passing.
 
-## 3. Add Project Chooser Smoke Test Hooks
+## 2. Add Project Chooser Smoke Test Hooks
 
 Acceptance:
 - Add a deterministic test or smoke hook for New/Open/Save As flows without
@@ -28,7 +17,7 @@ Acceptance:
 - Keep the hook unavailable in normal user workflows.
 - Preserve the existing `projectname_app_smoke` launch check.
 
-## 4. Add Audio/MIDI Preference Reset Action
+## 3. Add Audio/MIDI Preference Reset Action
 
 Acceptance:
 - Add a visible app command to reset saved Audio/MIDI preferences without
@@ -38,7 +27,7 @@ Acceptance:
 - Keep reset reads/writes off the audio callback thread.
 - Cover reset behavior with core settings tests and app command metadata tests.
 
-## 5. Add CI Action Pin Review Note
+## 4. Add CI Action Pin Review Note
 
 Acceptance:
 - Add a short scheduled-maintenance note or issue template for reviewing
@@ -47,3 +36,13 @@ Acceptance:
   page and `action.yml` manifest.
 - Keep this as a documentation/process task, not an automated updater.
 - Preserve the existing CI workflow jobs and cache behavior.
+
+## 5. Add Restore Conflict Recovery Detail Actions
+
+Acceptance:
+- Add non-mutating detail actions for conflict and partial-failure restore
+  entries, such as reveal manifest path or copy package-relative path.
+- Do not overwrite active package media or re-run restore for review-blocked
+  batches.
+- Keep actions available from keyboard-focused Package Maintenance rows.
+- Cover conflict and partial-failure action availability with core tests.

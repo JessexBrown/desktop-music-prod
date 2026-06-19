@@ -215,6 +215,10 @@ Third-party dependencies remain under their own licenses as recorded in
 - The Package Maintenance browser now shows selected cleanup batch detail rows
   with moved/restored/restorable counts, conflict/error counts, and
   package-relative path previews copied from the restore manifest.
+- Restore-entry selection in the Package Maintenance browser is keyboard
+  reachable: Up/Down keeps cleanup-batch navigation, Tab/Shift-Tab moves browser
+  row focus, Enter/Space activates the focused row, Command/Ctrl+A selects all
+  restorable entries, and Escape clears the restore selection.
 - A plain C++ track voice scheduler turns timeline clip plans, render windows,
   and track gain/pan/mute/solo snapshots into mixer-ready voice descriptors.
 - Project track volume, pan, mute, and solo state is persisted and fed into
@@ -544,5 +548,7 @@ or use `ctest --preset dev --output-on-failure`.
   cancellable background Save As package-copy job.
 - `docs/adr/ADR-0094-audio-midi-setup-preferences.md` records the app-level
   Audio/MIDI settings file and restore boundary.
+- `docs/adr/ADR-0095-package-maintenance-restore-keyboard-affordances.md`
+  records Package Maintenance restore-entry keyboard focus and shortcuts.
 - `docs/AUDIO_MIDI_SETUP_UX.md` documents the first-run device setup UX states.
 - `docs/issues/NEXT-ISSUES.md` lists the next five small tasks.

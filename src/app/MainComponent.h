@@ -37,6 +37,7 @@ struct WorkspacePanelRow
     std::string selectionId;
     bool selectable = false;
     bool selected = false;
+    bool keyboardFocused = false;
 };
 
 class WorkspacePanel final : public juce::Component
@@ -67,6 +68,11 @@ public:
     void setSelectableRowCallback(std::function<void(std::string)> callback);
     void setSelectableRowKeyboardSelectionCallbacks(std::function<void()> previousCallback,
                                                     std::function<void()> nextCallback);
+    void setSelectableRowKeyboardFocusCallbacks(std::function<void()> previousCallback,
+                                                std::function<void()> nextCallback,
+                                                std::function<void()> activateCallback);
+    void setRestoreSelectionKeyboardCallbacks(std::function<void()> selectAllCallback,
+                                              std::function<void()> clearCallback);
     void setPanelAction(juce::String text,
                         bool enabled,
                         juce::String tooltip,
@@ -115,6 +121,11 @@ private:
     std::function<void()> nextTimelineClipRequested_;
     std::function<void()> previousSelectableRowRequested_;
     std::function<void()> nextSelectableRowRequested_;
+    std::function<void()> previousSelectableRowFocusRequested_;
+    std::function<void()> nextSelectableRowFocusRequested_;
+    std::function<void()> activateFocusedSelectableRowRequested_;
+    std::function<void()> restoreSelectionSelectAllRequested_;
+    std::function<void()> restoreSelectionClearRequested_;
     std::function<void()> timelinePanLeftRequested_;
     std::function<void()> timelinePanRightRequested_;
     std::function<void()> timelineZoomInRequested_;
@@ -207,6 +218,8 @@ private:
     void selectPackageMediaCleanupBatch(std::string cleanupId);
     void selectAdjacentPackageMediaCleanupBatch(
         projectname::PackageMediaMaintenanceBrowserSelectionDirection direction);
+    void focusAdjacentPackageMediaBrowserRow(projectname::PackageMediaMaintenanceBrowserFocusDirection direction);
+    void activateFocusedPackageMediaBrowserRow();
     void selectAllPackageMediaRestoreEntries();
     void clearPackageMediaRestoreEntries();
     void togglePackageMediaRestoreEntry(std::string originalRelativePath);
@@ -289,6 +302,7 @@ private:
     bool packageMediaMaintenanceRefreshPending_ = false;
     int packageMediaMaintenanceScanGeneration_ = 0;
     std::string selectedPackageMediaCleanupId_;
+    std::string packageMediaBrowserFocusedSelectionId_;
     std::vector<std::string> selectedPackageMediaRestoreOriginalPaths_;
     bool canCancelAudioImport_ = false;
     bool canCancelMediaRelinkPreparation_ = false;

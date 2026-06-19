@@ -229,6 +229,16 @@ namespace
     return indexes;
 }
 
+[[nodiscard]] bool canUseRestoreSelectionKeyboardCommands(
+    const PackageMediaMaintenanceViewModel& model,
+    bool packageWorkInProgress) noexcept
+{
+    return !packageWorkInProgress
+        && model.hasSelectedBatch
+        && model.restoreEntrySelection.hasRestorableEntries
+        && !model.restoreEntrySelection.blockedByReviewState;
+}
+
 void addRow(PackageMediaMaintenanceBrowserRows& rows,
             PackageMediaMaintenanceBrowserRowKind kind,
             std::string text)
@@ -266,9 +276,10 @@ void addSelectableRow(PackageMediaMaintenanceBrowserRows& rows,
 }
 
 void addRestoreSelectionControlRows(PackageMediaMaintenanceBrowserRows& rows,
-                                    const PackageMediaRestoreEntrySelection& selection)
+                                    const PackageMediaRestoreEntrySelection& selection,
+                                    bool restoreSelectionInteractive)
 {
-    if (!selection.hasRestorableEntries)
+    if (!selection.hasRestorableEntries || !restoreSelectionInteractive)
         return;
 
     addSelectableRow(rows,
@@ -284,7 +295,8 @@ void addRestoreSelectionControlRows(PackageMediaMaintenanceBrowserRows& rows,
 
 void addSelectedBatchDetailRows(PackageMediaMaintenanceBrowserRows& rows,
                                 const PackageMediaMaintenanceViewModel& model,
-                                std::size_t maxEntryPreviewRows)
+                                std::size_t maxEntryPreviewRows,
+                                bool restoreSelectionInteractive)
 {
     if (!model.hasSelectedBatch)
     {
@@ -307,7 +319,7 @@ void addSelectedBatchDetailRows(PackageMediaMaintenanceBrowserRows& rows,
     addRow(rows,
            PackageMediaMaintenanceBrowserRowKind::selectedBatchReviewSummary,
            selectedBatchReviewSummary(selected));
-    addRestoreSelectionControlRows(rows, model.restoreEntrySelection);
+    addRestoreSelectionControlRows(rows, model.restoreEntrySelection, restoreSelectionInteractive);
 
     if (model.restoreEntrySelection.entries.empty() || maxEntryPreviewRows == 0)
     {
@@ -326,7 +338,7 @@ void addSelectedBatchDetailRows(PackageMediaMaintenanceBrowserRows& rows,
         row.text = selectedBatchEntryPath(entry, index);
         row.restoreOriginalRelativePath = entry.originalRelativePath;
         row.selectionId = makeRestoreEntrySelectionId(entry.originalRelativePath);
-        row.selectable = entry.restorable;
+        row.selectable = restoreSelectionInteractive && entry.restorable;
         row.selected = entry.selected;
         rows.rows.push_back(std::move(row));
     }
@@ -410,7 +422,13 @@ PackageMediaMaintenanceBrowserRows buildPackageMediaMaintenanceBrowserRows(
     }
 
     addRow(rows, PackageMediaMaintenanceBrowserRowKind::restoreSummary, restoreSummary(model));
-    addSelectedBatchDetailRows(rows, model, options.maxEntryPreviewRows);
+
+    const auto restoreSelectionKeyboardAvailable =
+        canUseRestoreSelectionKeyboardCommands(model, options.packageWorkInProgress);
+    addSelectedBatchDetailRows(rows,
+                               model,
+                               options.maxEntryPreviewRows,
+                               restoreSelectionKeyboardAvailable);
 
     for (const auto index : makeVisibleBatchIndexes(model, options.maxBatchRows))
     {
@@ -437,6 +455,56 @@ PackageMediaMaintenanceBrowserRows buildPackageMediaMaintenanceBrowserRows(
            model.hasDiscoveryIssues
                ? "Issues: " + std::to_string(issueCount) + " discovery"
                : "Issues: none");
+
+    rows.restoreSelectAllKeyboardEnabled = restoreSelectionKeyboardAvailable;
+    rows.restoreClearSelectionKeyboardEnabled =
+        restoreSelectionKeyboardAvailable && model.restoreEntrySelection.hasSelection;
+
+    auto focusedIndex = rows.rows.end();
+    if (!options.focusedSelectionId.empty())
+    {
+        focusedIndex = std::find_if(rows.rows.begin(),
+                                    rows.rows.end(),
+                                    [&options](const PackageMediaMaintenanceBrowserRow& row)
+                                    {
+                                        return row.selectable
+                                            && row.selectionId == options.focusedSelectionId;
+                                    });
+    }
+
+    if (focusedIndex == rows.rows.end())
+    {
+        focusedIndex = std::find_if(rows.rows.begin(),
+                                    rows.rows.end(),
+                                    [](const PackageMediaMaintenanceBrowserRow& row)
+                                    {
+                                        return row.selectable
+                                            && row.kind == PackageMediaMaintenanceBrowserRowKind::batch
+                                            && row.selected;
+                                    });
+    }
+
+    if (focusedIndex == rows.rows.end())
+    {
+        focusedIndex = std::find_if(rows.rows.begin(),
+                                    rows.rows.end(),
+                                    [](const PackageMediaMaintenanceBrowserRow& row)
+                                    {
+                                        return row.selectable;
+                                    });
+    }
+
+    if (focusedIndex != rows.rows.end())
+    {
+        focusedIndex->keyboardFocused = true;
+        rows.focusedRowIndex = static_cast<int>(std::distance(rows.rows.begin(), focusedIndex));
+        rows.focusedSelectionId = focusedIndex->selectionId;
+        rows.restoreToggleFocusedEntryKeyboardEnabled =
+            restoreSelectionKeyboardAvailable
+            && focusedIndex->kind == PackageMediaMaintenanceBrowserRowKind::selectedBatchEntryPath
+            && focusedIndex->selectable;
+        rows.focusedRestoreEntryOriginalRelativePath = focusedIndex->restoreOriginalRelativePath;
+    }
 
     return rows;
 }
@@ -466,5 +534,43 @@ std::string selectAdjacentPackageMediaCleanupId(
     }
 
     return model.batches[index].cleanupId;
+}
+
+std::string focusAdjacentPackageMediaMaintenanceBrowserSelectionId(
+    const PackageMediaMaintenanceBrowserRows& rows,
+    PackageMediaMaintenanceBrowserFocusDirection direction)
+{
+    std::vector<std::size_t> selectableIndexes;
+    selectableIndexes.reserve(rows.rows.size());
+    for (std::size_t index = 0; index < rows.rows.size(); ++index)
+    {
+        if (rows.rows[index].selectable && !rows.rows[index].selectionId.empty())
+            selectableIndexes.push_back(index);
+    }
+
+    if (selectableIndexes.empty())
+        return {};
+
+    auto current = selectableIndexes.begin();
+    if (rows.focusedRowIndex >= 0)
+    {
+        const auto focusedIndex = static_cast<std::size_t>(rows.focusedRowIndex);
+        current = std::find(selectableIndexes.begin(), selectableIndexes.end(), focusedIndex);
+    }
+
+    if (current == selectableIndexes.end())
+        current = selectableIndexes.begin();
+
+    if (direction == PackageMediaMaintenanceBrowserFocusDirection::previous)
+    {
+        if (current != selectableIndexes.begin())
+            --current;
+    }
+    else if (current + 1 != selectableIndexes.end())
+    {
+        ++current;
+    }
+
+    return rows.rows[*current].selectionId;
 }
 } // namespace projectname

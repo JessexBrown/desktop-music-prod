@@ -47,6 +47,7 @@ struct PackageMediaMaintenanceBrowserRow
     std::string restoreOriginalRelativePath;
     bool selectable = false;
     bool selected = false;
+    bool keyboardFocused = false;
 };
 
 struct PackageMediaMaintenanceBrowserRowsOptions
@@ -56,6 +57,7 @@ struct PackageMediaMaintenanceBrowserRowsOptions
     std::size_t maxBatchRows = 2;
     bool packageWorkInProgress = false;
     std::size_t maxEntryPreviewRows = 2;
+    std::string focusedSelectionId;
 };
 
 struct PackageMediaMaintenanceBrowserAction
@@ -72,9 +74,21 @@ struct PackageMediaMaintenanceBrowserRows
     PackageMediaMaintenanceBrowserAction cleanupAction;
     PackageMediaMaintenanceBrowserAction restoreAction;
     int selectedRowIndex = -1;
+    int focusedRowIndex = -1;
+    std::string focusedSelectionId;
+    bool restoreSelectAllKeyboardEnabled = false;
+    bool restoreClearSelectionKeyboardEnabled = false;
+    bool restoreToggleFocusedEntryKeyboardEnabled = false;
+    std::string focusedRestoreEntryOriginalRelativePath;
 };
 
 enum class PackageMediaMaintenanceBrowserSelectionDirection
+{
+    previous,
+    next,
+};
+
+enum class PackageMediaMaintenanceBrowserFocusDirection
 {
     previous,
     next,
@@ -87,4 +101,8 @@ enum class PackageMediaMaintenanceBrowserSelectionDirection
 [[nodiscard]] std::string selectAdjacentPackageMediaCleanupId(
     const PackageMediaMaintenanceViewModel& model,
     PackageMediaMaintenanceBrowserSelectionDirection direction);
+
+[[nodiscard]] std::string focusAdjacentPackageMediaMaintenanceBrowserSelectionId(
+    const PackageMediaMaintenanceBrowserRows& rows,
+    PackageMediaMaintenanceBrowserFocusDirection direction);
 } // namespace projectname

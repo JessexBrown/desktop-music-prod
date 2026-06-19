@@ -4420,6 +4420,17 @@ void packageMediaMaintenanceBrowserRowsRenderSelectableBatchState()
            "Maintenance browser rows expose batch, selection command, and entry selectors");
     expect(oldestSelectedRows.selectedRowIndex >= 0,
            "Maintenance browser rows expose selected row index for UI focus painting");
+    expect(oldestSelectedRows.focusedRowIndex >= 0
+               && oldestSelectedRows.focusedSelectionId
+                   == std::string(projectname::packageMediaMaintenanceBrowserSelectionIds::batchPrefix)
+                       + completedId,
+           "Maintenance browser rows default keyboard focus to the selected batch row");
+    expect(oldestSelectedRows.restoreSelectAllKeyboardEnabled,
+           "Maintenance browser rows enable keyboard select-all for restorable selected batch");
+    expect(oldestSelectedRows.restoreClearSelectionKeyboardEnabled,
+           "Maintenance browser rows enable keyboard clear when restore entries are selected");
+    expect(!oldestSelectedRows.restoreToggleFocusedEntryKeyboardEnabled,
+           "Maintenance browser rows do not toggle a focused batch as a restore entry");
     expect(oldestSelectedModel.batches[static_cast<std::size_t>(oldestSelectedModel.selectedBatchIndex)]
                    .manifestPath.filename() == "restore-manifest.json",
            "Maintenance view model carries restore manifest path for selected batch");
@@ -4469,6 +4480,49 @@ void packageMediaMaintenanceBrowserRowsRenderSelectableBatchState()
                    == std::string(projectname::packageMediaMaintenanceBrowserSelectionIds::restoreEntryPrefix)
                        + "audio/orphan.wav",
            "Maintenance browser rows expose selected audio restore-entry toggle id");
+
+    projectname::PackageMediaMaintenanceBrowserRowsOptions entryFocusOptions;
+    entryFocusOptions.hasSnapshot = true;
+    entryFocusOptions.focusedSelectionId =
+        std::string(projectname::packageMediaMaintenanceBrowserSelectionIds::restoreEntryPrefix)
+        + "analysis/orphan.waveform.json";
+    const auto entryFocusedRows = projectname::buildPackageMediaMaintenanceBrowserRows(
+        oldestSelectedModel,
+        std::move(entryFocusOptions));
+    const auto* focusedAnalysisEntry = findMaintenanceBrowserRestoreEntryRow(
+        entryFocusedRows,
+        "analysis/orphan.waveform.json");
+    expect(focusedAnalysisEntry != nullptr
+               && focusedAnalysisEntry->keyboardFocused
+               && focusedAnalysisEntry->selectable
+               && !focusedAnalysisEntry->selected,
+           "Maintenance browser rows can keyboard-focus an unselected restore entry");
+    expect(entryFocusedRows.restoreToggleFocusedEntryKeyboardEnabled
+               && entryFocusedRows.focusedRestoreEntryOriginalRelativePath
+                   == "analysis/orphan.waveform.json",
+           "Maintenance browser rows enable keyboard toggle for focused restorable entry");
+    expect(projectname::focusAdjacentPackageMediaMaintenanceBrowserSelectionId(
+               entryFocusedRows,
+               projectname::PackageMediaMaintenanceBrowserFocusDirection::previous)
+               == std::string(projectname::packageMediaMaintenanceBrowserSelectionIds::restoreEntryPrefix)
+                   + "audio/orphan.wav",
+           "Maintenance browser row focus moves to previous selectable restore entry");
+    expect(projectname::focusAdjacentPackageMediaMaintenanceBrowserSelectionId(
+               entryFocusedRows,
+               projectname::PackageMediaMaintenanceBrowserFocusDirection::next)
+               == std::string(projectname::packageMediaMaintenanceBrowserSelectionIds::batchPrefix)
+                   + partialId,
+           "Maintenance browser row focus moves from restore entries to the next selectable row");
+
+    const auto clearedSelectionModel =
+        projectname::clearPackageMediaRestoreEntriesInSelectedBatch(oldestSelectedModel);
+    const auto clearedSelectionRows = projectname::buildPackageMediaMaintenanceBrowserRows(
+        clearedSelectionModel,
+        { true, false, 2 });
+    expect(clearedSelectionRows.restoreSelectAllKeyboardEnabled
+               && !clearedSelectionRows.restoreClearSelectionKeyboardEnabled,
+           "Maintenance browser rows keep select-all but disable clear for empty restore selection");
+
     const auto busyRestoreRows = projectname::buildPackageMediaMaintenanceBrowserRows(
         oldestSelectedModel,
         { true, false, 2, true });
@@ -4476,6 +4530,10 @@ void packageMediaMaintenanceBrowserRowsRenderSelectableBatchState()
            "Maintenance browser restore action disables while package files are busy");
     expect(busyRestoreRows.restoreAction.disabledReason.find("busy") != std::string::npos,
            "Maintenance browser restore action exposes package-busy disabled reason");
+    expect(!busyRestoreRows.restoreSelectAllKeyboardEnabled
+               && !busyRestoreRows.restoreClearSelectionKeyboardEnabled
+               && !busyRestoreRows.restoreToggleFocusedEntryKeyboardEnabled,
+           "Maintenance browser rows disable restore-selection keyboard commands while package files are busy");
 
     auto staleSelectionModel =
         projectname::selectPackageMediaMaintenanceBatch(oldestSelectedModel, "missing-selection");
@@ -4519,6 +4577,10 @@ void packageMediaMaintenanceBrowserRowsRenderSelectableBatchState()
            "Maintenance browser restore action disables for conflict batch");
     expect(conflictRows.restoreAction.disabledReason.find("conflicts") != std::string::npos,
            "Maintenance browser restore action carries conflict disabled reason");
+    expect(!conflictRows.restoreSelectAllKeyboardEnabled
+               && !conflictRows.restoreClearSelectionKeyboardEnabled
+               && !conflictRows.restoreToggleFocusedEntryKeyboardEnabled,
+           "Maintenance browser rows disable restore-selection keyboard commands for conflict batches");
     const auto* conflictReviewSummary = findMaintenanceBrowserRow(
         conflictRows,
         projectname::PackageMediaMaintenanceBrowserRowKind::selectedBatchReviewSummary);
@@ -4541,6 +4603,10 @@ void packageMediaMaintenanceBrowserRowsRenderSelectableBatchState()
     expect(restoredRows.restoreAction.disabledReason.find("no unrestored media")
                != std::string::npos,
            "Maintenance browser restore action carries restored-batch disabled reason");
+    expect(!restoredRows.restoreSelectAllKeyboardEnabled
+               && !restoredRows.restoreClearSelectionKeyboardEnabled
+               && !restoredRows.restoreToggleFocusedEntryKeyboardEnabled,
+           "Maintenance browser rows disable restore-selection keyboard commands for restored batches");
     const auto* restoredEntrySummary = findMaintenanceBrowserRow(
         restoredRows,
         projectname::PackageMediaMaintenanceBrowserRowKind::selectedBatchEntrySummary);
@@ -4569,6 +4635,18 @@ void packageMediaMaintenanceBrowserRowsRenderSelectableBatchState()
                oldestSelectedModel,
                projectname::PackageMediaMaintenanceBrowserSelectionDirection::next) == completedId,
            "Maintenance browser keyboard selection clamps at oldest batch");
+    expect(projectname::focusAdjacentPackageMediaMaintenanceBrowserSelectionId(
+               oldestSelectedRows,
+               projectname::PackageMediaMaintenanceBrowserFocusDirection::previous)
+               == std::string(projectname::packageMediaMaintenanceBrowserSelectionIds::batchPrefix)
+                   + partialId,
+           "Maintenance browser row focus can move independently from batch keyboard selection");
+    expect(projectname::focusAdjacentPackageMediaMaintenanceBrowserSelectionId(
+               oldestSelectedRows,
+               projectname::PackageMediaMaintenanceBrowserFocusDirection::next)
+               == std::string(projectname::packageMediaMaintenanceBrowserSelectionIds::batchPrefix)
+                   + completedId,
+           "Maintenance browser row focus clamps at the last selectable row");
 
     expect(std::filesystem::remove_all(package) > 0,
            "Temporary maintenance browser rows package deleted");

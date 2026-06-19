@@ -459,6 +459,7 @@ void setButtonEnabledFromCommand(juce::Button& button,
         panelRow.selectionId = row.selectionId.empty() ? row.cleanupId : row.selectionId;
         panelRow.selectable = row.selectable;
         panelRow.selected = row.selected;
+        panelRow.keyboardFocused = row.keyboardFocused;
         panelRows.push_back(std::move(panelRow));
     }
 
@@ -632,6 +633,12 @@ void WorkspacePanel::paint(juce::Graphics& graphics)
                                           rowModel.selected ? 1.6f : 1.0f);
         }
 
+        if (rowModel.keyboardFocused && hasKeyboardFocus(true))
+        {
+            graphics.setColour(focusAccent.withAlpha(0.92f));
+            graphics.drawRoundedRectangle(row.toFloat().reduced(1.5f), 4.0f, 2.0f);
+        }
+
         graphics.setColour(rowModel.selected ? textPrimary : textSecondary);
         graphics.drawFittedText(rowModel.text, row.reduced(10, 0), juce::Justification::centredLeft, 1);
         content.removeFromTop(6);
@@ -689,6 +696,9 @@ bool WorkspacePanel::shouldPaintKeyboardFocus() const
 {
     return (previousTimelineClipRequested_ || nextTimelineClipRequested_
             || previousSelectableRowRequested_ || nextSelectableRowRequested_
+            || previousSelectableRowFocusRequested_ || nextSelectableRowFocusRequested_
+            || activateFocusedSelectableRowRequested_
+            || restoreSelectionSelectAllRequested_ || restoreSelectionClearRequested_
             || timelinePanLeftRequested_ || timelinePanRightRequested_
             || timelineZoomInRequested_ || timelineZoomOutRequested_)
         && hasKeyboardFocus(true);
@@ -821,15 +831,54 @@ void WorkspacePanel::mouseDown(const juce::MouseEvent& event)
 
 bool WorkspacePanel::keyPressed(const juce::KeyPress& key)
 {
+    const auto keyCode = key.getKeyCode();
+
+    if (key.getModifiers().isCommandDown()
+        && (key.getTextCharacter() == 'a' || key.getTextCharacter() == 'A'
+            || keyCode == 'a' || keyCode == 'A')
+        && restoreSelectionSelectAllRequested_)
+    {
+        restoreSelectionSelectAllRequested_();
+        return true;
+    }
+
     if (!key.getModifiers().isCommandDown())
     {
-        if (key.getKeyCode() == juce::KeyPress::upKey && previousSelectableRowRequested_)
+        if (keyCode == juce::KeyPress::escapeKey && restoreSelectionClearRequested_)
+        {
+            restoreSelectionClearRequested_();
+            return true;
+        }
+
+        if ((keyCode == juce::KeyPress::returnKey || keyCode == juce::KeyPress::spaceKey)
+            && activateFocusedSelectableRowRequested_)
+        {
+            activateFocusedSelectableRowRequested_();
+            return true;
+        }
+
+        if (keyCode == juce::KeyPress::tabKey)
+        {
+            if (key.getModifiers().isShiftDown() && previousSelectableRowFocusRequested_)
+            {
+                previousSelectableRowFocusRequested_();
+                return true;
+            }
+
+            if (!key.getModifiers().isShiftDown() && nextSelectableRowFocusRequested_)
+            {
+                nextSelectableRowFocusRequested_();
+                return true;
+            }
+        }
+
+        if (keyCode == juce::KeyPress::upKey && previousSelectableRowRequested_)
         {
             previousSelectableRowRequested_();
             return true;
         }
 
-        if (key.getKeyCode() == juce::KeyPress::downKey && nextSelectableRowRequested_)
+        if (keyCode == juce::KeyPress::downKey && nextSelectableRowRequested_)
         {
             nextSelectableRowRequested_();
             return true;
@@ -962,6 +1011,24 @@ void WorkspacePanel::setSelectableRowKeyboardSelectionCallbacks(std::function<vo
 {
     previousSelectableRowRequested_ = std::move(previousCallback);
     nextSelectableRowRequested_ = std::move(nextCallback);
+    repaint();
+}
+
+void WorkspacePanel::setSelectableRowKeyboardFocusCallbacks(std::function<void()> previousCallback,
+                                                            std::function<void()> nextCallback,
+                                                            std::function<void()> activateCallback)
+{
+    previousSelectableRowFocusRequested_ = std::move(previousCallback);
+    nextSelectableRowFocusRequested_ = std::move(nextCallback);
+    activateFocusedSelectableRowRequested_ = std::move(activateCallback);
+    repaint();
+}
+
+void WorkspacePanel::setRestoreSelectionKeyboardCallbacks(std::function<void()> selectAllCallback,
+                                                          std::function<void()> clearCallback)
+{
+    restoreSelectionSelectAllRequested_ = std::move(selectAllCallback);
+    restoreSelectionClearRequested_ = std::move(clearCallback);
     repaint();
 }
 
@@ -1178,6 +1245,30 @@ MainComponent::MainComponent()
         {
             selectAdjacentPackageMediaCleanupBatch(
                 projectname::PackageMediaMaintenanceBrowserSelectionDirection::next);
+        });
+    browserPanel_.setSelectableRowKeyboardFocusCallbacks(
+        [this]()
+        {
+            focusAdjacentPackageMediaBrowserRow(
+                projectname::PackageMediaMaintenanceBrowserFocusDirection::previous);
+        },
+        [this]()
+        {
+            focusAdjacentPackageMediaBrowserRow(
+                projectname::PackageMediaMaintenanceBrowserFocusDirection::next);
+        },
+        [this]()
+        {
+            activateFocusedPackageMediaBrowserRow();
+        });
+    browserPanel_.setRestoreSelectionKeyboardCallbacks(
+        [this]()
+        {
+            selectAllPackageMediaRestoreEntries();
+        },
+        [this]()
+        {
+            clearPackageMediaRestoreEntries();
         });
     workspacePanel_.setTimelineClipSelectedCallback(
         [this](std::string clipId)
@@ -3018,9 +3109,18 @@ void MainComponent::refreshBrowserPanel()
     const auto scanRunning =
         packageMediaMaintenanceScan_.valid()
         && packageMediaMaintenanceScan_.wait_for(std::chrono::seconds(0)) != std::future_status::ready;
+
+    projectname::PackageMediaMaintenanceBrowserRowsOptions rowOptions;
+    rowOptions.hasSnapshot = hasPackageMediaMaintenanceSnapshot_;
+    rowOptions.scanRunning = scanRunning;
+    rowOptions.maxBatchRows = 2;
+    rowOptions.packageWorkInProgress = hasActivePackageFileWork();
+    rowOptions.focusedSelectionId = packageMediaBrowserFocusedSelectionId_;
+
     const auto modelRows = projectname::buildPackageMediaMaintenanceBrowserRows(
         packageMediaMaintenanceViewModel_,
-        { hasPackageMediaMaintenanceSnapshot_, scanRunning, 2, hasActivePackageFileWork() });
+        std::move(rowOptions));
+    packageMediaBrowserFocusedSelectionId_ = modelRows.focusedSelectionId;
 
     auto cleanupEnabled = modelRows.cleanupAction.enabled && !scanRunning && !hasActivePackageFileWork();
     auto cleanupTooltip = juce::String("Move cleanup candidates to media trash");
@@ -3092,6 +3192,8 @@ void MainComponent::handlePackageMediaBrowserSelection(std::string selectionId)
     const auto restoreEntryPrefix =
         std::string(projectname::packageMediaMaintenanceBrowserSelectionIds::restoreEntryPrefix);
 
+    packageMediaBrowserFocusedSelectionId_ = selectionId;
+
     if (selectionId == std::string(projectname::packageMediaMaintenanceBrowserSelectionIds::restoreSelectAll))
     {
         selectAllPackageMediaRestoreEntries();
@@ -3117,6 +3219,48 @@ void MainComponent::handlePackageMediaBrowserSelection(std::string selectionId)
     }
 
     selectPackageMediaCleanupBatch(std::move(selectionId));
+}
+
+void MainComponent::focusAdjacentPackageMediaBrowserRow(
+    projectname::PackageMediaMaintenanceBrowserFocusDirection direction)
+{
+    const auto scanRunning =
+        packageMediaMaintenanceScan_.valid()
+        && packageMediaMaintenanceScan_.wait_for(std::chrono::seconds(0)) != std::future_status::ready;
+
+    projectname::PackageMediaMaintenanceBrowserRowsOptions rowOptions;
+    rowOptions.hasSnapshot = hasPackageMediaMaintenanceSnapshot_;
+    rowOptions.scanRunning = scanRunning;
+    rowOptions.maxBatchRows = 2;
+    rowOptions.packageWorkInProgress = hasActivePackageFileWork();
+    rowOptions.focusedSelectionId = packageMediaBrowserFocusedSelectionId_;
+
+    const auto modelRows =
+        projectname::buildPackageMediaMaintenanceBrowserRows(packageMediaMaintenanceViewModel_,
+                                                             std::move(rowOptions));
+    const auto focusedSelectionId =
+        projectname::focusAdjacentPackageMediaMaintenanceBrowserSelectionId(modelRows, direction);
+
+    if (focusedSelectionId.empty())
+    {
+        setStatus("No package media browser row to focus");
+        return;
+    }
+
+    packageMediaBrowserFocusedSelectionId_ = focusedSelectionId;
+    refreshBrowserPanel();
+    setStatus("Focused package media browser row");
+}
+
+void MainComponent::activateFocusedPackageMediaBrowserRow()
+{
+    if (packageMediaBrowserFocusedSelectionId_.empty())
+    {
+        setStatus("No package media browser row focused");
+        return;
+    }
+
+    handlePackageMediaBrowserSelection(packageMediaBrowserFocusedSelectionId_);
 }
 
 void MainComponent::selectPackageMediaCleanupBatch(std::string cleanupId)

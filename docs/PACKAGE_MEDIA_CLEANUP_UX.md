@@ -188,6 +188,13 @@ selected batch and restore readiness immediately, but it still does not run
 cleanup, restore, deletion, retention, plugin scanning, or package file
 mutation.
 
+Restore-entry rows in the selected cleanup batch are also keyboard reachable.
+Up/Down continues to move between cleanup batches. Tab and Shift-Tab move a
+separate browser-row focus through selectable rows, Enter or Space activates the
+focused row, Command/Ctrl+A selects all restorable entries, and Escape clears
+the restore selection. Package-busy, conflict-review, partial-failure,
+already-restored, and empty-selection states keep restore execution disabled.
+
 The browser summary now exposes a guarded Restore affordance after a package
 maintenance snapshot exists. It is enabled only for selected cleanup batches
 that the maintenance view model marks restorable. Disabled states keep their
