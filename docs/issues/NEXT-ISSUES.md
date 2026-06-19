@@ -1,13 +1,12 @@
 # Next Issues
 
-## 1. Implement Save As Package Asset Copy Command
+## 1. Add Background Progress for Save As Package Copies
 
 Acceptance:
-- Copy package-local `audio/`, `analysis/`, `samples/`, and `presets/` from the
-  active source package into the target package before Save As switches paths.
-- Start target `backups/` fresh as defined by ADR-0091.
-- Preserve explicit external media references without copying them.
-- Reject or roll back conflicting/unsafe target writes with tests.
+- Run Save As package copying through a cancellable background job.
+- Surface phase/progress status while large package copies are running.
+- Keep the existing copy-command preflight and rollback guarantees.
+- Keep the app responsive during large package copies.
 - Do not perform package copying on the audio callback thread.
 
 ## 2. Persist Audio/MIDI Setup Preferences

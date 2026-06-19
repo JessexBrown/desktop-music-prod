@@ -25,7 +25,8 @@ The menu exposes:
   when the selected package does not already contain `manifest.json`;
 - `Save`: saves the current project to the active package path;
 - `Save As...`: native save-style chooser, saves the current project manifest
-  and package folder structure to the chosen `.project` path;
+  and package folder structure to the chosen `.project` path, with package
+  media relocation handled by later ADRs;
 - `Open...`: native open chooser, loads a selected `.project` package and only
   swaps the active session after the manifest loads successfully.
 
@@ -41,12 +42,10 @@ app smoke tests and deterministic local workflows stay available.
   current project/session.
 - Import, relink, timeline preparation, and package media maintenance now use
   the active project package path instead of always using the demo package.
-- ADR-0091 defines the Save As package asset copy policy. Until the copy command
-  exists, Save As refuses manifest-only relocation when package-local media
-  needs cloning.
+- ADR-0091 defines the Save As package asset-copy policy. ADR-0092 adds the
+  package copy command used before Save As writes the target manifest.
 
 ## Follow-Ups
 
-- Implement the package asset copy command defined by ADR-0091.
 - Add automated UI-level smoke coverage for project New/Open/Save As once a
   deterministic chooser test hook exists.

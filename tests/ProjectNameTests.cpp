@@ -833,6 +833,112 @@ void projectPackageSaveAsPolicyPreservesExternalReferences()
     std::filesystem::remove_all(targetPackage);
 }
 
+void projectPackageSaveAsCopyCommandCopiesPackageAssetsAndStartsFreshBackups()
+{
+    auto project = projectname::ProjectModel::createDefault();
+
+    projectname::ProjectClip imported;
+    imported.id = "save-as-copy-imported";
+    imported.name = "Save As Copy Imported";
+    imported.type = "audio-file";
+    imported.relativePath = "audio/take.wav";
+    imported.analysisPath = "analysis/take.waveform.json";
+    imported.lengthBeats = 4.0;
+    expect(project.addClipToTrack("track-1", imported), "Save As copy command test adds imported clip");
+
+    const auto sourcePackage = makeTemporaryPackagePath("projectname-save-as-copy-source-test");
+    const auto targetPackage = makeTemporaryPackagePath("projectname-save-as-copy-target-test");
+    writeTextFile(sourcePackage / imported.relativePath, "audio");
+    writeTextFile(sourcePackage / imported.analysisPath, "{}");
+    writeTextFile(sourcePackage / "samples" / "one-shot.wav", "sample");
+    writeTextFile(sourcePackage / "presets" / "starter.json", "{}");
+    writeTextFile(sourcePackage / "backups" / "manifest.previous.json", "{}");
+
+    const auto result = projectname::copyProjectPackageAssetsForSaveAs({ project, sourcePackage, targetPackage });
+
+    expect(result.status == projectname::ProjectPackageSaveAsCopyStatus::completed,
+           "Save As copy command completes for package-local assets");
+    expect(result.plan.requiresPackageAssetCopy,
+           "Save As copy command preserves the preflight copy requirement");
+    expect(result.copiedFileCount == 4,
+           "Save As copy command copies audio, analysis, samples, and presets files");
+    expect(std::filesystem::exists(targetPackage / imported.relativePath),
+           "Save As copy command copies imported audio into the target package");
+    expect(std::filesystem::exists(targetPackage / imported.analysisPath),
+           "Save As copy command copies imported analysis into the target package");
+    expect(std::filesystem::exists(targetPackage / "samples" / "one-shot.wav"),
+           "Save As copy command copies package samples into the target package");
+    expect(std::filesystem::exists(targetPackage / "presets" / "starter.json"),
+           "Save As copy command copies package presets into the target package");
+    expect(!std::filesystem::exists(targetPackage / "backups" / "manifest.previous.json"),
+           "Save As copy command starts target backups fresh");
+
+    expect(std::filesystem::remove_all(sourcePackage) > 0,
+           "Temporary Save As copy source package deleted");
+    expect(std::filesystem::remove_all(targetPackage) > 0,
+           "Temporary Save As copy target package deleted");
+}
+
+void projectPackageSaveAsCopyCommandRejectsTargetConflictsBeforeCopy()
+{
+    auto project = projectname::ProjectModel::createDefault();
+
+    projectname::ProjectClip imported;
+    imported.id = "save-as-conflict-imported";
+    imported.name = "Save As Conflict Imported";
+    imported.type = "audio-file";
+    imported.relativePath = "audio/take.wav";
+    imported.lengthBeats = 4.0;
+    expect(project.addClipToTrack("track-1", imported), "Save As conflict test adds imported clip");
+
+    const auto sourcePackage = makeTemporaryPackagePath("projectname-save-as-conflict-source-test");
+    const auto targetPackage = makeTemporaryPackagePath("projectname-save-as-conflict-target-test");
+    writeTextFile(sourcePackage / imported.relativePath, "new audio");
+    writeTextFile(sourcePackage / "samples" / "one-shot.wav", "sample");
+    writeTextFile(targetPackage / imported.relativePath, "existing audio");
+
+    const auto result = projectname::copyProjectPackageAssetsForSaveAs({ project, sourcePackage, targetPackage });
+
+    expect(result.status == projectname::ProjectPackageSaveAsCopyStatus::targetConflict,
+           "Save As copy command rejects occupied target files");
+    expect(readTextFile(targetPackage / imported.relativePath) == "existing audio",
+           "Save As copy command leaves conflicting target files untouched");
+    expect(!std::filesystem::exists(targetPackage / "samples" / "one-shot.wav"),
+           "Save As copy command does not partially copy after preflight conflict");
+
+    expect(std::filesystem::remove_all(sourcePackage) > 0,
+           "Temporary Save As conflict source package deleted");
+    expect(std::filesystem::remove_all(targetPackage) > 0,
+           "Temporary Save As conflict target package deleted");
+}
+
+void projectPackageSaveAsCopyCommandRejectsTargetInsideSource()
+{
+    auto project = projectname::ProjectModel::createDefault();
+
+    projectname::ProjectClip imported;
+    imported.id = "save-as-nested-imported";
+    imported.name = "Save As Nested Imported";
+    imported.type = "audio-file";
+    imported.relativePath = "audio/take.wav";
+    imported.lengthBeats = 4.0;
+    expect(project.addClipToTrack("track-1", imported), "Save As nested target test adds imported clip");
+
+    const auto sourcePackage = makeTemporaryPackagePath("projectname-save-as-nested-source-test");
+    const auto targetPackage = sourcePackage / "nested.project";
+    writeTextFile(sourcePackage / imported.relativePath, "audio");
+
+    const auto result = projectname::copyProjectPackageAssetsForSaveAs({ project, sourcePackage, targetPackage });
+
+    expect(result.status == projectname::ProjectPackageSaveAsCopyStatus::invalidRequest,
+           "Save As copy command rejects a target package inside the source package");
+    expect(!std::filesystem::exists(targetPackage),
+           "Save As copy command does not create a nested target package");
+
+    expect(std::filesystem::remove_all(sourcePackage) > 0,
+           "Temporary Save As nested source package deleted");
+}
+
 void projectLoopRegionValidatesAndRoundTrips()
 {
     auto project = projectname::ProjectModel::createDefault();
@@ -8171,6 +8277,9 @@ int main()
     projectPackageSaveAsPolicyBlocksManifestOnlyWhenPackageAssetsNeedCopy();
     projectPackageSaveAsPolicyAllowsSamePackageManifestSave();
     projectPackageSaveAsPolicyPreservesExternalReferences();
+    projectPackageSaveAsCopyCommandCopiesPackageAssetsAndStartsFreshBackups();
+    projectPackageSaveAsCopyCommandRejectsTargetConflictsBeforeCopy();
+    projectPackageSaveAsCopyCommandRejectsTargetInsideSource();
     projectLoopRegionValidatesAndRoundTrips();
     projectImportedClipSelectionValidatesAndRoundTrips();
     projectTrackMixStateRoundTripsAndLoadsLegacyDefaults();

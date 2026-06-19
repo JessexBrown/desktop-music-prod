@@ -25,7 +25,7 @@ native file choosers.
 When Save As targets a different package:
 
 - package-local `audio/`, `analysis/`, `samples/`, and `presets/` contents are
-  the creative assets that a future copy command must clone;
+  the creative assets that the package copy command must clone;
 - `backups/` starts fresh in the target package, because manifest backups and
   media-trash restore history describe the source package's history;
 - absolute external media references stay explicit in the manifest and are not
@@ -35,9 +35,9 @@ When Save As targets a different package:
 - missing package-local references remain missing and recoverable through the
   normal missing-media surfaces.
 
-Until the copy command exists, the app refuses manifest-only Save As when the
-policy detects package-local assets that need cloning. The status bar records a
-relocation warning instead of creating a misleading target package.
+Before ADR-0092, the app refused manifest-only Save As when the policy detected
+package-local assets that needed cloning. The status bar recorded a relocation
+warning instead of creating a misleading target package.
 
 ## Consequences
 
@@ -46,12 +46,11 @@ relocation warning instead of creating a misleading target package.
 - Users can still Save As projects that have no package-local media to copy, or
   that preserve explicit external references.
 - Backups are intentionally not cloned into the new package.
-- The next implementation step is a package-writer copy command that runs off
-  the audio callback and uses this policy as its preflight.
+- ADR-0092 adds the package-writer copy command that runs off the audio callback
+  and uses this policy as its preflight.
 
 ## Follow-Ups
 
-- Implement the package asset copy command for `audio/`, `analysis/`,
-  `samples/`, and `presets/`.
-- Wire Save As to run the copy command before saving the manifest and switching
-  the active package path.
+- Add background progress and cancellation for large package copies.
+- Add automated UI-level smoke coverage for project New/Open/Save As once a
+  deterministic chooser test hook exists.

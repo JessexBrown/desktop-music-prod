@@ -143,6 +143,13 @@ void setButtonEnabledFromCommand(juce::Button& button,
     return std::filesystem::is_regular_file(packageDirectory / "manifest.json", error);
 }
 
+[[nodiscard]] bool saveAsCopyStatusAllowsManifestSave(
+    projectname::ProjectPackageSaveAsCopyStatus status) noexcept
+{
+    return status == projectname::ProjectPackageSaveAsCopyStatus::completed
+        || status == projectname::ProjectPackageSaveAsCopyStatus::noCopyNeeded;
+}
+
 [[nodiscard]] std::string projectNameFromPackagePath(const std::filesystem::path& packageDirectory)
 {
     auto name = packageDirectory.stem().string();
@@ -1978,13 +1985,17 @@ void MainComponent::handleProjectSaveAsResult(const juce::FileChooser& chooser)
     }
 
     const auto packagePath = projectPackagePathFromChooserResult(selectedFile, true);
-    const auto saveAsPlan = projectname::buildProjectPackageSaveAsPlan(
+    auto copyResult = projectname::copyProjectPackageAssetsForSaveAs({
         session_.getProject(),
         getCurrentProjectPackagePath(),
-        packagePath);
-    if (!saveAsPlan.canSaveManifestOnly)
+        packagePath,
+    });
+    if (!saveAsCopyStatusAllowsManifestSave(copyResult.status))
     {
-        setStatus(juce::String(projectname::describeProjectPackageSaveAsPlan(saveAsPlan)));
+        auto message = copyResult.error.empty()
+            ? projectname::describeProjectPackageSaveAsPlan(copyResult.plan)
+            : copyResult.error;
+        setStatus("Save As failed: " + juce::String(message));
         refreshAppCommandEnabledState();
         return;
     }
