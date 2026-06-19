@@ -85,6 +85,8 @@ add_library(projectname_core
     src/core/PackageMediaQuarantinePreflightPlan.h
     src/core/PackageMediaQuarantineRestoreManifest.cpp
     src/core/PackageMediaQuarantineRestoreManifest.h
+    src/core/PackageMediaRestoreEntrySelection.cpp
+    src/core/PackageMediaRestoreEntrySelection.h
     src/core/ProductIdentity.h
     src/core/ProjectAudioImport.cpp
     src/core/ProjectAudioImport.h

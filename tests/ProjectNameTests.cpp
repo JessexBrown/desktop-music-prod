@@ -18,6 +18,7 @@
 #include "core/PackageMediaQuarantineCommand.h"
 #include "core/PackageMediaQuarantinePreflightPlan.h"
 #include "core/PackageMediaQuarantineRestoreManifest.h"
+#include "core/PackageMediaRestoreEntrySelection.h"
 #include "core/ProductIdentity.h"
 #include "core/ProjectAudioImport.h"
 #include "core/ProjectModel.h"
@@ -226,6 +227,19 @@ const projectname::PackageMediaQuarantineSkippedEntry* findQuarantineSkippedEntr
     const std::string& originalPath)
 {
     for (const auto& entry : manifest.skippedEntries)
+    {
+        if (entry.originalRelativePath == originalPath)
+            return &entry;
+    }
+
+    return nullptr;
+}
+
+const projectname::PackageMediaRestoreEntrySelectionItem* findRestoreSelectionEntry(
+    const projectname::PackageMediaRestoreEntrySelection& selection,
+    const std::string& originalPath)
+{
+    for (const auto& entry : selection.entries)
     {
         if (entry.originalRelativePath == originalPath)
             return &entry;
@@ -2350,6 +2364,153 @@ void packageMediaQuarantineRestoreManifestLoadsPartialFailureState()
            "Partial failure quarantine restore manifest preserves entry error");
 
     expect(std::filesystem::remove_all(package) > 0, "Temporary partial quarantine manifest package deleted");
+}
+
+void packageMediaRestoreEntrySelectionTracksExplicitRestorableChoices()
+{
+    auto manifest = makeTestQuarantineRestoreManifest("2026-06-18T18-34-00Z-test");
+    const auto selection = projectname::buildPackageMediaRestoreEntrySelection(
+        manifest,
+        { "audio/orphan.wav", "audio/stale.wav" });
+
+    expect(selection.cleanupId == manifest.cleanupId,
+           "Restore selection preserves cleanup id");
+    expect(selection.entries.size() == 2 && selection.restorableEntryCount == 2,
+           "Restore selection lists restorable moved entries");
+    expect(selection.hasRestorableEntries,
+           "Restore selection reports available restorable entries");
+    expect(selection.hasSelection && selection.selectedRestorableEntryCount == 1,
+           "Restore selection keeps explicitly selected restorable entry");
+    expect(selection.restoreActionEnabled,
+           "Restore selection enables restore when a restorable entry is selected");
+    expect(selection.selectedOriginalRelativePaths == std::vector<std::string> { "audio/orphan.wav" },
+           "Restore selection exposes selected original paths for command requests");
+    expect(selection.staleSelectedOriginalRelativePaths == std::vector<std::string> { "audio/stale.wav" },
+           "Restore selection records stale selected original paths");
+
+    const auto* audio = findRestoreSelectionEntry(selection, "audio/orphan.wav");
+    const auto* analysis = findRestoreSelectionEntry(selection, "analysis/orphan.waveform.json");
+    expect(audio != nullptr && audio->selected && audio->restorable,
+           "Restore selection marks selected audio entry");
+    expect(analysis != nullptr && !analysis->selected && analysis->restorable,
+           "Restore selection leaves unselected analysis entry restorable");
+
+    auto toggled = projectname::togglePackageMediaRestoreEntrySelection(
+        selection,
+        "analysis/orphan.waveform.json");
+    expect(toggled.selectedOriginalRelativePaths
+               == std::vector<std::string> { "audio/orphan.wav", "analysis/orphan.waveform.json" },
+           "Restore selection toggles restorable entries on");
+
+    toggled = projectname::togglePackageMediaRestoreEntrySelection(toggled, "audio/orphan.wav");
+    expect(toggled.selectedOriginalRelativePaths
+               == std::vector<std::string> { "analysis/orphan.waveform.json" },
+           "Restore selection toggles restorable entries off");
+
+    const auto unknownToggled = projectname::togglePackageMediaRestoreEntrySelection(
+        toggled,
+        "audio/missing.wav");
+    expect(unknownToggled.selectedOriginalRelativePaths == toggled.selectedOriginalRelativePaths,
+           "Restore selection ignores unknown toggle paths");
+
+    const auto cleared = projectname::clearPackageMediaRestoreEntrySelection(toggled);
+    expect(!cleared.hasSelection && !cleared.restoreActionEnabled,
+           "Restore selection disables restore for empty selection");
+    expect(cleared.staleSelectedOriginalRelativePaths.empty(),
+           "Restore selection clear removes stale selected paths");
+    expect(cleared.restoreUnavailableReason.find("Select media entries") != std::string::npos,
+           "Restore selection explains empty selection");
+
+    const auto allSelected = projectname::selectAllPackageMediaRestoreEntries(cleared);
+    expect(allSelected.hasSelection && allSelected.selectedRestorableEntryCount == 2,
+           "Restore selection select-all chooses every restorable entry");
+    expect(allSelected.selectedOriginalRelativePaths
+               == std::vector<std::string> { "audio/orphan.wav", "analysis/orphan.waveform.json" },
+           "Restore selection select-all preserves manifest entry order");
+    expect(allSelected.staleSelectedOriginalRelativePaths.empty(),
+           "Restore selection select-all removes stale selected paths");
+}
+
+void packageMediaRestoreEntrySelectionModelsReviewAndEmptyStates()
+{
+    {
+        auto restoredManifest = makeTestQuarantineRestoreManifest("2026-06-18T18-35-00Z-restored");
+        restoredManifest.state = projectname::PackageMediaQuarantineManifestState::restored;
+        for (auto& entry : restoredManifest.movedEntries)
+            entry.restored = true;
+
+        const auto selection = projectname::buildPackageMediaRestoreEntrySelection(
+            restoredManifest,
+            { "audio/orphan.wav" });
+        expect(selection.restorableEntryCount == 0 && !selection.hasSelection,
+               "Restore selection does not select already-restored entries");
+        expect(!selection.restoreActionEnabled,
+               "Restore selection disables restored batches");
+
+        const auto* audio = findRestoreSelectionEntry(selection, "audio/orphan.wav");
+        expect(audio != nullptr
+                   && !audio->restorable
+                   && audio->unavailableReason.find("already been restored") != std::string::npos,
+               "Restore selection explains already-restored entries");
+    }
+
+    {
+        auto conflictManifest = makeTestQuarantineRestoreManifest("2026-06-18T18-36-00Z-conflict");
+        conflictManifest.state = projectname::PackageMediaQuarantineManifestState::restoreConflict;
+        conflictManifest.error = "Restore conflict needs review.";
+        conflictManifest.movedEntries.front().restoreConflict = true;
+
+        auto selection = projectname::buildPackageMediaRestoreEntrySelection(
+            conflictManifest,
+            { "analysis/orphan.waveform.json" });
+        expect(selection.restorableEntryCount == 1 && selection.hasSelection,
+               "Restore selection keeps clean entries selected in conflict batches");
+        expect(selection.blockedByReviewState && !selection.restoreActionEnabled,
+               "Restore selection blocks conflict batches from restore execution");
+        expect(selection.restoreUnavailableReason.find("Review restore") != std::string::npos,
+               "Restore selection explains conflict review block");
+
+        selection = projectname::selectAllPackageMediaRestoreEntries(selection);
+        expect(selection.selectedRestorableEntryCount == 1 && !selection.restoreActionEnabled,
+               "Restore selection select-all remains blocked for conflict batches");
+    }
+
+    {
+        auto partialManifest = makeTestQuarantineRestoreManifest("2026-06-18T18-37-00Z-partial");
+        partialManifest.state = projectname::PackageMediaQuarantineManifestState::partialFailure;
+        partialManifest.error = "Restore batch needs review.";
+        partialManifest.movedEntries.front().error = "Quarantine path is missing.";
+
+        const auto selection = projectname::buildPackageMediaRestoreEntrySelection(
+            partialManifest,
+            { "analysis/orphan.waveform.json" });
+        expect(selection.restorableEntryCount == 1 && selection.hasSelection,
+               "Restore selection keeps clean entries selected in partial-failure batches");
+        expect(selection.blockedByReviewState && !selection.restoreActionEnabled,
+               "Restore selection blocks partial-failure batches from restore execution");
+
+        const auto* audio = findRestoreSelectionEntry(selection, "audio/orphan.wav");
+        expect(audio != nullptr
+                   && !audio->restorable
+                   && audio->unavailableReason.find("partial restore failure") != std::string::npos,
+               "Restore selection explains partial-failure entries");
+    }
+
+    {
+        projectname::PackageMediaQuarantineRestoreManifest emptyManifest;
+        emptyManifest.cleanupId = "2026-06-18T18-38-00Z-empty";
+        emptyManifest.createdAtUtc = "2026-06-18T18-38-00Z";
+        emptyManifest.packageDisplayPath = "Display Only.project";
+        emptyManifest.inventorySummary = "empty";
+
+        const auto selection = projectname::buildPackageMediaRestoreEntrySelection(emptyManifest);
+        expect(selection.entries.empty() && !selection.hasRestorableEntries,
+               "Restore selection handles empty moved-entry manifests");
+        expect(!selection.restoreActionEnabled,
+               "Restore selection disables empty moved-entry manifests");
+        expect(selection.restoreUnavailableReason.find("no media entries") != std::string::npos,
+               "Restore selection explains empty moved-entry manifests");
+    }
 }
 
 void packageMediaQuarantinePreflightPlansCandidates()
@@ -7764,6 +7925,8 @@ int main()
     packageMediaQuarantineRestoreManifestRejectsUnsafePaths();
     packageMediaQuarantineRestoreManifestRejectsDuplicateDestinations();
     packageMediaQuarantineRestoreManifestLoadsPartialFailureState();
+    packageMediaRestoreEntrySelectionTracksExplicitRestorableChoices();
+    packageMediaRestoreEntrySelectionModelsReviewAndEmptyStates();
     packageMediaQuarantinePreflightPlansCandidates();
     packageMediaQuarantinePreflightRejectsBlockedInventory();
     packageMediaQuarantinePreflightRejectsEmptyAndDuplicatePlans();
