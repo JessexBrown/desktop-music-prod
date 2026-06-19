@@ -1,10 +1,11 @@
 # Next Issues
 
-## 1. Continue SPDX Baseline Reduction for Session/Project Sources
+## 1. Continue SPDX Baseline Reduction for App Shell Sources
 
 Acceptance:
-- Add SPDX headers to the legacy `src/core/AppSession.*` and
-  `src/core/ProjectModel.*` files.
+- Add SPDX headers to the remaining legacy app shell source files:
+  `src/app/Main.cpp`, `src/app/MainComponent.*`, and
+  `src/platform/win32/Win32FallbackApp.cpp`.
 - Remove those paths from `docs/SPDX_EXCEPTIONS.txt`.
 - Keep `projectname_spdx_check` passing.
 

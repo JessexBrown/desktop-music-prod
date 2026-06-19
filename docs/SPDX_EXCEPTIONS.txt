@@ -21,11 +21,7 @@ docs/issues/NEXT-ISSUES.md
 src/app/Main.cpp
 src/app/MainComponent.cpp
 src/app/MainComponent.h
-src/core/AppSession.cpp
-src/core/AppSession.h
 src/core/AudioDeviceService.cpp
 src/core/AudioDeviceService.h
-src/core/ProjectModel.cpp
-src/core/ProjectModel.h
 src/platform/win32/Win32FallbackApp.cpp
 tests/ProjectNameTests.cpp
