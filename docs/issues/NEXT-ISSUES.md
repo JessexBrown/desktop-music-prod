@@ -1,11 +1,10 @@
 # Next Issues
 
-## 1. Continue SPDX Baseline Reduction for App Shell Sources
+## 1. Continue SPDX Baseline Reduction for Audio/Test Sources
 
 Acceptance:
-- Add SPDX headers to the remaining legacy app shell source files:
-  `src/app/Main.cpp`, `src/app/MainComponent.*`, and
-  `src/platform/win32/Win32FallbackApp.cpp`.
+- Add SPDX headers to the remaining legacy source/test files:
+  `src/core/AudioDeviceService.*` and `tests/ProjectNameTests.cpp`.
 - Remove those paths from `docs/SPDX_EXCEPTIONS.txt`.
 - Keep `projectname_spdx_check` passing.
 

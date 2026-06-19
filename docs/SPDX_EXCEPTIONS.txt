@@ -18,10 +18,6 @@ docs/PLUGIN_POLICY.md
 docs/REFERENCES.md
 docs/UX_PRINCIPLES.md
 docs/issues/NEXT-ISSUES.md
-src/app/Main.cpp
-src/app/MainComponent.cpp
-src/app/MainComponent.h
 src/core/AudioDeviceService.cpp
 src/core/AudioDeviceService.h
-src/platform/win32/Win32FallbackApp.cpp
 tests/ProjectNameTests.cpp
