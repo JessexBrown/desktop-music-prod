@@ -1,16 +1,6 @@
 # Next Issues
 
-## 1. Refresh GitHub Actions Node Runtime Usage
-
-Acceptance:
-- Review the hosted CI annotation about Node.js 20 actions being forced to
-  Node.js 24.
-- Update GitHub Actions pins or add a documented follow-up if upstream actions
-  have not released Node 24-native versions yet.
-- Preserve the existing Linux core and Windows app build/test coverage.
-- Verify the workflow still passes on GitHub-hosted runners.
-
-## 2. Add Restore-Selection Keyboard Affordances
+## 1. Add Restore-Selection Keyboard Affordances
 
 Acceptance:
 - Add keyboard-accessible commands for select all, clear selection, and toggling
@@ -21,14 +11,14 @@ Acceptance:
 - Cover command availability and state transitions with core or app-session
   tests.
 
-## 3. Continue SPDX Baseline Reduction for Docs/Config
+## 2. Continue SPDX Baseline Reduction for Docs/Config
 
 Acceptance:
 - Add SPDX headers to one small, reviewable group of legacy docs or config files.
 - Remove those paths from `docs/SPDX_EXCEPTIONS.txt`.
 - Keep `projectname_spdx_check` passing.
 
-## 4. Add Project Chooser Smoke Test Hooks
+## 3. Add Project Chooser Smoke Test Hooks
 
 Acceptance:
 - Add a deterministic test or smoke hook for New/Open/Save As flows without
@@ -38,7 +28,7 @@ Acceptance:
 - Keep the hook unavailable in normal user workflows.
 - Preserve the existing `projectname_app_smoke` launch check.
 
-## 5. Add Audio/MIDI Preference Reset Action
+## 4. Add Audio/MIDI Preference Reset Action
 
 Acceptance:
 - Add a visible app command to reset saved Audio/MIDI preferences without
@@ -47,3 +37,13 @@ Acceptance:
   app settings file.
 - Keep reset reads/writes off the audio callback thread.
 - Cover reset behavior with core settings tests and app command metadata tests.
+
+## 5. Add CI Action Pin Review Note
+
+Acceptance:
+- Add a short scheduled-maintenance note or issue template for reviewing
+  GitHub-maintained action major pins.
+- Include the primary source to check for runtime changes: each action's release
+  page and `action.yml` manifest.
+- Keep this as a documentation/process task, not an automated updater.
+- Preserve the existing CI workflow jobs and cache behavior.

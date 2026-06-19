@@ -13,10 +13,10 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Cache FetchContent downloads
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .cache/fetchcontent/windows-msvc
           key: windows-fetchcontent-${{ hashFiles('CMakeLists.txt', 'CMakePresets.json') }}
@@ -40,10 +40,10 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Cache FetchContent downloads
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .cache/fetchcontent/linux-core
           key: linux-core-fetchcontent-${{ hashFiles('CMakeLists.txt', 'CMakePresets.json') }}

@@ -34,6 +34,13 @@ stay in the CMake binary directories and remain untracked. Separate cache
 directories prevent CMake FetchContent subbuild generator collisions between
 Windows MSVC and Linux core jobs.
 
+On June 19, 2026, refresh the GitHub-maintained action pins from
+`actions/checkout@v4` and `actions/cache@v4` to `actions/checkout@v7` and
+`actions/cache@v5`. GitHub release metadata showed `checkout` v7.0.0 and
+`cache` v5.0.5 available, and both action manifests declare the Node 24 runtime.
+This removes the hosted-runner annotation about Node.js 20 actions being forced
+onto Node.js 24 without changing the CI job topology.
+
 Update the SPDX checker to ignore local/generated roots such as `.cache/`,
 `out/`, and `build/`. Restored third-party dependency sources should not be
 treated as first-party files for license-header enforcement.
@@ -45,6 +52,7 @@ treated as first-party files for license-header enforcement.
   and command-routing tests now run on a second host OS.
 - Dependency downloads are reused across CI runs without committing generated
   artifacts.
+- CI uses GitHub-maintained Node 24 action runtimes for checkout and caching.
 - SPDX enforcement remains focused on first-party files even when CI restores a
   dependency cache into the workspace.
 - Linux JUCE app CI remains a future task once its system package requirements
