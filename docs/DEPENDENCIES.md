@@ -21,6 +21,8 @@ Original Rabbington Studio source, documentation, and build scripts are licensed
 | actions/checkout | v7 | https://github.com/actions/checkout | MIT | GitHub Actions repository checkout | CI-only workflow action; not bundled with the app. Verified against release v7.0.0, whose action manifest declares the Node 24 runtime. |
 | actions/cache | v5 | https://github.com/actions/cache | MIT | GitHub Actions FetchContent dependency cache | CI-only workflow action; caches `.cache/fetchcontent/*` directories without committing generated artifacts. Verified against release v5.0.5, whose action manifest declares the Node 24 runtime. |
 
+Scheduled review checklist: `docs/CI_ACTION_PIN_REVIEW.md`.
+
 ## Reviewed But Not Added
 
 | Dependency | Version/Commit | Source | License | Why Not Added Yet |

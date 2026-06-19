@@ -2,17 +2,7 @@
 
 # Next Issues
 
-## 1. Add CI Action Pin Review Note
-
-Acceptance:
-- Add a short scheduled-maintenance note or issue template for reviewing
-  GitHub-maintained action major pins.
-- Include the primary source to check for runtime changes: each action's release
-  page and `action.yml` manifest.
-- Keep this as a documentation/process task, not an automated updater.
-- Preserve the existing CI workflow jobs and cache behavior.
-
-## 2. Add Restore Conflict Recovery Detail Actions
+## 1. Add Restore Conflict Recovery Detail Actions
 
 Acceptance:
 - Add non-mutating detail actions for conflict and partial-failure restore
@@ -22,7 +12,7 @@ Acceptance:
 - Keep actions available from keyboard-focused Package Maintenance rows.
 - Cover conflict and partial-failure action availability with core tests.
 
-## 3. Continue SPDX Baseline Reduction for Root Config
+## 2. Continue SPDX Baseline Reduction for Root Config
 
 Acceptance:
 - Add SPDX headers to one small, reviewable group of remaining root/config
@@ -31,7 +21,7 @@ Acceptance:
 - Keep `projectname_spdx_check` passing.
 - Avoid changing document meaning or build behavior.
 
-## 4. Add Project Chooser Failure-State Smoke Coverage
+## 3. Add Project Chooser Failure-State Smoke Coverage
 
 Acceptance:
 - Extend hidden project chooser smoke coverage to cancelled selections, duplicate
@@ -40,7 +30,7 @@ Acceptance:
 - Keep native chooser dialogs unavailable in automated tests.
 - Preserve the existing launch and successful chooser smoke tests.
 
-## 5. Add Audio/MIDI Reset App Smoke Coverage
+## 4. Add Audio/MIDI Reset App Smoke Coverage
 
 Acceptance:
 - Add a hidden app smoke hook that exercises the Audio/MIDI preference reset
@@ -49,3 +39,12 @@ Acceptance:
   leaving the active project package path unchanged.
 - Keep the smoke hook unavailable in normal user workflows.
 - Preserve existing launch and project chooser smoke tests.
+
+## 5. Add Linux JUCE App CI Prerequisite Note
+
+Acceptance:
+- Document the Linux desktop/audio system packages expected before enabling a
+  Linux JUCE app CI job.
+- Keep the current `Linux Core` workflow job unchanged.
+- Link the note from `docs/BUILDING.md`.
+- Do not add or install packages in CI yet.

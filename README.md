@@ -560,4 +560,6 @@ or use `ctest --preset dev --output-on-failure`.
 - `docs/adr/ADR-0097-audio-midi-preference-reset-command.md` records the
   visible Audio/MIDI preference reset command.
 - `docs/AUDIO_MIDI_SETUP_UX.md` documents the first-run device setup UX states.
+- `docs/CI_ACTION_PIN_REVIEW.md` documents the scheduled review checklist for
+  GitHub-maintained CI action major pins.
 - `docs/issues/NEXT-ISSUES.md` lists the next five small tasks.

@@ -117,6 +117,11 @@ generator collisions. The SPDX check ignores local/generated roots such as
 `.cache/`, `out/`, and `build/` so restored third-party dependency sources do
 not become part of the first-party license-header baseline.
 
+Review GitHub-maintained action major pins with
+`docs/CI_ACTION_PIN_REVIEW.md`; pin reviews should keep the existing workflow
+jobs and FetchContent cache behavior stable unless a separate task says
+otherwise.
+
 ## Platform Notes
 
 ### Windows
