@@ -68,6 +68,16 @@ must not include FetchContent caches, dependency checkouts, CMake build-system
 intermediates, test scratch data, plugins, presets, samples, or proprietary
 assets.
 
+Later on June 22, 2026, add the matching Windows MSVC app CI artifact upload.
+The workflow stages a small package under the Windows runner temporary
+directory only after `ctest --preset dev --output-on-failure` passes. The staged
+artifact contains `Rabbington Studio.exe`, `LICENSE`, `README.md`,
+`docs/DEPENDENCIES.md`, and an artifact note, then uploads it with
+`actions/upload-artifact@v7` for 7 days. The package must not include
+FetchContent caches, dependency checkouts, Visual Studio/CMake build-system
+intermediates, test scratch data, plugins, presets, samples, or proprietary
+assets. It is an unsigned CI debug package, not a release installer.
+
 ## Consequences
 
 - Windows CI continues to verify the desktop app launch smoke test.
@@ -83,6 +93,8 @@ assets.
 - Linux JUCE app CI now produces a short-lived executable artifact for manual
   smoke inspection without turning generated build trees or dependency caches
   into downloadable artifacts.
+- Windows MSVC app CI now produces the same kind of short-lived executable
+  artifact after the existing Windows build/test gate passes.
 
 ## Follow-Ups
 

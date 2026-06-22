@@ -129,7 +129,9 @@ GitHub Actions currently runs three jobs on pushes and pull requests:
   `projectname_project_chooser_smoke`, `projectname_audio_midi_reset_smoke`,
   `projectname_app_settings_corruption_smoke`,
   `projectname_restore_detail_smoke`, the SPDX check, the SPDX fixture check,
-  and the core unit tests.
+  and the core unit tests. After tests pass, the job uploads a
+  short-retention artifact named
+  `rabbington-studio-windows-msvc-app-<commit-sha>` for 7 days.
 - `Linux Core` configures, builds, and tests the `core-dev` preset on
   `ubuntu-latest` for dependency-light second-host coverage.
 - `Linux JUCE App` installs the Ubuntu package baseline from
@@ -146,11 +148,13 @@ cache directories for Windows MSVC, Linux Core, and Linux JUCE App builds avoids
 CMake subbuild generator collisions. The SPDX check ignores local/generated
 roots such as `.cache/`, `out/`, and `build/` so restored third-party dependency
 sources do not become part of the first-party license-header baseline.
-The Linux JUCE app artifact is staged under the runner's temporary directory
-and contains only the app executable plus `LICENSE`, `README.md`,
-`docs/DEPENDENCIES.md`, and an artifact note. It intentionally excludes
-FetchContent caches, dependency checkouts, CMake build intermediates, test
-scratch directories, plugins, presets, samples, and proprietary assets.
+The Windows MSVC and Linux JUCE app artifacts are staged under each runner's
+temporary directory and contain only the app executable plus `LICENSE`,
+`README.md`, `docs/DEPENDENCIES.md`, and an artifact note. They intentionally
+exclude FetchContent caches, dependency checkouts, Visual Studio/CMake build
+intermediates, test scratch directories, plugins, presets, samples, and
+proprietary assets. These CI artifacts are unsigned debug/smoke packages, not
+release installers.
 
 Review GitHub-maintained action major pins with
 `docs/CI_ACTION_PIN_REVIEW.md`; pin reviews should keep the existing workflow

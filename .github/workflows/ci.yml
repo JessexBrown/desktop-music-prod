@@ -34,6 +34,60 @@ jobs:
       - name: Test
         run: ctest --preset dev --output-on-failure
 
+      - name: Stage Windows MSVC app artifact
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $runnerTemp = (Resolve-Path -LiteralPath $env:RUNNER_TEMP).Path
+          $artifactRoot = Join-Path $runnerTemp 'rabbington-studio-windows-msvc-app'
+          $artifactRootFull = [System.IO.Path]::GetFullPath($artifactRoot)
+          if (-not $artifactRootFull.StartsWith($runnerTemp, [System.StringComparison]::OrdinalIgnoreCase)) {
+            throw "Artifact root escaped runner temp: $artifactRootFull"
+          }
+
+          if (Test-Path -LiteralPath $artifactRoot) {
+            Remove-Item -LiteralPath $artifactRoot -Recurse -Force
+          }
+
+          New-Item -ItemType Directory -Force -Path $artifactRoot | Out-Null
+          New-Item -ItemType Directory -Force -Path (Join-Path $artifactRoot 'docs') | Out-Null
+
+          $appDir = Join-Path $env:GITHUB_WORKSPACE 'out\build\dev-vs2026\projectname_artefacts\Debug'
+          $preferredApp = Join-Path $appDir 'Rabbington Studio.exe'
+          $fallbackApp = Join-Path $appDir 'ProjectName.exe'
+
+          if (Test-Path -LiteralPath $preferredApp -PathType Leaf) {
+            $appPath = $preferredApp
+          } elseif (Test-Path -LiteralPath $fallbackApp -PathType Leaf) {
+            $appPath = $fallbackApp
+          } else {
+            Write-Error "Could not find a Windows MSVC app executable in $appDir."
+          }
+
+          Copy-Item -LiteralPath $appPath -Destination (Join-Path $artifactRoot 'Rabbington Studio.exe')
+          Copy-Item -LiteralPath LICENSE -Destination (Join-Path $artifactRoot 'LICENSE')
+          Copy-Item -LiteralPath README.md -Destination (Join-Path $artifactRoot 'README.md')
+          Copy-Item -LiteralPath docs\DEPENDENCIES.md -Destination (Join-Path $artifactRoot 'docs\DEPENDENCIES.md')
+          @(
+            'Rabbington Studio Windows MSVC App CI artifact.'
+            ''
+            'This artifact is produced only after the Windows MSVC App job builds and tests successfully.'
+            'It contains an unsigned CI debug executable plus first-party license/dependency notes, not'
+            'FetchContent caches, source dependency checkouts, Visual Studio intermediates, test scratch'
+            'data, plugins, presets, samples, or proprietary assets. It is not a release installer.'
+          ) | Set-Content -LiteralPath (Join-Path $artifactRoot 'ARTIFACT.txt') -Encoding UTF8
+
+          Get-ChildItem -LiteralPath $artifactRoot -Recurse -File | ForEach-Object { $_.FullName }
+
+      - name: Upload Windows MSVC app artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: rabbington-studio-windows-msvc-app-${{ github.sha }}
+          path: ${{ runner.temp }}\rabbington-studio-windows-msvc-app
+          if-no-files-found: error
+          retention-days: 7
+
   linux-core:
     name: Linux Core
     runs-on: ubuntu-latest

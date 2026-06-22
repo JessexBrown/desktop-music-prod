@@ -361,8 +361,8 @@ GitHub Actions runs the Windows MSVC desktop app build, the Linux JUCE app
 build/test smoke gate under Xvfb, and a Linux `core-dev` build/test job for
 dependency-light second-host coverage. CI caches CMake FetchContent downloads
 for JUCE and nlohmann/json outside the build tree; generated build outputs
-remain untracked. After the Linux JUCE app tests pass, CI uploads a 7-day
-artifact containing only the staged executable and first-party
+remain untracked. After the Windows MSVC and Linux JUCE app tests pass, CI
+uploads 7-day artifacts containing only the staged executable and first-party
 license/dependency notes.
 
 On Windows machines with MinGW but without a JUCE-supported compiler, the
