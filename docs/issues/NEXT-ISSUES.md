@@ -2,16 +2,7 @@
 
 # Next Issues
 
-## 1. Add Project Chooser Failure-State Smoke Coverage
-
-Acceptance:
-- Extend hidden project chooser smoke coverage to cancelled selections, duplicate
-  New targets, and failed Open attempts.
-- Verify failures leave the current project package unchanged.
-- Keep native chooser dialogs unavailable in automated tests.
-- Preserve the existing launch and successful chooser smoke tests.
-
-## 2. Add Audio/MIDI Reset App Smoke Coverage
+## 1. Add Audio/MIDI Reset App Smoke Coverage
 
 Acceptance:
 - Add a hidden app smoke hook that exercises the Audio/MIDI preference reset
@@ -21,7 +12,7 @@ Acceptance:
 - Keep the smoke hook unavailable in normal user workflows.
 - Preserve existing launch and project chooser smoke tests.
 
-## 3. Add Linux JUCE App CI Prerequisite Note
+## 2. Add Linux JUCE App CI Prerequisite Note
 
 Acceptance:
 - Document the Linux desktop/audio system packages expected before enabling a
@@ -30,7 +21,7 @@ Acceptance:
 - Link the note from `docs/BUILDING.md`.
 - Do not add or install packages in CI yet.
 
-## 4. Add Restore Manifest Reveal App Wiring
+## 3. Add Restore Manifest Reveal App Wiring
 
 Acceptance:
 - Wire the restore detail model's manifest-path action to a platform-aware
@@ -40,7 +31,7 @@ Acceptance:
 - Cover the focused-row action mapping with a small app or core test.
 - Do not re-run restore or touch package media from the reveal/copy path.
 
-## 5. Resolve CMake Presets SPDX Exception
+## 4. Resolve CMake Presets SPDX Exception
 
 Acceptance:
 - Decide whether `CMakePresets.json` should keep a reviewed SPDX exception or
@@ -49,3 +40,15 @@ Acceptance:
 - Keep `projectname_spdx_check` passing.
 - Update `docs/SOURCE_HEADER_POLICY.md` if JSON configuration files need a
   documented exception rule.
+
+## 5. Add Save As Failure App Smoke Coverage
+
+Acceptance:
+- Extend hidden project chooser smoke coverage to a deterministic Save As
+  package-copy failure, such as a target nested inside the source package or an
+  occupied target conflict.
+- Verify failure leaves the current project package and manifest unchanged.
+- Ensure the background Save As job is cleaned up and the Cancel Save affordance
+  is disabled after the failure result is applied.
+- Preserve the existing successful, cancelled, duplicate New, and failed Open
+  chooser smoke coverage.

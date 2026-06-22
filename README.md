@@ -278,14 +278,14 @@ Third-party dependencies remain under their own licenses as recorded in
 - JUCE app `--smoke-test` launch mode registered with CTest for supported
   desktop toolchains.
 - JUCE app `--smoke-project-choosers` mode registered with CTest for hidden,
-  deterministic New/Open/Save As coverage, including Save As no-copy and
+  deterministic New/Open/Save As coverage, including cancelled selections,
+  duplicate New targets, failed Open attempts, Save As no-copy, and
   package-asset-copy paths.
 
 ## What Does Not Exist Yet
 
 - AIFF/FLAC/MP3 import, automatic resampling, interactive waveform editing,
-  chooser cancellation/failure smoke coverage, imported-media cleanup/restoration
-  UI, command-palette relink entries,
+  imported-media cleanup/restoration UI, command-palette relink entries,
   timeline zoom/scroll, loop-region editing controls, or drag/drop clip
   placement.
 - Resampling, time-stretching, streaming, multi-track mixer strips, metering,
@@ -561,7 +561,8 @@ or use `ctest --preset dev --output-on-failure`.
 - `docs/adr/ADR-0095-package-maintenance-restore-keyboard-affordances.md`
   records Package Maintenance restore-entry keyboard focus and shortcuts.
 - `docs/adr/ADR-0096-deterministic-project-chooser-smoke-hooks.md` records the
-  hidden successful project chooser smoke path.
+  hidden project chooser smoke path for successful, cancelled, and failed
+  selections.
 - `docs/adr/ADR-0097-audio-midi-preference-reset-command.md` records the
   visible Audio/MIDI preference reset command.
 - `docs/adr/ADR-0098-package-maintenance-restore-detail-actions.md` records

@@ -91,7 +91,8 @@ ctest --preset dev --output-on-failure
 - `projectname_app_smoke` runs the desktop app launch smoke test when
   `PROJECTNAME_BUILD_APP=ON` and `BUILD_TESTING=ON`.
 - `projectname_project_chooser_smoke` runs the hidden JUCE app chooser-flow
-  smoke test for New/Open/Save As without opening native chooser dialogs.
+  smoke test for New/Open/Save As success, cancellation, and failure states
+  without opening native chooser dialogs.
 - `projectname_spdx_check` verifies first-party files either carry
   `SPDX-License-Identifier: AGPL-3.0-or-later` or are listed in
   `docs/SPDX_EXCEPTIONS.txt`.
@@ -180,10 +181,13 @@ built the JUCE desktop app, and ran:
 
 The `dev` CTest run passed `projectname_app_smoke`, which launches the JUCE app
 with `--smoke-test` and exits automatically after startup, plus
-`projectname_spdx_check` and `projectname_tests`, including cached prepared
-voice-window playback, background voice-window preparation, imported clip
-inspector metadata, deterministic imported clip selection, and persisted track
-mix state/static mix command/sample-rate mismatch coverage, plus app command
+`projectname_project_chooser_smoke`, which exercises deterministic chooser
+success, cancellation, duplicate New, and failed Open states without opening
+native dialogs. The same run also passed `projectname_spdx_check` and
+`projectname_tests`, including cached prepared voice-window playback,
+background voice-window preparation, imported clip inspector metadata,
+deterministic imported clip selection, and persisted track mix
+state/static mix command/sample-rate mismatch coverage, plus app command
 registry metadata, enablement, and dispatch-result coverage.
 
 The MinGW toolchain also successfully configured, built, and ran the `core-dev`

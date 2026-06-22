@@ -1464,6 +1464,59 @@ bool MainComponent::runProjectChooserSmokeTest(const std::filesystem::path& scra
     if (filesystemError)
         return fail("Could not create chooser smoke scratch directory: " + filesystemError.message());
 
+    auto expectFailureLeavesCurrentPackage =
+        [this, &fail](std::string_view operationName, auto&& action) -> bool
+        {
+            const auto previousPackage = getCurrentProjectPackagePath();
+            std::string operationError;
+            if (action(operationError))
+                return fail(std::string(operationName) + " unexpectedly succeeded.");
+
+            if (operationError.empty())
+                return fail(std::string(operationName) + " failed without a status message.");
+
+            if (!packagePathsMatch(getCurrentProjectPackagePath(), previousPackage))
+                return fail(std::string(operationName) + " changed the active project package.");
+
+            if (hasProjectChooserOpen())
+                return fail(std::string(operationName) + " opened a native project chooser during smoke.");
+
+            if (saveAsPackageCopyJob_ != nullptr)
+                return fail(std::string(operationName) + " left a Save As package copy job running.");
+
+            return true;
+        };
+
+    if (!expectFailureLeavesCurrentPackage(
+            "New project cancellation",
+            [this](std::string& operationError)
+            {
+                return createProjectFromChooserSelection(juce::File {}, operationError);
+            }))
+    {
+        return false;
+    }
+
+    if (!expectFailureLeavesCurrentPackage(
+            "Save As cancellation",
+            [this](std::string& operationError)
+            {
+                return beginSaveAsFromChooserSelection(juce::File {}, operationError);
+            }))
+    {
+        return false;
+    }
+
+    if (!expectFailureLeavesCurrentPackage(
+            "Open cancellation",
+            [this](std::string& operationError)
+            {
+                return openProjectFromChooserSelection(juce::File {}, operationError);
+            }))
+    {
+        return false;
+    }
+
     const auto newSelection = toJuceFile(scratchRoot / "Chooser New");
     if (!createProjectFromChooserSelection(newSelection, error))
         return false;
@@ -1472,8 +1525,43 @@ bool MainComponent::runProjectChooserSmokeTest(const std::filesystem::path& scra
     if (!projectManifestExists(newPackage))
         return fail("New project smoke did not create a manifest.");
 
+    if (!expectFailureLeavesCurrentPackage(
+            "Duplicate New project selection",
+            [this, newPackage](std::string& operationError)
+            {
+                return createProjectFromChooserSelection(toJuceFile(newPackage), operationError);
+            }))
+    {
+        return false;
+    }
+
     if (!openProjectFromChooserSelection(toJuceFile(newPackage), error))
         return false;
+
+    const auto missingOpenPackage = scratchRoot / "Missing Open.project";
+    if (!expectFailureLeavesCurrentPackage(
+            "Missing Open project selection",
+            [this, missingOpenPackage](std::string& operationError)
+            {
+                return openProjectFromChooserSelection(toJuceFile(missingOpenPackage), operationError);
+            }))
+    {
+        return false;
+    }
+
+    const auto invalidOpenPackage = scratchRoot / "Invalid Open.project";
+    if (!writeSmokeFile(invalidOpenPackage / "manifest.json", "{ invalid", error))
+        return false;
+
+    if (!expectFailureLeavesCurrentPackage(
+            "Invalid Open project selection",
+            [this, invalidOpenPackage](std::string& operationError)
+            {
+                return openProjectFromChooserSelection(toJuceFile(invalidOpenPackage), operationError);
+            }))
+    {
+        return false;
+    }
 
     const auto noCopySelection = toJuceFile(scratchRoot / "Chooser Save No Copy");
     if (!beginSaveAsFromChooserSelection(noCopySelection, error))

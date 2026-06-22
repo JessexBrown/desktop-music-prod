@@ -23,11 +23,18 @@ as `projectname_project_chooser_smoke` in CTest.
 The smoke mode does not expose UI controls. It creates deterministic temporary
 package selections and calls the same chooser-selection helpers used by the
 native `FileChooser` callbacks. The sequence covers:
+- cancelled New, Save As, and Open selections;
 - New project package creation;
+- duplicate New project targets;
 - Open project package loading;
+- missing and invalid Open project selections;
 - Save As no-copy completion;
 - Save As package-asset-copy completion for package-local audio and analysis
   files.
+
+Failure-state steps assert that the active project package remains unchanged,
+that no native chooser object is left open, and that no Save As package-copy job
+is left running.
 
 The smoke path returns a non-zero application exit code when any step fails.
 
@@ -36,5 +43,5 @@ The smoke path returns a non-zero application exit code when any step fails.
 - CI can verify chooser-triggered package behavior without opening native
   dialogs.
 - The real user workflow still uses native choosers.
-- The app boundary now has coverage for successful chooser selections, while
-  cancellation and failure-state coverage remains a small follow-up.
+- The app boundary now has coverage for successful, cancelled, and failed
+  chooser selections.
