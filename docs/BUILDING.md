@@ -40,7 +40,8 @@ and fetch JUCE by default. Their CTest runs include the JUCE app launch smoke
 test (`projectname --smoke-test`), hidden project chooser smoke test
 (`projectname --smoke-project-choosers`), hidden Audio/MIDI reset smoke test
 (`projectname --smoke-audio-midi-reset`), hidden app settings corruption
-recovery smoke test (`projectname --smoke-app-settings-corruption`), the SPDX
+recovery smoke test (`projectname --smoke-app-settings-corruption`), hidden
+restore-detail smoke test (`projectname --smoke-restore-details`), the SPDX
 license-header check, and the core unit tests.
 
 For domain-only model/transport/tone tests without building the JUCE app:
@@ -104,6 +105,10 @@ ctest --preset dev --output-on-failure
 - `projectname_app_settings_corruption_smoke` runs the hidden JUCE app
   settings-recovery smoke test for malformed isolated `settings.json` fallback
   and valid rewrite without changing the active project package.
+- `projectname_restore_detail_smoke` runs the hidden JUCE app Package
+  Maintenance review-row smoke test for conflict/partial-failure restore
+  manifests, Command/Ctrl+C package-relative path copy, and restore-manifest
+  activation fallback without starting cleanup or restore jobs.
 - `projectname_spdx_check` verifies first-party files either carry
   `SPDX-License-Identifier: AGPL-3.0-or-later` or are listed in
   `docs/SPDX_EXCEPTIONS.txt`.
@@ -116,8 +121,8 @@ GitHub Actions currently runs three jobs on pushes and pull requests:
 - `Windows MSVC App` configures, builds, and tests the `dev` preset on
   `windows-latest`. Its CTest run includes `projectname_app_smoke`,
   `projectname_project_chooser_smoke`, `projectname_audio_midi_reset_smoke`,
-  `projectname_app_settings_corruption_smoke`, the SPDX check, and the core unit
-  tests.
+  `projectname_app_settings_corruption_smoke`,
+  `projectname_restore_detail_smoke`, the SPDX check, and the core unit tests.
 - `Linux Core` configures, builds, and tests the `core-dev` preset on
   `ubuntu-latest` for dependency-light second-host coverage.
 - `Linux JUCE App` installs the Ubuntu package baseline from
@@ -206,7 +211,10 @@ command, and verifies persisted setup preferences are cleared without changing
 the active project package, and `projectname_app_settings_corruption_smoke`,
 which verifies malformed isolated app settings fall back to defaults and can be
 rewritten as valid human-readable JSON without changing the active project
-package. The same run also passed `projectname_spdx_check` and
+package, and `projectname_restore_detail_smoke`, which verifies Package
+Maintenance review-row copy/activation behavior for conflict and partial-failure
+restore manifests without starting cleanup or restore jobs. The same run also
+passed `projectname_spdx_check` and
 `projectname_tests`, including cached prepared voice-window playback,
 background voice-window preparation, imported clip inspector metadata,
 deterministic imported clip selection, and persisted track mix

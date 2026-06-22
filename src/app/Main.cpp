@@ -38,6 +38,7 @@ public:
         projectChooserSmokeTestMode_ = commandLine.contains("--smoke-project-choosers");
         audioMidiResetSmokeTestMode_ = commandLine.contains("--smoke-audio-midi-reset");
         appSettingsCorruptionSmokeTestMode_ = commandLine.contains("--smoke-app-settings-corruption");
+        restoreDetailSmokeTestMode_ = commandLine.contains("--smoke-restore-details");
         mainWindow_ = std::make_unique<MainWindow>(getApplicationName());
 
         if (projectChooserSmokeTestMode_)
@@ -54,6 +55,14 @@ public:
                                         [this]
                                         {
                                             runAppSettingsCorruptionSmokeTestAndQuit();
+                                        });
+        }
+        else if (restoreDetailSmokeTestMode_)
+        {
+            juce::Timer::callAfterDelay(500,
+                                        [this]
+                                        {
+                                            runRestoreDetailSmokeTestAndQuit();
                                         });
         }
         else if (audioMidiResetSmokeTestMode_)
@@ -149,6 +158,36 @@ private:
         systemRequestedQuit();
     }
 
+    void runRestoreDetailSmokeTestAndQuit()
+    {
+        std::string error;
+        std::error_code filesystemError;
+        const auto tempDirectory = std::filesystem::temp_directory_path(filesystemError);
+        auto passed = false;
+
+        if (filesystemError)
+        {
+            error = "Could not locate a temporary directory: " + filesystemError.message();
+        }
+        else
+        {
+            const auto scratchRoot =
+                tempDirectory
+                / ("rabbington-studio-restore-detail-smoke-"
+                   + std::to_string(juce::Time::currentTimeMillis()));
+            passed = mainWindow_ != nullptr
+                && mainWindow_->getMainComponent().runPackageMediaRestoreDetailSmokeTest(scratchRoot, error);
+        }
+
+        if (!passed)
+        {
+            std::cerr << "Restore detail smoke failed: " << error << '\n';
+            setApplicationReturnValue(1);
+        }
+
+        systemRequestedQuit();
+    }
+
     void runAudioMidiResetSmokeTestAndQuit()
     {
         std::string error;
@@ -214,6 +253,7 @@ private:
     bool projectChooserSmokeTestMode_ = false;
     bool audioMidiResetSmokeTestMode_ = false;
     bool appSettingsCorruptionSmokeTestMode_ = false;
+    bool restoreDetailSmokeTestMode_ = false;
 };
 
 START_JUCE_APPLICATION(RabbingtonStudioApplication)

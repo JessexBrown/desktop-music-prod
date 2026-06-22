@@ -2,17 +2,7 @@
 
 # Next Issues
 
-## 1. Add Restore Detail App Smoke Coverage
-
-Acceptance:
-- Add a hidden app smoke hook that builds an isolated package with a
-  conflict/partial-failure restore manifest and focuses a review row.
-- Verify Command/Ctrl+C copies the package-relative original path.
-- Verify review-row activation uses the manifest reveal/copy fallback path
-  without starting restore or cleanup jobs.
-- Preserve existing launch, project chooser, and Audio/MIDI reset smoke tests.
-
-## 2. Add Source Header Check Fixtures
+## 1. Add Source Header Check Fixtures
 
 Acceptance:
 - Add a small CTest-friendly fixture path that proves the SPDX checker accepts
@@ -21,7 +11,7 @@ Acceptance:
 - Keep the production `projectname_spdx_check` target passing with zero
   first-party exceptions.
 
-## 3. Add Save As Manifest Write Failure Smoke Coverage
+## 2. Add Save As Manifest Write Failure Smoke Coverage
 
 Acceptance:
 - Add a hidden project chooser smoke path for a target where package asset copy
@@ -33,7 +23,7 @@ Acceptance:
 - Preserve the existing successful, cancelled, occupied-target failure,
   duplicate New, and failed Open chooser smoke coverage.
 
-## 4. Add App Settings Load Warning Surface
+## 3. Add App Settings Load Warning Surface
 
 Acceptance:
 - Preserve the current safe fallback for malformed app settings.
@@ -42,7 +32,7 @@ Acceptance:
 - Keep the warning out of the real-time audio path.
 - Cover the visible warning with a focused unit or smoke assertion.
 
-## 5. Add Linux JUCE App CI Artifact Upload
+## 4. Add Linux JUCE App CI Artifact Upload
 
 Acceptance:
 - Upload the Linux JUCE app executable or packaged build directory as a CI
@@ -52,3 +42,11 @@ Acceptance:
   artifact.
 - Preserve the existing Windows MSVC App, Linux Core, and Linux JUCE App test
   behavior.
+
+## 5. Add Restore Detail Status Copy Coverage
+
+Acceptance:
+- Add focused coverage that the Package Maintenance status line distinguishes
+  package-relative path copy from restore-manifest fallback copy.
+- Keep the coverage deterministic and avoid opening platform file browsers.
+- Preserve the existing restore-detail smoke path and core row-model tests.

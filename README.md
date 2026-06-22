@@ -226,6 +226,9 @@ Third-party dependencies remain under their own licenses as recorded in
   detail actions: package-relative paths can be copied from focused browser
   rows, and activating those rows reveals or copies the restore manifest path
   while repeat restore stays disabled for review-blocked batches.
+- A hidden JUCE app restore-detail smoke test verifies focused review-row
+  Command/Ctrl+C copy and restore-manifest activation fallback without starting
+  cleanup or restore jobs.
 - Restore-entry selection in the Package Maintenance browser is keyboard
   reachable: Up/Down keeps cleanup-batch navigation, Tab/Shift-Tab moves browser
   row focus, Enter/Space activates the focused row, Command/Ctrl+A selects all
@@ -287,6 +290,8 @@ Third-party dependencies remain under their own licenses as recorded in
 - JUCE app `--smoke-audio-midi-reset` mode registered with CTest for hidden,
   deterministic Audio/MIDI preference reset coverage against an isolated
   temporary settings file.
+- JUCE app `--smoke-restore-details` mode registered with CTest for hidden,
+  deterministic Package Maintenance review-row copy/activation coverage.
 
 ## What Does Not Exist Yet
 
@@ -327,11 +332,10 @@ ctest --preset dev-host --output-on-failure
 The Windows `dev` preset uses Visual Studio 2026, MSVC, and x64. Both
 desktop-app presets fetch JUCE 8.0.13 and nlohmann/json 3.12.0 from their
 official GitHub repositories. Their test suites include the app launch,
-project-chooser, and Audio/MIDI reset smoke tests plus the core unit tests. See
-`docs/BUILDING.md` for platform notes and the local-JUCE option. Linux JUCE app
-CI prerequisites are tracked separately in
-`docs/LINUX_JUCE_APP_PREREQUISITES.md`; the current GitHub Actions Linux job
-still runs only the dependency-light `core-dev` preset.
+project-chooser, Audio/MIDI reset, app settings corruption, and restore-detail
+smoke tests plus the core unit tests. See `docs/BUILDING.md` for platform notes
+and the local-JUCE option. Linux JUCE app CI prerequisites are tracked
+separately in `docs/LINUX_JUCE_APP_PREREQUISITES.md`.
 
 To run only the domain tests without building the JUCE desktop app:
 
@@ -341,10 +345,11 @@ cmake --build --preset core-dev
 ctest --preset core-dev --output-on-failure
 ```
 
-GitHub Actions runs the Windows MSVC desktop app build, including the JUCE app
-smoke tests, plus a Linux `core-dev` build/test job for second-host coverage. CI
-caches CMake FetchContent downloads for JUCE and nlohmann/json outside the build
-tree; generated build outputs remain untracked.
+GitHub Actions runs the Windows MSVC desktop app build, the Linux JUCE app
+build/test smoke gate under Xvfb, and a Linux `core-dev` build/test job for
+dependency-light second-host coverage. CI caches CMake FetchContent downloads
+for JUCE and nlohmann/json outside the build tree; generated build outputs
+remain untracked.
 
 On Windows machines with MinGW but without a JUCE-supported compiler, the
 fallback launcher can be verified with the non-JUCE fallback preset:

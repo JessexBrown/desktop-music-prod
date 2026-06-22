@@ -39,6 +39,9 @@ review-blocked batches.
   manifests on the UI callback, or run restore again.
 - Core tests cover action availability and focused-row mapping for conflict and
   partial-failure rows.
+- The hidden JUCE app `--smoke-restore-details` path covers focused review-row
+  Command/Ctrl+C copy and restore-manifest activation fallback without starting
+  cleanup or restore jobs.
 - Manifest path evidence is reachable without adding modal review UI.
 
 ## Follow-Ups

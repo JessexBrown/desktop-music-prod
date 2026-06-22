@@ -9,6 +9,7 @@
 #include "core/PackageMediaCleanupBatchDiscovery.h"
 #include "core/PackageMediaMaintenanceBrowserRows.h"
 #include "core/PackageMediaMaintenanceViewModel.h"
+#include "core/PackageMediaQuarantineRestoreManifest.h"
 #include "core/ProjectPackageSaveAsPolicy.h"
 #include "core/ProductIdentity.h"
 #include "core/WorkspaceCommandRouter.h"
@@ -384,6 +385,67 @@ void setButtonEnabledFromCommand(juce::Button& button,
     createdAt << std::put_time(&utc, "%Y-%m-%dT%H:%M:%SZ");
 
     return { cleanupId.str(), createdAt.str() };
+}
+
+[[nodiscard]] projectname::PackageMediaQuarantineRestoreManifest makeRestoreDetailSmokeManifest(
+    const std::filesystem::path& packageDirectory,
+    std::string cleanupId,
+    std::string createdAtUtc,
+    projectname::PackageMediaQuarantineManifestState state)
+{
+    projectname::PackageMediaQuarantineRestoreManifest manifest;
+    manifest.cleanupId = std::move(cleanupId);
+    manifest.createdAtUtc = std::move(createdAtUtc);
+    manifest.packageDisplayPath = packageDirectory.filename().string();
+    manifest.inventorySummary = "Restore detail smoke fixture";
+    manifest.manifestMarker = "rabbington-studio-restore-detail-smoke";
+    manifest.state = state;
+
+    projectname::PackageMediaQuarantineMovedEntry audio;
+    audio.kind = projectname::PackageMediaQuarantineEntryKind::audio;
+    audio.originalRelativePath = "audio/orphan.wav";
+    audio.quarantineRelativePath =
+        (std::filesystem::path("backups") / "media-trash" / manifest.cleanupId / "audio" / "orphan.wav")
+            .generic_string();
+    audio.restoreConflict = state == projectname::PackageMediaQuarantineManifestState::restoreConflict;
+    if (state == projectname::PackageMediaQuarantineManifestState::partialFailure)
+        audio.error = "partial restore failure";
+
+    projectname::PackageMediaQuarantineMovedEntry analysis;
+    analysis.kind = projectname::PackageMediaQuarantineEntryKind::analysis;
+    analysis.originalRelativePath = "analysis/orphan.waveform.json";
+    analysis.quarantineRelativePath =
+        (std::filesystem::path("backups") / "media-trash" / manifest.cleanupId / "analysis"
+         / "orphan.waveform.json")
+            .generic_string();
+
+    manifest.movedEntries.push_back(std::move(audio));
+    manifest.movedEntries.push_back(std::move(analysis));
+
+    if (state == projectname::PackageMediaQuarantineManifestState::partialFailure)
+        manifest.error = "Restore detail smoke partial failure.";
+
+    return manifest;
+}
+
+[[nodiscard]] bool saveRestoreDetailSmokeManifest(
+    const projectname::PackageMediaQuarantineRestoreManifest& manifest,
+    const std::filesystem::path& packageDirectory,
+    std::string& error)
+{
+    const auto manifestPath =
+        packageDirectory / "backups" / "media-trash" / manifest.cleanupId / "restore-manifest.json";
+
+    std::error_code filesystemError;
+    std::filesystem::create_directories(manifestPath.parent_path(), filesystemError);
+    if (filesystemError)
+    {
+        error = "Could not create restore detail smoke manifest directory: "
+            + filesystemError.message();
+        return false;
+    }
+
+    return projectname::savePackageMediaQuarantineRestoreManifest(manifest, manifestPath, error);
 }
 
 [[nodiscard]] std::int64_t makeTimelineVoiceWindowFrameCount(
@@ -1812,6 +1874,163 @@ bool MainComponent::runAppSettingsCorruptionSmokeTest(const std::filesystem::pat
     std::filesystem::remove_all(scratchRoot, filesystemError);
     if (filesystemError)
         return fail("App settings corruption smoke passed but could not clean up scratch directory: "
+                    + filesystemError.message());
+
+    return true;
+}
+
+bool MainComponent::runPackageMediaRestoreDetailSmokeTest(const std::filesystem::path& scratchRoot,
+                                                          std::string& error)
+{
+    error.clear();
+
+    auto fail = [&error](std::string message)
+    {
+        error = std::move(message);
+        return false;
+    };
+
+    if (scratchRoot.empty())
+        return fail("Restore detail smoke requires a scratch directory.");
+
+    std::error_code filesystemError;
+    std::filesystem::remove_all(scratchRoot, filesystemError);
+    if (filesystemError)
+        return fail("Could not reset restore detail smoke scratch directory: "
+                    + filesystemError.message());
+
+    std::filesystem::create_directories(scratchRoot, filesystemError);
+    if (filesystemError)
+        return fail("Could not create restore detail smoke scratch directory: "
+                    + filesystemError.message());
+
+    if (packageMediaMaintenanceScan_.valid())
+        packageMediaMaintenanceScan_.wait();
+
+    const auto packageDirectory = scratchRoot / "Restore Detail.project";
+    session_.getProject().setName("Restore Detail Smoke");
+    if (!session_.saveProjectPackage(packageDirectory, error))
+        return false;
+
+    currentProjectPackagePath_ = packageDirectory;
+    selectedPackageMediaRestoreOriginalPaths_.clear();
+
+    const auto conflictId = std::string("2026-06-22T00-10-00Z-conflict");
+    const auto partialId = std::string("2026-06-22T00-20-00Z-partial");
+    const auto reviewOriginalPath = std::string("audio/orphan.wav");
+    const auto reviewSelectionId =
+        std::string(projectname::packageMediaMaintenanceBrowserSelectionIds::restoreDetailPrefix)
+        + reviewOriginalPath;
+
+    if (!saveRestoreDetailSmokeManifest(
+            makeRestoreDetailSmokeManifest(packageDirectory,
+                                           conflictId,
+                                           "2026-06-22T00:10:00Z",
+                                           projectname::PackageMediaQuarantineManifestState::restoreConflict),
+            packageDirectory,
+            error))
+    {
+        return false;
+    }
+
+    if (!saveRestoreDetailSmokeManifest(
+            makeRestoreDetailSmokeManifest(packageDirectory,
+                                           partialId,
+                                           "2026-06-22T00:20:00Z",
+                                           projectname::PackageMediaQuarantineManifestState::partialFailure),
+            packageDirectory,
+            error))
+    {
+        return false;
+    }
+
+    selectedPackageMediaCleanupId_ = partialId;
+    packageMediaBrowserFocusedSelectionId_ = reviewSelectionId;
+    const auto generation = ++packageMediaMaintenanceScanGeneration_;
+    applyPackageMediaMaintenanceScanResult(
+        runPackageMediaMaintenanceScan(packageDirectory,
+                                       selectedPackageMediaCleanupId_,
+                                       selectedPackageMediaRestoreOriginalPaths_,
+                                       hasActivePackageFileWork(),
+                                       generation));
+
+    if (!hasPackageMediaMaintenanceSnapshot_)
+        return fail("Restore detail smoke did not produce a package maintenance snapshot.");
+
+    if (packageMediaMaintenanceViewModel_.batches.size() != 2)
+        return fail("Restore detail smoke did not discover both review fixture batches.");
+
+    if (packageMediaMaintenanceViewModel_.selectedCleanupId != partialId)
+        return fail("Restore detail smoke did not select the partial-failure batch.");
+
+    const auto rows = buildPackageMediaMaintenanceBrowserRowsForUi();
+    if (rows.focusedSelectionId != reviewSelectionId || rows.focusedDetailActions.empty())
+        return fail("Restore detail smoke did not focus the review row.");
+
+    if (rows.restoreAction.enabled)
+        return fail("Restore detail smoke unexpectedly enabled restore for a review-blocked batch.");
+
+    const auto* copyAction = projectname::selectPackageMediaMaintenanceFocusedDetailAction(
+        rows.focusedDetailActions,
+        projectname::PackageMediaMaintenanceDetailActionIntent::copyShortcut);
+    if (copyAction == nullptr
+        || copyAction->kind != projectname::PackageMediaMaintenanceDetailActionKind::copyPackageRelativePath
+        || copyAction->value != reviewOriginalPath)
+    {
+        return fail("Restore detail smoke focused row does not expose package-relative copy.");
+    }
+
+    const auto* activationAction = projectname::selectPackageMediaMaintenanceFocusedDetailAction(
+        rows.focusedDetailActions,
+        projectname::PackageMediaMaintenanceDetailActionIntent::activation);
+    if (activationAction == nullptr
+        || activationAction->kind != projectname::PackageMediaMaintenanceDetailActionKind::revealRestoreManifest)
+    {
+        return fail("Restore detail smoke focused row does not expose restore-manifest activation.");
+    }
+
+    const auto manifestPath = std::filesystem::path(activationAction->value);
+    if (!std::filesystem::is_regular_file(manifestPath, filesystemError))
+        return fail("Restore detail smoke manifest was not written before activation.");
+
+    juce::SystemClipboard::copyTextToClipboard("restore-detail-smoke-sentinel");
+    const auto copyKey = juce::KeyPress('c', juce::ModifierKeys::commandModifier, 'c');
+    if (!browserPanel_.keyPressed(copyKey))
+        return fail("Restore detail smoke Command/Ctrl+C was not handled by the browser panel.");
+
+    if (juce::SystemClipboard::getTextFromClipboard() != juce::String(reviewOriginalPath))
+        return fail("Restore detail smoke Command/Ctrl+C did not copy the package-relative path.");
+
+    std::filesystem::remove(manifestPath, filesystemError);
+    if (filesystemError)
+        return fail("Could not remove restore detail smoke manifest for fallback activation: "
+                    + filesystemError.message());
+
+    juce::SystemClipboard::copyTextToClipboard("restore-detail-smoke-sentinel");
+    if (!browserPanel_.keyPressed(juce::KeyPress(juce::KeyPress::returnKey)))
+        return fail("Restore detail smoke activation was not handled by the browser panel.");
+
+    if (juce::SystemClipboard::getTextFromClipboard() != juce::String(manifestPath.string()))
+        return fail("Restore detail smoke activation did not copy the restore manifest fallback path.");
+
+    if (packageMediaCleanupJob_ != nullptr)
+        return fail("Restore detail smoke activation started a cleanup or restore job.");
+
+    if (saveAsPackageCopyJob_ != nullptr)
+        return fail("Restore detail smoke activation started a Save As package copy job.");
+
+    if (!selectedPackageMediaRestoreOriginalPaths_.empty())
+        return fail("Restore detail smoke activation changed the restore-entry selection.");
+
+    if (!packagePathsMatch(getCurrentProjectPackagePath(), packageDirectory))
+        return fail("Restore detail smoke activation changed the active project package.");
+
+    if (hasProjectChooserOpen())
+        return fail("Restore detail smoke opened a native project chooser.");
+
+    std::filesystem::remove_all(scratchRoot, filesystemError);
+    if (filesystemError)
+        return fail("Restore detail smoke passed but could not clean up scratch directory: "
                     + filesystemError.message());
 
     return true;

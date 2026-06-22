@@ -162,6 +162,8 @@ public:
                                                   std::string& error);
     [[nodiscard]] bool runAppSettingsCorruptionSmokeTest(const std::filesystem::path& scratchRoot,
                                                          std::string& error);
+    [[nodiscard]] bool runPackageMediaRestoreDetailSmokeTest(const std::filesystem::path& scratchRoot,
+                                                             std::string& error);
     [[nodiscard]] bool runAudioMidiResetSmokeTest(const std::filesystem::path& scratchRoot,
                                                   std::string& error);
 

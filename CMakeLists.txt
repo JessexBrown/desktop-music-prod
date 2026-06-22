@@ -171,10 +171,13 @@ if(PROJECTNAME_BUILD_APP)
             COMMAND projectname --smoke-audio-midi-reset)
         add_test(NAME projectname_app_settings_corruption_smoke
             COMMAND projectname --smoke-app-settings-corruption)
+        add_test(NAME projectname_restore_detail_smoke
+            COMMAND projectname --smoke-restore-details)
         set_tests_properties(projectname_app_smoke
                              projectname_project_chooser_smoke
                              projectname_audio_midi_reset_smoke
                              projectname_app_settings_corruption_smoke
+                             projectname_restore_detail_smoke
                              PROPERTIES TIMEOUT 30)
     endif()
 endif()
