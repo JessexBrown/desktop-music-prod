@@ -181,6 +181,25 @@ void setButtonEnabledFromCommand(juce::Button& button,
     return true;
 }
 
+[[nodiscard]] bool readSmokeFile(const std::filesystem::path& path,
+                                 std::string& contents,
+                                 std::string& error)
+{
+    contents.clear();
+
+    std::ifstream input(path, std::ios::binary);
+    if (!input)
+    {
+        error = "Could not read smoke fixture file: " + path.string();
+        return false;
+    }
+
+    std::ostringstream buffer;
+    buffer << input.rdbuf();
+    contents = buffer.str();
+    return true;
+}
+
 [[nodiscard]] bool saveAsCopyStatusAllowsManifestSave(
     projectname::ProjectPackageSaveAsCopyStatus status) noexcept
 {
@@ -1564,6 +1583,38 @@ bool MainComponent::runProjectChooserSmokeTest(const std::filesystem::path& scra
     if (!addProjectChooserSmokePackageAsset(error))
         return false;
 
+    const auto packageBeforeFailedSaveAs = getCurrentProjectPackagePath();
+    std::string manifestBeforeFailedSaveAs;
+    if (!readSmokeFile(packageBeforeFailedSaveAs / "manifest.json", manifestBeforeFailedSaveAs, error))
+        return false;
+
+    const auto conflictSelection = toJuceFile(scratchRoot / "Chooser Save Conflict");
+    const auto conflictPackage = projectPackagePathFromChooserResult(conflictSelection, true);
+    if (!writeSmokeFile(conflictPackage / "audio" / "chooser-smoke.wav", "occupied target", error))
+        return false;
+
+    if (!beginSaveAsFromChooserSelection(conflictSelection, error))
+        return false;
+
+    if (!finishFailedSaveAsPackageCopyForSmoke(saveAsStatus, error))
+        return false;
+
+    if (saveAsStatus != projectname::ProjectPackageSaveAsCopyStatus::targetConflict)
+        return fail("Save As failure smoke did not hit the occupied-target conflict path.");
+
+    if (!packagePathsMatch(getCurrentProjectPackagePath(), packageBeforeFailedSaveAs))
+        return fail("Save As failure smoke changed the active project package.");
+
+    std::string manifestAfterFailedSaveAs;
+    if (!readSmokeFile(packageBeforeFailedSaveAs / "manifest.json", manifestAfterFailedSaveAs, error))
+        return false;
+
+    if (manifestAfterFailedSaveAs != manifestBeforeFailedSaveAs)
+        return fail("Save As failure smoke changed the active project manifest.");
+
+    if (projectManifestExists(conflictPackage))
+        return fail("Save As failure smoke wrote a manifest into the conflict target.");
+
     const auto copySelection = toJuceFile(scratchRoot / "Chooser Save Copy");
     if (!beginSaveAsFromChooserSelection(copySelection, error))
         return false;
@@ -2617,6 +2668,69 @@ bool MainComponent::finishSaveAsPackageCopyForSmoke(
     if (!packagePathsMatch(currentProjectPackagePath_, targetPackage))
     {
         error = "Save As smoke did not switch the active project package.";
+        return false;
+    }
+
+    return true;
+}
+
+bool MainComponent::finishFailedSaveAsPackageCopyForSmoke(
+    projectname::ProjectPackageSaveAsCopyStatus& status,
+    std::string& error)
+{
+    error.clear();
+
+    if (saveAsPackageCopyJob_ == nullptr)
+    {
+        error = "Save As failure smoke expected an active package copy job.";
+        return false;
+    }
+
+    auto result = saveAsPackageCopyJob_->waitForResult();
+    saveAsPackageCopyJob_.reset();
+    canCancelSaveAsPackageCopy_ = false;
+
+    status = result.copy.status;
+    const auto resultMessage = result.error.empty()
+        ? projectname::describeProjectPackageSaveAsPlan(result.copy.plan)
+        : result.error;
+
+    applyCompletedSaveAsPackageCopy(std::move(result));
+    refreshAppCommandEnabledState();
+
+    if (saveAsCopyStatusAllowsManifestSave(status))
+    {
+        error = "Save As failure smoke unexpectedly allowed manifest save: " + resultMessage;
+        return false;
+    }
+
+    if (saveAsPackageCopyJob_ != nullptr)
+    {
+        error = "Save As failure smoke left a package copy job running.";
+        return false;
+    }
+
+    if (canCancelSaveAsPackageCopy_)
+    {
+        error = "Save As failure smoke left cancel state enabled.";
+        return false;
+    }
+
+    if (buildAppCommandRegistry().isEnabled(projectname::AppCommandIds::projectSaveAsCancel))
+    {
+        error = "Save As failure smoke left the cancel command enabled.";
+        return false;
+    }
+
+    if (cancelSaveAsButton_.isEnabled())
+    {
+        error = "Save As failure smoke left the Cancel Save button enabled.";
+        return false;
+    }
+
+    if (hasProjectChooserOpen())
+    {
+        error = "Save As failure smoke left a native project chooser open.";
         return false;
     }
 

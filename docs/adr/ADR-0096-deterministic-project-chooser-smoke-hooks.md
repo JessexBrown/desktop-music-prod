@@ -29,12 +29,15 @@ native `FileChooser` callbacks. The sequence covers:
 - Open project package loading;
 - missing and invalid Open project selections;
 - Save As no-copy completion;
+- Save As occupied-target package-copy failure that leaves the active package
+  and manifest unchanged;
 - Save As package-asset-copy completion for package-local audio and analysis
   files.
 
 Failure-state steps assert that the active project package remains unchanged,
-that no native chooser object is left open, and that no Save As package-copy job
-is left running.
+that no active manifest is rewritten, that no native chooser object is left
+open, that no Save As package-copy job is left running, and that the Cancel Save
+affordance is disabled after failure results are applied.
 
 The smoke path returns a non-zero application exit code when any step fails.
 

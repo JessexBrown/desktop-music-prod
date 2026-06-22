@@ -95,8 +95,8 @@ ctest --preset dev --output-on-failure
 - `projectname_app_smoke` runs the desktop app launch smoke test when
   `PROJECTNAME_BUILD_APP=ON` and `BUILD_TESTING=ON`.
 - `projectname_project_chooser_smoke` runs the hidden JUCE app chooser-flow
-  smoke test for New/Open/Save As success, cancellation, and failure states
-  without opening native chooser dialogs.
+  smoke test for New/Open/Save As success, cancellation, occupied-target Save
+  As failure, and failed Open states without opening native chooser dialogs.
 - `projectname_audio_midi_reset_smoke` runs the hidden JUCE app settings-flow
   smoke test for clearing first-run Audio/MIDI dismissal and preferred output
   intent from an isolated temporary settings file.
@@ -194,8 +194,9 @@ built the JUCE desktop app, and ran:
 The `dev` CTest run passed `projectname_app_smoke`, which launches the JUCE app
 with `--smoke-test` and exits automatically after startup, plus
 `projectname_project_chooser_smoke`, which exercises deterministic chooser
-success, cancellation, duplicate New, and failed Open states without opening
-native dialogs. The run also passed `projectname_audio_midi_reset_smoke`, which
+success, cancellation, duplicate New, occupied-target Save As failure, and
+failed Open states without opening native dialogs. The run also passed
+`projectname_audio_midi_reset_smoke`, which
 seeds an isolated temporary settings file, dispatches the Audio/MIDI reset
 command, and verifies persisted setup preferences are cleared without changing
 the active project package. The same run also passed `projectname_spdx_check` and

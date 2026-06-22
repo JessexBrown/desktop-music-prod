@@ -195,6 +195,9 @@ private:
     [[nodiscard]] bool finishSaveAsPackageCopyForSmoke(
         projectname::ProjectPackageSaveAsCopyStatus& status,
         std::string& error);
+    [[nodiscard]] bool finishFailedSaveAsPackageCopyForSmoke(
+        projectname::ProjectPackageSaveAsCopyStatus& status,
+        std::string& error);
     [[nodiscard]] bool addProjectChooserSmokePackageAsset(std::string& error);
     void refreshAfterProjectPackageChange(juce::String status);
     [[nodiscard]] projectname::AppCommandResult undoImportedClipEdit();
