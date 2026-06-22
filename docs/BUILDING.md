@@ -135,6 +135,8 @@ GitHub Actions currently runs three jobs on pushes and pull requests:
 - `Linux JUCE App` installs the Ubuntu package baseline from
   `docs/LINUX_JUCE_APP_PREREQUISITES.md`, configures and builds `dev-host`, and
   runs `ctest --preset dev-host --output-on-failure` under `xvfb-run -a`.
+  After tests pass, the job uploads a short-retention artifact named
+  `rabbington-studio-linux-juce-app-<commit-sha>` for 7 days.
 
 All CI jobs set `FETCHCONTENT_BASE_DIR` to a job-specific directory under
 `.cache/fetchcontent` and cache that directory with `actions/cache`. This
@@ -144,6 +146,11 @@ cache directories for Windows MSVC, Linux Core, and Linux JUCE App builds avoids
 CMake subbuild generator collisions. The SPDX check ignores local/generated
 roots such as `.cache/`, `out/`, and `build/` so restored third-party dependency
 sources do not become part of the first-party license-header baseline.
+The Linux JUCE app artifact is staged under the runner's temporary directory
+and contains only the app executable plus `LICENSE`, `README.md`,
+`docs/DEPENDENCIES.md`, and an artifact note. It intentionally excludes
+FetchContent caches, dependency checkouts, CMake build intermediates, test
+scratch directories, plugins, presets, samples, and proprietary assets.
 
 Review GitHub-maintained action major pins with
 `docs/CI_ACTION_PIN_REVIEW.md`; pin reviews should keep the existing workflow

@@ -59,6 +59,15 @@ unchanged. The Linux app job uses `.cache/fetchcontent/linux-juce-app` and a
 `linux-juce-app-fetchcontent-*` cache key so its CMake FetchContent subbuilds
 cannot collide with Windows MSVC or Linux Core caches.
 
+Later on June 22, 2026, add a Linux JUCE app CI artifact upload. The workflow
+stages a small package under the runner temporary directory only after
+`ctest --preset dev-host` passes. The staged artifact contains the app
+executable, `LICENSE`, `README.md`, `docs/DEPENDENCIES.md`, and an artifact
+note, then uploads it with `actions/upload-artifact@v7` for 7 days. The package
+must not include FetchContent caches, dependency checkouts, CMake build-system
+intermediates, test scratch data, plugins, presets, samples, or proprietary
+assets.
+
 ## Consequences
 
 - Windows CI continues to verify the desktop app launch smoke test.
@@ -71,6 +80,9 @@ cannot collide with Windows MSVC or Linux Core caches.
   dependency cache into the workspace.
 - Linux JUCE app CI now verifies the native JUCE target on Ubuntu in addition
   to Windows MSVC app coverage and Linux core-only coverage.
+- Linux JUCE app CI now produces a short-lived executable artifact for manual
+  smoke inspection without turning generated build trees or dependency caches
+  into downloadable artifacts.
 
 ## Follow-Ups
 

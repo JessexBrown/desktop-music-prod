@@ -109,3 +109,60 @@ jobs:
 
       - name: Test app
         run: xvfb-run -a ctest --preset dev-host --output-on-failure
+
+      - name: Stage Linux JUCE app artifact
+        run: |
+          set -euo pipefail
+
+          artifact_root="${RUNNER_TEMP}/rabbington-studio-linux-juce-app"
+          rm -rf "${artifact_root}"
+          mkdir -p "${artifact_root}/docs"
+
+          mapfile -t app_candidates < <(
+            find out/build/dev/projectname_artefacts \
+              -type f \
+              -name 'Rabbington Studio' \
+              -perm -111 \
+              | sort
+          )
+
+          if [ "${#app_candidates[@]}" -eq 0 ]; then
+            mapfile -t app_candidates < <(
+              find out/build/dev/projectname_artefacts \
+                -type f \
+                -name projectname \
+                -perm -111 \
+                | sort
+            )
+          fi
+
+          if [ "${#app_candidates[@]}" -ne 1 ]; then
+            echo "Expected exactly one Linux JUCE app executable candidate, found ${#app_candidates[@]}."
+            find out/build/dev/projectname_artefacts -maxdepth 4 -type f -print || true
+            exit 1
+          fi
+
+          cp "${app_candidates[0]}" "${artifact_root}/Rabbington Studio"
+          chmod +x "${artifact_root}/Rabbington Studio"
+          cp LICENSE "${artifact_root}/LICENSE"
+          cp README.md "${artifact_root}/README.md"
+          cp docs/DEPENDENCIES.md "${artifact_root}/docs/DEPENDENCIES.md"
+          cat > "${artifact_root}/ARTIFACT.txt" <<'EOF'
+          Rabbington Studio Linux JUCE App CI artifact.
+
+          This artifact is produced only after the Linux JUCE App job builds and
+          tests successfully. It contains the app executable plus first-party
+          license/dependency notes, not FetchContent caches, source dependency
+          checkouts, CMake build intermediates, test scratch data, plugins,
+          presets, samples, or proprietary assets.
+          EOF
+
+          find "${artifact_root}" -maxdepth 3 -type f -print
+
+      - name: Upload Linux JUCE app artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: rabbington-studio-linux-juce-app-${{ github.sha }}
+          path: ${{ runner.temp }}/rabbington-studio-linux-juce-app
+          if-no-files-found: error
+          retention-days: 7

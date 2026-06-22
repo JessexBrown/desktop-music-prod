@@ -14,6 +14,7 @@ the project has a stronger release branch and CI rollback policy.
 |---|---:|---|---|
 | Repository checkout | `actions/checkout@v7` | https://github.com/actions/checkout/releases | https://github.com/actions/checkout/blob/v7/action.yml |
 | FetchContent cache | `actions/cache@v5` | https://github.com/actions/cache/releases | https://github.com/actions/cache/blob/v5/action.yml |
+| Workflow artifact upload | `actions/upload-artifact@v7` | https://github.com/actions/upload-artifact/releases | https://github.com/actions/upload-artifact/blob/v7/action.yml |
 
 ## Review Checklist
 
@@ -26,8 +27,12 @@ the project has a stronger release branch and CI rollback policy.
 - Confirm the action license remains compatible with CI-only use and update
   `docs/DEPENDENCIES.md` if version, source, license, or notes change.
 - Keep the workflow topology stable unless the maintenance task explicitly
-  changes it: preserve `Windows MSVC App`, `Linux Core`, job-specific
-  `FETCHCONTENT_BASE_DIR` values, cache paths, cache keys, and restore keys.
+  changes it: preserve `Windows MSVC App`, `Linux Core`, `Linux JUCE App`,
+  job-specific `FETCHCONTENT_BASE_DIR` values, cache paths, cache keys, and
+  restore keys.
+- Keep workflow artifacts scoped to staged release/debug package directories;
+  do not upload FetchContent caches, CMake build trees, generated dependency
+  sources, or test scratch directories.
 - Run the local presets that match CI before pushing:
 
 ```bash
@@ -37,7 +42,7 @@ ctest --preset dev --output-on-failure
 ctest --preset core-dev --output-on-failure
 ```
 
-- After pushing, verify the GitHub Actions run passes both jobs.
+- After pushing, verify the GitHub Actions run passes all workflow jobs.
 
 ## Update Policy
 

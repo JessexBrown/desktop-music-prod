@@ -2,18 +2,7 @@
 
 # Next Issues
 
-## 1. Add Linux JUCE App CI Artifact Upload
-
-Acceptance:
-- Upload the Linux JUCE app executable or packaged build directory as a CI
-  artifact only after the `Linux JUCE App` job builds and tests successfully.
-- Keep the artifact retention short and documented.
-- Do not include FetchContent source caches or build-system intermediates in the
-  artifact.
-- Preserve the existing Windows MSVC App, Linux Core, and Linux JUCE App test
-  behavior.
-
-## 2. Add Windows MSVC App CI Artifact Upload
+## 1. Add Windows MSVC App CI Artifact Upload
 
 Acceptance:
 - Upload the Windows app executable or packaged build directory as a CI artifact
@@ -24,7 +13,7 @@ Acceptance:
 - Preserve the existing Windows MSVC App, Linux Core, and Linux JUCE App test
   behavior.
 
-## 3. Add Save As Failed Target Cleanup Policy
+## 2. Add Save As Failed Target Cleanup Policy
 
 Acceptance:
 - Decide whether post-copy Save As manifest failures should keep, quarantine, or
@@ -34,7 +23,7 @@ Acceptance:
 - Preserve the current guarantee that the active project package is not switched
   when the final Save As manifest write fails.
 
-## 4. Add Project Manifest Commit Failure Core Coverage
+## 3. Add Project Manifest Commit Failure Core Coverage
 
 Acceptance:
 - Add a core save-package test that forces the staged `manifest.json.tmp` commit
@@ -44,7 +33,7 @@ Acceptance:
   human-readable.
 - Preserve the existing successful save, backup, and load round-trip tests.
 
-## 5. Add Unsupported App Settings Version Smoke Coverage
+## 4. Add Unsupported App Settings Version Smoke Coverage
 
 Acceptance:
 - Seed the hidden app settings corruption smoke path with a future
@@ -53,3 +42,13 @@ Acceptance:
   and clears it after reset.
 - Preserve the existing malformed settings recovery smoke behavior.
 - Keep all settings recovery work outside the real-time audio path.
+
+## 5. Add CI Artifact Checksums
+
+Acceptance:
+- Generate a SHA-256 checksum file for each uploaded app artifact.
+- Include the checksum file inside the staged artifact package.
+- Document how to verify the checksum after downloading an artifact.
+- Preserve the existing short retention and exclusion of dependency caches,
+  build intermediates, test scratch data, plugins, presets, samples, and
+  proprietary assets.
