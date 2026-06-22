@@ -1408,6 +1408,32 @@ void projectSaveCreatesPreviousManifestBackup()
     expect(std::filesystem::remove_all(package) > 0, "Temporary backup project package deleted");
 }
 
+void projectSaveCommitFailureRemovesTemporaryManifest()
+{
+    auto project = projectname::ProjectModel::createDefault();
+    project.setName("Commit Failure Test");
+
+    const auto package = makeTemporaryPackagePath("projectname-save-commit-failure-test");
+    const auto manifestPath = package / "manifest.json";
+    const auto temporaryManifestPath = package / "manifest.json.tmp";
+    const auto sentinelPath = manifestPath / "occupied.txt";
+    writeTextFile(sentinelPath, "occupied manifest path");
+
+    std::string error;
+    expect(!project.savePackage(package, error), "Project save reports manifest commit failure");
+    expect(error.find("Could not commit staged project manifest") != std::string::npos,
+           "Manifest commit failure error is human-readable");
+    expect(!std::filesystem::exists(temporaryManifestPath),
+           "Failed project save removes temporary manifest");
+    expect(std::filesystem::is_directory(manifestPath),
+           "Failed project save leaves occupied manifest directory unchanged");
+    expect(readTextFile(sentinelPath) == "occupied manifest path",
+           "Failed project save preserves occupied manifest path contents");
+
+    expect(std::filesystem::remove_all(package) > 0,
+           "Temporary manifest commit failure package deleted");
+}
+
 void projectManifestLoadsLegacyTrackWithoutDevices()
 {
     std::string error;
@@ -8790,6 +8816,7 @@ int main()
     projectImportedClipSelectionValidatesAndRoundTrips();
     projectTrackMixStateRoundTripsAndLoadsLegacyDefaults();
     projectSaveCreatesPreviousManifestBackup();
+    projectSaveCommitFailureRemovesTemporaryManifest();
     projectManifestLoadsLegacyTrackWithoutDevices();
     projectManifestFailuresAreRecoverable();
     toneRendererProducesBoundedStereoSignal();

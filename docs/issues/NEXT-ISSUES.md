@@ -2,17 +2,7 @@
 
 # Next Issues
 
-## 1. Add Project Manifest Commit Failure Core Coverage
-
-Acceptance:
-- Add a core save-package test that forces the staged `manifest.json.tmp` commit
-  to fail deterministically.
-- Verify the failed save removes `manifest.json.tmp`.
-- Verify the occupied manifest path remains unchanged and the error is
-  human-readable.
-- Preserve the existing successful save, backup, and load round-trip tests.
-
-## 2. Add Unsupported App Settings Version Smoke Coverage
+## 1. Add Unsupported App Settings Version Smoke Coverage
 
 Acceptance:
 - Seed the hidden app settings corruption smoke path with a future
@@ -22,7 +12,7 @@ Acceptance:
 - Preserve the existing malformed settings recovery smoke behavior.
 - Keep all settings recovery work outside the real-time audio path.
 
-## 3. Add CI Artifact Checksums
+## 2. Add CI Artifact Checksums
 
 Acceptance:
 - Generate a SHA-256 checksum file for each uploaded app artifact.
@@ -32,7 +22,7 @@ Acceptance:
   build intermediates, test scratch data, plugins, presets, samples, and
   proprietary assets.
 
-## 4. Add CI Artifact Download Instructions
+## 3. Add CI Artifact Download Instructions
 
 Acceptance:
 - Document where to find the Windows MSVC and Linux JUCE app artifacts for a
@@ -43,7 +33,7 @@ Acceptance:
 - Preserve the existing no-proprietary-plugins, no-presets, no-samples, and
   no-proprietary-assets claims.
 
-## 5. Add Save As Failed Target Reveal Action
+## 4. Add Save As Failed Target Reveal Action
 
 Acceptance:
 - After a post-copy Save As manifest failure, expose a non-destructive way to
@@ -52,3 +42,14 @@ Acceptance:
   quarantined.
 - Add focused app smoke coverage for the reveal/copy action and status copy.
 - Keep all target package file operations off the real-time audio path.
+
+## 5. Add Project Save Permission Failure Coverage
+
+Acceptance:
+- Add focused core coverage for a project save failure before manifest commit,
+  such as an unwritable package directory or asset folder creation failure.
+- Verify no stale `manifest.json.tmp` remains when the failure happens after the
+  temporary manifest path is known.
+- Verify the existing manifest and previous-manifest backup behavior remain
+  unchanged for successful saves.
+- Keep the fixture deterministic on Windows, macOS, and Linux.
