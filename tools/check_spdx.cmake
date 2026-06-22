@@ -115,4 +115,12 @@ if(missing_spdx_files)
 endif()
 
 list(LENGTH spdx_exceptions exception_count)
+
+if(DEFINED PROJECTNAME_EXPECT_SPDX_EXCEPTION_COUNT
+    AND NOT exception_count EQUAL PROJECTNAME_EXPECT_SPDX_EXCEPTION_COUNT)
+    message(FATAL_ERROR
+        "SPDX check found ${exception_count} baseline exceptions, "
+        "expected ${PROJECTNAME_EXPECT_SPDX_EXCEPTION_COUNT}.")
+endif()
+
 message(STATUS "SPDX check passed for ${checked_file_count} first-party files with ${exception_count} baseline exceptions.")

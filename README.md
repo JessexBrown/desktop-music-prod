@@ -292,6 +292,9 @@ Third-party dependencies remain under their own licenses as recorded in
   temporary settings file.
 - JUCE app `--smoke-restore-details` mode registered with CTest for hidden,
   deterministic Package Maintenance review-row copy/activation coverage.
+- CTest now includes an SPDX checker fixture target that proves comment-free
+  `CMakePresets.json` vendor metadata is accepted while missing headers and
+  stale or nonzero exception baselines fail.
 
 ## What Does Not Exist Yet
 
@@ -333,9 +336,10 @@ The Windows `dev` preset uses Visual Studio 2026, MSVC, and x64. Both
 desktop-app presets fetch JUCE 8.0.13 and nlohmann/json 3.12.0 from their
 official GitHub repositories. Their test suites include the app launch,
 project-chooser, Audio/MIDI reset, app settings corruption, and restore-detail
-smoke tests plus the core unit tests. See `docs/BUILDING.md` for platform notes
-and the local-JUCE option. Linux JUCE app CI prerequisites are tracked
-separately in `docs/LINUX_JUCE_APP_PREREQUISITES.md`.
+smoke tests plus the SPDX fixture check and core unit tests. See
+`docs/BUILDING.md` for platform notes and the local-JUCE option. Linux JUCE app
+CI prerequisites are tracked separately in
+`docs/LINUX_JUCE_APP_PREREQUISITES.md`.
 
 To run only the domain tests without building the JUCE desktop app:
 

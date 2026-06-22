@@ -30,5 +30,8 @@ machine-checkable.
 
 - `CMakePresets.json` remains valid CMake presets JSON.
 - The first-party SPDX exception baseline is empty.
+- `projectname_spdx_fixture_check` keeps the vendor-metadata path covered while
+  also proving missing-header, stale-exception, and nonzero-exception-baseline
+  failures still fail.
 - Future JSON configuration files should use schema-supported metadata when
   available instead of adding avoidable exceptions.

@@ -42,7 +42,7 @@ test (`projectname --smoke-test`), hidden project chooser smoke test
 (`projectname --smoke-audio-midi-reset`), hidden app settings corruption
 recovery smoke test (`projectname --smoke-app-settings-corruption`), hidden
 restore-detail smoke test (`projectname --smoke-restore-details`), the SPDX
-license-header check, and the core unit tests.
+license-header check, the SPDX checker fixture test, and the core unit tests.
 
 For domain-only model/transport/tone tests without building the JUCE app:
 
@@ -111,7 +111,12 @@ ctest --preset dev --output-on-failure
   activation fallback without starting cleanup or restore jobs.
 - `projectname_spdx_check` verifies first-party files either carry
   `SPDX-License-Identifier: AGPL-3.0-or-later` or are listed in
-  `docs/SPDX_EXCEPTIONS.txt`.
+  `docs/SPDX_EXCEPTIONS.txt`, and currently enforces zero first-party baseline
+  exceptions.
+- `projectname_spdx_fixture_check` verifies the SPDX checker accepts
+  `CMakePresets.json` vendor metadata for comment-free JSON, rejects missing
+  first-party headers, rejects stale exception paths, and fails if a baseline
+  exception appears while the production gate expects zero.
 - `projectname_tests` runs the current unit tests.
 
 ## Continuous Integration
@@ -122,7 +127,8 @@ GitHub Actions currently runs three jobs on pushes and pull requests:
   `windows-latest`. Its CTest run includes `projectname_app_smoke`,
   `projectname_project_chooser_smoke`, `projectname_audio_midi_reset_smoke`,
   `projectname_app_settings_corruption_smoke`,
-  `projectname_restore_detail_smoke`, the SPDX check, and the core unit tests.
+  `projectname_restore_detail_smoke`, the SPDX check, the SPDX fixture check,
+  and the core unit tests.
 - `Linux Core` configures, builds, and tests the `core-dev` preset on
   `ubuntu-latest` for dependency-light second-host coverage.
 - `Linux JUCE App` installs the Ubuntu package baseline from
@@ -214,7 +220,7 @@ rewritten as valid human-readable JSON without changing the active project
 package, and `projectname_restore_detail_smoke`, which verifies Package
 Maintenance review-row copy/activation behavior for conflict and partial-failure
 restore manifests without starting cleanup or restore jobs. The same run also
-passed `projectname_spdx_check` and
+passed `projectname_spdx_check`, `projectname_spdx_fixture_check`, and
 `projectname_tests`, including cached prepared voice-window playback,
 background voice-window preparation, imported clip inspector metadata,
 deterministic imported clip selection, and persisted track mix

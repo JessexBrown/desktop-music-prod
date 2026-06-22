@@ -130,6 +130,22 @@ void setButtonEnabledFromCommand(juce::Button& button,
     return juce::File(juce::String(path.string()));
 }
 
+[[nodiscard]] bool waitForClipboardText(const juce::String& expectedText)
+{
+    constexpr auto attempts = 10;
+    constexpr auto sleepMilliseconds = 20;
+
+    for (auto attempt = 0; attempt < attempts; ++attempt)
+    {
+        if (juce::SystemClipboard::getTextFromClipboard() == expectedText)
+            return true;
+
+        juce::Thread::sleep(sleepMilliseconds);
+    }
+
+    return false;
+}
+
 [[nodiscard]] std::filesystem::path projectPackagePathFromChooserResult(juce::File file,
                                                                         bool appendProjectExtension)
 {
@@ -1998,19 +2014,28 @@ bool MainComponent::runPackageMediaRestoreDetailSmokeTest(const std::filesystem:
     if (!browserPanel_.keyPressed(copyKey))
         return fail("Restore detail smoke Command/Ctrl+C was not handled by the browser panel.");
 
-    if (juce::SystemClipboard::getTextFromClipboard() != juce::String(reviewOriginalPath))
+    if (!waitForClipboardText(juce::String(reviewOriginalPath)))
         return fail("Restore detail smoke Command/Ctrl+C did not copy the package-relative path.");
 
+    filesystemError.clear();
     std::filesystem::remove(manifestPath, filesystemError);
     if (filesystemError)
         return fail("Could not remove restore detail smoke manifest for fallback activation: "
+                    + filesystemError.message());
+
+    filesystemError.clear();
+    if (std::filesystem::exists(manifestPath, filesystemError))
+        return fail("Restore detail smoke manifest still exists before fallback activation.");
+
+    if (filesystemError)
+        return fail("Could not verify restore detail smoke manifest removal: "
                     + filesystemError.message());
 
     juce::SystemClipboard::copyTextToClipboard("restore-detail-smoke-sentinel");
     if (!browserPanel_.keyPressed(juce::KeyPress(juce::KeyPress::returnKey)))
         return fail("Restore detail smoke activation was not handled by the browser panel.");
 
-    if (juce::SystemClipboard::getTextFromClipboard() != juce::String(manifestPath.string()))
+    if (!waitForClipboardText(juce::String(manifestPath.string())))
         return fail("Restore detail smoke activation did not copy the restore manifest fallback path.");
 
     if (packageMediaCleanupJob_ != nullptr)

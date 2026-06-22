@@ -213,8 +213,15 @@ if(BUILD_TESTING)
     add_test(NAME projectname_spdx_check
         COMMAND ${CMAKE_COMMAND}
             -DPROJECT_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
+            -DPROJECTNAME_EXPECT_SPDX_EXCEPTION_COUNT=0
             -P ${CMAKE_CURRENT_SOURCE_DIR}/tools/check_spdx.cmake)
     set_tests_properties(projectname_spdx_check PROPERTIES TIMEOUT 20)
+
+    add_test(NAME projectname_spdx_fixture_check
+        COMMAND ${CMAKE_COMMAND}
+            -DSPDX_FIXTURE_ROOT=${CMAKE_CURRENT_BINARY_DIR}/spdx-fixtures
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/tools/check_spdx_fixtures.cmake)
+    set_tests_properties(projectname_spdx_fixture_check PROPERTIES TIMEOUT 20)
 
     add_executable(projectname_tests
         tests/ProjectNameTests.cpp)

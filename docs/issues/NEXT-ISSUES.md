@@ -2,16 +2,7 @@
 
 # Next Issues
 
-## 1. Add Source Header Check Fixtures
-
-Acceptance:
-- Add a small CTest-friendly fixture path that proves the SPDX checker accepts
-  CMake presets vendor metadata for JSON files without comments.
-- Verify the fixture keeps stale exceptions and missing-header failures covered.
-- Keep the production `projectname_spdx_check` target passing with zero
-  first-party exceptions.
-
-## 2. Add Save As Manifest Write Failure Smoke Coverage
+## 1. Add Save As Manifest Write Failure Smoke Coverage
 
 Acceptance:
 - Add a hidden project chooser smoke path for a target where package asset copy
@@ -23,7 +14,7 @@ Acceptance:
 - Preserve the existing successful, cancelled, occupied-target failure,
   duplicate New, and failed Open chooser smoke coverage.
 
-## 3. Add App Settings Load Warning Surface
+## 2. Add App Settings Load Warning Surface
 
 Acceptance:
 - Preserve the current safe fallback for malformed app settings.
@@ -32,7 +23,7 @@ Acceptance:
 - Keep the warning out of the real-time audio path.
 - Cover the visible warning with a focused unit or smoke assertion.
 
-## 4. Add Linux JUCE App CI Artifact Upload
+## 3. Add Linux JUCE App CI Artifact Upload
 
 Acceptance:
 - Upload the Linux JUCE app executable or packaged build directory as a CI
@@ -43,10 +34,21 @@ Acceptance:
 - Preserve the existing Windows MSVC App, Linux Core, and Linux JUCE App test
   behavior.
 
-## 5. Add Restore Detail Status Copy Coverage
+## 4. Add Restore Detail Status Copy Coverage
 
 Acceptance:
 - Add focused coverage that the Package Maintenance status line distinguishes
   package-relative path copy from restore-manifest fallback copy.
 - Keep the coverage deterministic and avoid opening platform file browsers.
 - Preserve the existing restore-detail smoke path and core row-model tests.
+
+## 5. Add Windows MSVC App CI Artifact Upload
+
+Acceptance:
+- Upload the Windows app executable or packaged build directory as a CI artifact
+  only after the `Windows MSVC App` job builds and tests successfully.
+- Keep the artifact retention short and documented.
+- Do not include FetchContent source caches, Visual Studio intermediates, or
+  test scratch directories in the artifact.
+- Preserve the existing Windows MSVC App, Linux Core, and Linux JUCE App test
+  behavior.
