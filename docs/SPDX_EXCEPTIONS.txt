@@ -3,5 +3,5 @@
 # Baseline first-party files that predate top-of-file SPDX enforcement.
 # New files should include SPDX-License-Identifier: AGPL-3.0-or-later instead
 # of growing this list unless there is a specific reviewed reason.
-
-CMakePresets.json
+#
+# There are currently no reviewed first-party SPDX exceptions.

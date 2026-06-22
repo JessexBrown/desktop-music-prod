@@ -1,5 +1,10 @@
 {
   "version": 6,
+  "vendor": {
+    "rabbington.studio/license": {
+      "SPDX-License-Identifier": "AGPL-3.0-or-later"
+    }
+  },
   "cmakeMinimumRequired": {
     "major": 3,
     "minor": 24,

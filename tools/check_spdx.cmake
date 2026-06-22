@@ -86,7 +86,7 @@ foreach(first_party_file IN LISTS first_party_files)
     set(has_spdx_identifier FALSE)
 
     foreach(header_line IN LISTS file_header)
-        if(header_line MATCHES "SPDX-License-Identifier:[ \t]*AGPL-3\\.0-or-later")
+        if(header_line MATCHES "SPDX-License-Identifier\"?[ \t]*:[ \t]*\"?AGPL-3\\.0-or-later")
             set(has_spdx_identifier TRUE)
             break()
         endif()

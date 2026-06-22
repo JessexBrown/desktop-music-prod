@@ -22,6 +22,11 @@ For C++ source and headers, use:
 For CMake files, shell scripts, Python scripts, Markdown documents, and YAML
 files, use the comment form customary for that file type.
 
+For first-party JSON files that do not support comments, prefer a valid metadata
+field when the owning schema allows one. `CMakePresets.json` stores its SPDX
+identifier under the top-level CMake presets `vendor` object so the file remains
+valid for CMake while still being machine-checkable by `projectname_spdx_check`.
+
 ## Existing Files
 
 Existing files may be updated gradually. Large mechanical header sweeps should be
