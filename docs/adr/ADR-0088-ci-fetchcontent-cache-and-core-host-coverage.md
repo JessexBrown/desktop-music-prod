@@ -51,6 +51,14 @@ uses JUCE 8.0.13's Linux dependency guidance, adjusted for Rabbington Studio's
 current `JUCE_WEB_BROWSER=0`, `JUCE_USE_CURL=0`, no-plugin-host, and no-OpenGL
 app target. Linux desktop app CI remains a separate future job.
 
+Later on June 22, 2026, add that separate `Linux JUCE App` workflow job. It
+installs the documented Ubuntu package baseline, uses the `dev-host` preset to
+configure and build the JUCE app, and runs `ctest --preset dev-host
+--output-on-failure` under `xvfb-run -a`. The existing `Linux Core` job remains
+unchanged. The Linux app job uses `.cache/fetchcontent/linux-juce-app` and a
+`linux-juce-app-fetchcontent-*` cache key so its CMake FetchContent subbuilds
+cannot collide with Windows MSVC or Linux Core caches.
+
 ## Consequences
 
 - Windows CI continues to verify the desktop app launch smoke test.
@@ -61,12 +69,10 @@ app target. Linux desktop app CI remains a separate future job.
 - CI uses GitHub-maintained Node 24 action runtimes for checkout and caching.
 - SPDX enforcement remains focused on first-party files even when CI restores a
   dependency cache into the workspace.
-- Linux JUCE app CI remains a future task, but the expected Ubuntu desktop/audio
-  package baseline is now documented before that job is added.
+- Linux JUCE app CI now verifies the native JUCE target on Ubuntu in addition
+  to Windows MSVC app coverage and Linux core-only coverage.
 
 ## Follow-Ups
 
 - Add a README CI status badge after the public branch protection/check naming
   settles.
-- Add Linux JUCE app CI as a separate job using the documented prerequisite
-  package baseline.

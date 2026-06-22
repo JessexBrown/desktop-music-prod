@@ -2,10 +2,10 @@
 
 # Linux JUCE App Prerequisites
 
-This note records the expected Linux desktop/audio system packages before adding
-a GitHub Actions job that builds and smoke-tests the JUCE app on Linux. It does
-not change the current CI workflow; `Linux Core` should continue using the
-dependency-light `core-dev` preset until a separate CI task enables the app job.
+This note records the Linux desktop/audio system packages used by the GitHub
+Actions job that builds and smoke-tests the JUCE app on Linux. `Linux Core`
+continues using the dependency-light `core-dev` preset as separate second-host
+coverage.
 
 ## Scope
 
@@ -75,14 +75,16 @@ enabled:
   LADSPA enabled.
 - `libglu1-mesa-dev` and `mesa-common-dev` when the app links `juce_opengl`.
 
-## Future CI Shape
+## CI Shape
 
-When this becomes an implementation task, prefer a separate Linux app job rather
-than expanding `Linux Core` in place:
+The workflow uses a separate Linux app job rather than expanding `Linux Core` in
+place:
 
 ```yaml
 linux-juce-app:
   name: Linux JUCE App
+  env:
+    FETCHCONTENT_BASE_DIR: ${{ github.workspace }}/.cache/fetchcontent/linux-juce-app
   runs-on: ubuntu-latest
   steps:
     - uses: actions/checkout@v7
@@ -96,7 +98,8 @@ linux-juce-app:
       run: xvfb-run -a ctest --preset dev-host --output-on-failure
 ```
 
-Keep the existing `Linux Core` job until the Linux app job has proven stable.
+`Linux JUCE App` uses its own FetchContent cache directory and key so CMake
+subbuilds cannot collide with `Linux Core` or Windows MSVC caches.
 
 ## Source
 

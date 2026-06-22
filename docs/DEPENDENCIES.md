@@ -23,6 +23,12 @@ Original Rabbington Studio source, documentation, and build scripts are licensed
 
 Scheduled review checklist: `docs/CI_ACTION_PIN_REVIEW.md`.
 
+## CI System Packages
+
+| Dependency | Version/Commit | Source | License | Used For | Notes |
+|---|---:|---|---|---|---|
+| Ubuntu JUCE app build prerequisites | Ubuntu hosted-runner package versions | Ubuntu apt repositories | Distribution package licenses | Linux JUCE app CI configure/build/smoke-test support | Package names are listed in `docs/LINUX_JUCE_APP_PREREQUISITES.md`; packages are installed only on CI runners and are not bundled with Rabbington Studio. |
+
 ## Reviewed But Not Added
 
 | Dependency | Version/Commit | Source | License | Why Not Added Yet |
