@@ -504,20 +504,6 @@ void setButtonEnabledFromCommand(juce::Button& button,
     return panelRows;
 }
 
-[[nodiscard]] const projectname::PackageMediaMaintenanceDetailAction* findPackageMediaMaintenanceDetailAction(
-    const std::vector<projectname::PackageMediaMaintenanceDetailAction>& actions,
-    projectname::PackageMediaMaintenanceDetailActionKind kind)
-{
-    const auto found = std::find_if(actions.begin(),
-                                    actions.end(),
-                                    [kind](const projectname::PackageMediaMaintenanceDetailAction& action)
-                                    {
-                                        return action.kind == kind;
-                                    });
-
-    return found == actions.end() ? nullptr : &*found;
-}
-
 [[nodiscard]] PackageMediaMaintenanceScanResult runPackageMediaMaintenanceScan(
     std::filesystem::path packageDirectory,
     std::string selectedCleanupId,
@@ -3555,26 +3541,81 @@ void MainComponent::applyPackageMediaMaintenanceScanResult(PackageMediaMaintenan
     refreshBrowserPanel();
 }
 
-void MainComponent::refreshBrowserPanel()
+bool MainComponent::isPackageMediaMaintenanceScanRunning() const
 {
-    const auto scanRunning =
-        packageMediaMaintenanceScan_.valid()
+    return packageMediaMaintenanceScan_.valid()
         && packageMediaMaintenanceScan_.wait_for(std::chrono::seconds(0)) != std::future_status::ready;
+}
 
+projectname::PackageMediaMaintenanceBrowserRows
+MainComponent::buildPackageMediaMaintenanceBrowserRowsForUi() const
+{
     projectname::PackageMediaMaintenanceBrowserRowsOptions rowOptions;
     rowOptions.hasSnapshot = hasPackageMediaMaintenanceSnapshot_;
-    rowOptions.scanRunning = scanRunning;
+    rowOptions.scanRunning = isPackageMediaMaintenanceScanRunning();
     rowOptions.maxBatchRows = 2;
     rowOptions.packageWorkInProgress = hasActivePackageFileWork();
     rowOptions.focusedSelectionId = packageMediaBrowserFocusedSelectionId_;
 
-    const auto modelRows = projectname::buildPackageMediaMaintenanceBrowserRows(
+    return projectname::buildPackageMediaMaintenanceBrowserRows(
         packageMediaMaintenanceViewModel_,
         std::move(rowOptions));
+}
+
+void MainComponent::copyPackageMediaMaintenanceDetailAction(
+    const projectname::PackageMediaMaintenanceDetailAction& action)
+{
+    const auto value = juce::String(action.value);
+    if (value.isEmpty())
+    {
+        setStatus("No package media detail is available to copy");
+        return;
+    }
+
+    juce::SystemClipboard::copyTextToClipboard(value);
+    const auto prefix =
+        action.kind == projectname::PackageMediaMaintenanceDetailActionKind::revealRestoreManifest
+            ? juce::String("Copied restore manifest path: ")
+            : juce::String("Copied package media path: ");
+    setStatus(prefix + value);
+}
+
+void MainComponent::activatePackageMediaMaintenanceDetailAction(
+    const projectname::PackageMediaMaintenanceDetailAction& action)
+{
+    if (action.kind != projectname::PackageMediaMaintenanceDetailActionKind::revealRestoreManifest)
+    {
+        copyPackageMediaMaintenanceDetailAction(action);
+        return;
+    }
+
+    const auto manifestPath = juce::String(action.value);
+    if (manifestPath.isEmpty())
+    {
+        setStatus("No restore manifest path is available");
+        return;
+    }
+
+    const juce::File manifestFile(manifestPath);
+    if (manifestFile.existsAsFile())
+    {
+        manifestFile.revealToUser();
+        setStatus("Revealed restore manifest: " + manifestFile.getFileName());
+        return;
+    }
+
+    juce::SystemClipboard::copyTextToClipboard(manifestPath);
+    setStatus("Restore manifest unavailable; copied path: " + manifestPath);
+}
+
+void MainComponent::refreshBrowserPanel()
+{
+    const auto scanRunning = isPackageMediaMaintenanceScanRunning();
+    const auto modelRows = buildPackageMediaMaintenanceBrowserRowsForUi();
     packageMediaBrowserFocusedSelectionId_ = modelRows.focusedSelectionId;
-    const auto* focusedCopyAction = findPackageMediaMaintenanceDetailAction(
+    const auto* focusedCopyAction = projectname::selectPackageMediaMaintenanceFocusedDetailAction(
         modelRows.focusedDetailActions,
-        projectname::PackageMediaMaintenanceDetailActionKind::copyPackageRelativePath);
+        projectname::PackageMediaMaintenanceDetailActionIntent::copyShortcut);
 
     auto cleanupEnabled = modelRows.cleanupAction.enabled && !scanRunning && !hasActivePackageFileWork();
     auto cleanupTooltip = juce::String("Move cleanup candidates to media trash");
@@ -3623,10 +3664,9 @@ void MainComponent::refreshBrowserPanel()
     std::function<void()> focusedCopyCallback;
     if (focusedCopyAction != nullptr)
     {
-        focusedCopyCallback = [this, path = juce::String(focusedCopyAction->value)]()
+        focusedCopyCallback = [this, action = *focusedCopyAction]()
         {
-            juce::SystemClipboard::copyTextToClipboard(path);
-            setStatus("Copied package media path: " + path);
+            copyPackageMediaMaintenanceDetailAction(action);
         };
     }
 
@@ -3675,9 +3715,16 @@ void MainComponent::handlePackageMediaBrowserSelection(std::string selectionId)
 
     if (selectionId.rfind(restoreDetailPrefix, 0) == 0)
     {
-        const auto originalRelativePath = juce::String(selectionId.substr(restoreDetailPrefix.size()));
-        juce::SystemClipboard::copyTextToClipboard(originalRelativePath);
-        setStatus("Copied package media path: " + originalRelativePath);
+        const auto modelRows = buildPackageMediaMaintenanceBrowserRowsForUi();
+        const auto* action = projectname::selectPackageMediaMaintenanceFocusedDetailAction(
+            modelRows.focusedDetailActions,
+            projectname::PackageMediaMaintenanceDetailActionIntent::activation);
+
+        if (action != nullptr)
+            activatePackageMediaMaintenanceDetailAction(*action);
+        else
+            setStatus("No package media review action is available");
+
         refreshBrowserPanel();
         return;
     }
@@ -3700,20 +3747,7 @@ void MainComponent::handlePackageMediaBrowserSelection(std::string selectionId)
 void MainComponent::focusAdjacentPackageMediaBrowserRow(
     projectname::PackageMediaMaintenanceBrowserFocusDirection direction)
 {
-    const auto scanRunning =
-        packageMediaMaintenanceScan_.valid()
-        && packageMediaMaintenanceScan_.wait_for(std::chrono::seconds(0)) != std::future_status::ready;
-
-    projectname::PackageMediaMaintenanceBrowserRowsOptions rowOptions;
-    rowOptions.hasSnapshot = hasPackageMediaMaintenanceSnapshot_;
-    rowOptions.scanRunning = scanRunning;
-    rowOptions.maxBatchRows = 2;
-    rowOptions.packageWorkInProgress = hasActivePackageFileWork();
-    rowOptions.focusedSelectionId = packageMediaBrowserFocusedSelectionId_;
-
-    const auto modelRows =
-        projectname::buildPackageMediaMaintenanceBrowserRows(packageMediaMaintenanceViewModel_,
-                                                             std::move(rowOptions));
+    const auto modelRows = buildPackageMediaMaintenanceBrowserRowsForUi();
     const auto focusedSelectionId =
         projectname::focusAdjacentPackageMediaMaintenanceBrowserSelectionId(modelRows, direction);
 

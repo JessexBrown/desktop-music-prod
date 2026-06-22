@@ -20,13 +20,15 @@ metadata for restore entries that need review. Conflict and partial-failure
 entry rows receive:
 
 - a copy package-relative path action;
-- a restore manifest path action for future reveal/copy UI.
+- a restore manifest path action for reveal/copy fallback UI.
 
 Use a separate `restore-detail:` selection id for review rows, distinct from
 the existing `restore-entry:` toggle id. This keeps review rows focusable and
 activatable without making them restorable selections. The JUCE browser wires
-focused review rows to copy the package-relative path through Command/Ctrl+C
-or direct row activation, while restore execution remains disabled for
+focused review rows to copy the package-relative path through Command/Ctrl+C.
+Direct row activation prefers the restore-manifest action: it reveals the
+manifest with the platform file browser when the file exists, or copies the
+manifest path if reveal is unavailable. Restore execution remains disabled for
 review-blocked batches.
 
 ## Consequences
@@ -35,12 +37,11 @@ review-blocked batches.
   Package Maintenance rows.
 - Review actions do not move files, overwrite active package media, parse
   manifests on the UI callback, or run restore again.
-- Core tests cover action availability for conflict and partial-failure rows.
-- Manifest reveal UI remains a follow-up; the model carries the path metadata
-  without adding platform shell integration yet.
+- Core tests cover action availability and focused-row mapping for conflict and
+  partial-failure rows.
+- Manifest path evidence is reachable without adding modal review UI.
 
 ## Follow-Ups
 
-- Add a platform-aware reveal-manifest action or copy-manifest-path fallback.
 - Add richer recovery choices, such as rename-assisted restore, before repeat
   restore is considered for review-blocked batches.

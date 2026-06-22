@@ -2,17 +2,7 @@
 
 # Next Issues
 
-## 1. Add Restore Manifest Reveal App Wiring
-
-Acceptance:
-- Wire the restore detail model's manifest-path action to a platform-aware
-  reveal action or a copy-manifest-path fallback.
-- Keep the action non-mutating and unavailable for rows without conflict or
-  partial-failure review details.
-- Cover the focused-row action mapping with a small app or core test.
-- Do not re-run restore or touch package media from the reveal/copy path.
-
-## 2. Resolve CMake Presets SPDX Exception
+## 1. Resolve CMake Presets SPDX Exception
 
 Acceptance:
 - Decide whether `CMakePresets.json` should keep a reviewed SPDX exception or
@@ -22,7 +12,7 @@ Acceptance:
 - Update `docs/SOURCE_HEADER_POLICY.md` if JSON configuration files need a
   documented exception rule.
 
-## 3. Add Save As Failure App Smoke Coverage
+## 2. Add Save As Failure App Smoke Coverage
 
 Acceptance:
 - Extend hidden project chooser smoke coverage to a deterministic Save As
@@ -34,7 +24,7 @@ Acceptance:
 - Preserve the existing successful, cancelled, duplicate New, and failed Open
   chooser smoke coverage.
 
-## 4. Add App Settings Corruption Recovery Smoke Coverage
+## 3. Add App Settings Corruption Recovery Smoke Coverage
 
 Acceptance:
 - Add a hidden app smoke hook that points `MainComponent` at an isolated
@@ -46,7 +36,7 @@ Acceptance:
 - Preserve the existing launch, project chooser, and Audio/MIDI reset smoke
   tests.
 
-## 5. Add Linux JUCE App CI Job
+## 4. Add Linux JUCE App CI Job
 
 Acceptance:
 - Add a separate `Linux JUCE App` workflow job that installs the package baseline
@@ -56,3 +46,13 @@ Acceptance:
   --output-on-failure` under `xvfb-run -a`.
 - Use a Linux-app-specific FetchContent cache directory and key so it does not
   collide with Windows MSVC or Linux core caches.
+
+## 5. Add Restore Detail App Smoke Coverage
+
+Acceptance:
+- Add a hidden app smoke hook that builds an isolated package with a
+  conflict/partial-failure restore manifest and focuses a review row.
+- Verify Command/Ctrl+C copies the package-relative original path.
+- Verify review-row activation uses the manifest reveal/copy fallback path
+  without starting restore or cleanup jobs.
+- Preserve existing launch, project chooser, and Audio/MIDI reset smoke tests.

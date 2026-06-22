@@ -230,6 +230,13 @@ private:
     void requestPackageMediaMaintenanceRefresh();
     void applyPackageMediaMaintenanceScanResult(PackageMediaMaintenanceScanResult result);
     void refreshBrowserPanel();
+    [[nodiscard]] bool isPackageMediaMaintenanceScanRunning() const;
+    [[nodiscard]] projectname::PackageMediaMaintenanceBrowserRows buildPackageMediaMaintenanceBrowserRowsForUi()
+        const;
+    void copyPackageMediaMaintenanceDetailAction(
+        const projectname::PackageMediaMaintenanceDetailAction& action);
+    void activatePackageMediaMaintenanceDetailAction(
+        const projectname::PackageMediaMaintenanceDetailAction& action);
     void handlePackageMediaBrowserSelection(std::string selectionId);
     void selectPackageMediaCleanupBatch(std::string cleanupId);
     void selectAdjacentPackageMediaCleanupBatch(

@@ -622,4 +622,48 @@ std::string focusAdjacentPackageMediaMaintenanceBrowserSelectionId(
 
     return rows.rows[*current].selectionId;
 }
+
+const PackageMediaMaintenanceDetailAction* findPackageMediaMaintenanceDetailAction(
+    const std::vector<PackageMediaMaintenanceDetailAction>& actions,
+    PackageMediaMaintenanceDetailActionKind kind)
+{
+    const auto found = std::find_if(actions.begin(),
+                                    actions.end(),
+                                    [kind](const PackageMediaMaintenanceDetailAction& action)
+                                    {
+                                        return action.kind == kind;
+                                    });
+
+    return found == actions.end() ? nullptr : &*found;
+}
+
+const PackageMediaMaintenanceDetailAction* selectPackageMediaMaintenanceFocusedDetailAction(
+    const std::vector<PackageMediaMaintenanceDetailAction>& actions,
+    PackageMediaMaintenanceDetailActionIntent intent)
+{
+    if (intent == PackageMediaMaintenanceDetailActionIntent::activation)
+    {
+        if (const auto* reveal = findPackageMediaMaintenanceDetailAction(
+                actions,
+                PackageMediaMaintenanceDetailActionKind::revealRestoreManifest))
+        {
+            return reveal;
+        }
+
+        return findPackageMediaMaintenanceDetailAction(
+            actions,
+            PackageMediaMaintenanceDetailActionKind::copyPackageRelativePath);
+    }
+
+    if (const auto* copy = findPackageMediaMaintenanceDetailAction(
+            actions,
+            PackageMediaMaintenanceDetailActionKind::copyPackageRelativePath))
+    {
+        return copy;
+    }
+
+    return findPackageMediaMaintenanceDetailAction(
+        actions,
+        PackageMediaMaintenanceDetailActionKind::revealRestoreManifest);
+}
 } // namespace projectname

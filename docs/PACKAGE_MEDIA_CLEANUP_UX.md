@@ -221,6 +221,7 @@ files.
 Conflict and partial-failure restore-entry rows now carry non-mutating detail
 action metadata. The JUCE browser keeps those rows keyboard focusable even when
 restore selection is blocked, and focused review rows can copy the
-package-relative original path without touching package media. The core model
-also carries the restore manifest path as review evidence for future reveal or
-copy-manifest UI.
+package-relative original path without touching package media. Activating a
+review row reveals the restore manifest through the platform file browser when
+available, or copies the restore manifest path as a fallback. These actions do
+not re-run restore, move package media, or mutate project state.

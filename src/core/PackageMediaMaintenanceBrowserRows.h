@@ -26,6 +26,12 @@ enum class PackageMediaMaintenanceDetailActionKind
     revealRestoreManifest,
 };
 
+enum class PackageMediaMaintenanceDetailActionIntent
+{
+    copyShortcut,
+    activation,
+};
+
 struct PackageMediaMaintenanceDetailAction
 {
     PackageMediaMaintenanceDetailActionKind kind = PackageMediaMaintenanceDetailActionKind::copyPackageRelativePath;
@@ -121,4 +127,12 @@ enum class PackageMediaMaintenanceBrowserFocusDirection
 [[nodiscard]] std::string focusAdjacentPackageMediaMaintenanceBrowserSelectionId(
     const PackageMediaMaintenanceBrowserRows& rows,
     PackageMediaMaintenanceBrowserFocusDirection direction);
+
+[[nodiscard]] const PackageMediaMaintenanceDetailAction* findPackageMediaMaintenanceDetailAction(
+    const std::vector<PackageMediaMaintenanceDetailAction>& actions,
+    PackageMediaMaintenanceDetailActionKind kind);
+
+[[nodiscard]] const PackageMediaMaintenanceDetailAction* selectPackageMediaMaintenanceFocusedDetailAction(
+    const std::vector<PackageMediaMaintenanceDetailAction>& actions,
+    PackageMediaMaintenanceDetailActionIntent intent);
 } // namespace projectname

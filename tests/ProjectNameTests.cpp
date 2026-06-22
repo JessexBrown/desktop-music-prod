@@ -4543,6 +4543,8 @@ void packageMediaMaintenanceBrowserRowsRenderSelectableBatchState()
                    == std::string(projectname::packageMediaMaintenanceBrowserSelectionIds::restoreEntryPrefix)
                        + "audio/orphan.wav",
            "Maintenance browser rows expose selected audio restore-entry toggle id");
+    expect(selectedAudioEntry != nullptr && selectedAudioEntry->detailActions.empty(),
+           "Maintenance browser rows do not expose review detail actions for restorable entries");
 
     projectname::PackageMediaMaintenanceBrowserRowsOptions entryFocusOptions;
     entryFocusOptions.hasSnapshot = true;
@@ -4667,6 +4669,24 @@ void packageMediaMaintenanceBrowserRowsRenderSelectableBatchState()
                    projectname::PackageMediaMaintenanceDetailActionKind::copyPackageRelativePath,
                    "audio/orphan.wav"),
            "Maintenance browser rows keep partial-failure detail actions available from keyboard focus");
+    const auto* partialCopyShortcutAction =
+        projectname::selectPackageMediaMaintenanceFocusedDetailAction(
+            partialDetailFocusedRows.focusedDetailActions,
+            projectname::PackageMediaMaintenanceDetailActionIntent::copyShortcut);
+    const auto* partialActivationAction =
+        projectname::selectPackageMediaMaintenanceFocusedDetailAction(
+            partialDetailFocusedRows.focusedDetailActions,
+            projectname::PackageMediaMaintenanceDetailActionIntent::activation);
+    expect(partialCopyShortcutAction != nullptr
+               && partialCopyShortcutAction->kind
+                   == projectname::PackageMediaMaintenanceDetailActionKind::copyPackageRelativePath
+               && partialCopyShortcutAction->value == "audio/orphan.wav",
+           "Maintenance browser maps focused partial-failure copy shortcut to package-relative path");
+    expect(partialActivationAction != nullptr
+               && partialActivationAction->kind
+                   == projectname::PackageMediaMaintenanceDetailActionKind::revealRestoreManifest
+               && partialActivationAction->value == partialManifestPath,
+           "Maintenance browser maps focused partial-failure activation to restore manifest reveal");
 
     auto conflictSelectionModel =
         projectname::selectPackageMediaMaintenanceBatch(staleSelectionModel, conflictId);
@@ -4729,6 +4749,24 @@ void packageMediaMaintenanceBrowserRowsRenderSelectableBatchState()
                    projectname::PackageMediaMaintenanceDetailActionKind::copyPackageRelativePath,
                    "audio/orphan.wav"),
            "Maintenance browser rows keep conflict detail actions available from keyboard focus");
+    const auto* conflictCopyShortcutAction =
+        projectname::selectPackageMediaMaintenanceFocusedDetailAction(
+            conflictDetailFocusedRows.focusedDetailActions,
+            projectname::PackageMediaMaintenanceDetailActionIntent::copyShortcut);
+    const auto* conflictActivationAction =
+        projectname::selectPackageMediaMaintenanceFocusedDetailAction(
+            conflictDetailFocusedRows.focusedDetailActions,
+            projectname::PackageMediaMaintenanceDetailActionIntent::activation);
+    expect(conflictCopyShortcutAction != nullptr
+               && conflictCopyShortcutAction->kind
+                   == projectname::PackageMediaMaintenanceDetailActionKind::copyPackageRelativePath
+               && conflictCopyShortcutAction->value == "audio/orphan.wav",
+           "Maintenance browser maps focused conflict copy shortcut to package-relative path");
+    expect(conflictActivationAction != nullptr
+               && conflictActivationAction->kind
+                   == projectname::PackageMediaMaintenanceDetailActionKind::revealRestoreManifest
+               && conflictActivationAction->value == conflictManifestPath,
+           "Maintenance browser maps focused conflict activation to restore manifest reveal");
 
     const auto restoredSelectionModel =
         projectname::selectPackageMediaMaintenanceBatch(conflictSelectionModel, restoredId);

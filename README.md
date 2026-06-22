@@ -222,7 +222,8 @@ Third-party dependencies remain under their own licenses as recorded in
   package-relative path previews copied from the restore manifest.
 - Conflict and partial-failure restore entries expose non-mutating review
   detail actions: package-relative paths can be copied from focused browser
-  rows while repeat restore stays disabled for review-blocked batches.
+  rows, and activating those rows reveals or copies the restore manifest path
+  while repeat restore stays disabled for review-blocked batches.
 - Restore-entry selection in the Package Maintenance browser is keyboard
   reachable: Up/Down keeps cleanup-batch navigation, Tab/Shift-Tab moves browser
   row focus, Enter/Space activates the focused row, Command/Ctrl+A selects all
