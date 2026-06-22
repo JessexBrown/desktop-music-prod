@@ -78,6 +78,12 @@ FetchContent caches, dependency checkouts, Visual Studio/CMake build-system
 intermediates, test scratch data, plugins, presets, samples, or proprietary
 assets. It is an unsigned CI debug package, not a release installer.
 
+Later on June 22, 2026, generate `SHA256SUMS.txt` inside each staged Windows
+MSVC and Linux JUCE app artifact before upload. The checksum file is created
+after all package files are copied and excludes only `SHA256SUMS.txt` itself,
+so a downloaded artifact can be verified without expanding the artifact scope or
+adding another CI dependency.
+
 ## Consequences
 
 - Windows CI continues to verify the desktop app launch smoke test.
@@ -95,6 +101,8 @@ assets. It is an unsigned CI debug package, not a release installer.
   into downloadable artifacts.
 - Windows MSVC app CI now produces the same kind of short-lived executable
   artifact after the existing Windows build/test gate passes.
+- Downloaded CI app artifacts can be integrity-checked against the checksum file
+  included in the staged package.
 
 ## Follow-Ups
 

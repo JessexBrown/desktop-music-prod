@@ -151,11 +151,29 @@ roots such as `.cache/`, `out/`, and `build/` so restored third-party dependency
 sources do not become part of the first-party license-header baseline.
 The Windows MSVC and Linux JUCE app artifacts are staged under each runner's
 temporary directory and contain only the app executable plus `LICENSE`,
-`README.md`, `docs/DEPENDENCIES.md`, and an artifact note. They intentionally
-exclude FetchContent caches, dependency checkouts, Visual Studio/CMake build
-intermediates, test scratch directories, plugins, presets, samples, and
-proprietary assets. These CI artifacts are unsigned debug/smoke packages, not
-release installers.
+`README.md`, `docs/DEPENDENCIES.md`, an artifact note, and `SHA256SUMS.txt`.
+They intentionally exclude FetchContent caches, dependency checkouts,
+Visual Studio/CMake build intermediates, test scratch directories, plugins,
+presets, samples, and proprietary assets. These CI artifacts are unsigned
+debug/smoke packages, not release installers.
+
+After downloading and extracting a CI app artifact, verify it from the extracted
+artifact root. On Windows PowerShell:
+
+```powershell
+Get-Content .\SHA256SUMS.txt | ForEach-Object {
+    $expected, $relativePath = $_ -split '\s+', 2
+    $artifactPath = Join-Path (Get-Location) $relativePath
+    $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $artifactPath).Hash.ToLowerInvariant()
+    if ($actual -ne $expected) { throw "Checksum mismatch: $relativePath" }
+}
+```
+
+On Linux:
+
+```bash
+sha256sum -c SHA256SUMS.txt
+```
 
 Review GitHub-maintained action major pins with
 `docs/CI_ACTION_PIN_REVIEW.md`; pin reviews should keep the existing workflow

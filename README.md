@@ -364,7 +364,8 @@ dependency-light second-host coverage. CI caches CMake FetchContent downloads
 for JUCE and nlohmann/json outside the build tree; generated build outputs
 remain untracked. After the Windows MSVC and Linux JUCE app tests pass, CI
 uploads 7-day artifacts containing only the staged executable and first-party
-license/dependency notes.
+license/dependency notes, including `SHA256SUMS.txt` for after-download
+integrity checks.
 
 On Windows machines with MinGW but without a JUCE-supported compiler, the
 fallback launcher can be verified with the non-JUCE fallback preset:

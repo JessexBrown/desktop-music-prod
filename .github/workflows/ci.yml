@@ -76,7 +76,24 @@ jobs:
             'It contains an unsigned CI debug executable plus first-party license/dependency notes, not'
             'FetchContent caches, source dependency checkouts, Visual Studio intermediates, test scratch'
             'data, plugins, presets, samples, or proprietary assets. It is not a release installer.'
+            'It also includes SHA256SUMS.txt for after-download integrity checks.'
           ) | Set-Content -LiteralPath (Join-Path $artifactRoot 'ARTIFACT.txt') -Encoding UTF8
+
+          $checksumPath = Join-Path $artifactRoot 'SHA256SUMS.txt'
+          Get-ChildItem -LiteralPath $artifactRoot -Recurse -File |
+            Where-Object { $_.FullName -ne $checksumPath } |
+            Sort-Object FullName |
+            ForEach-Object {
+              $relativePath = $_.FullName.Substring($artifactRootFull.Length)
+              $separator = [System.IO.Path]::DirectorySeparatorChar
+              $alternateSeparator = [System.IO.Path]::AltDirectorySeparatorChar
+              if ($relativePath.Length -gt 0 -and (($relativePath[0] -eq $separator) -or ($relativePath[0] -eq $alternateSeparator))) {
+                $relativePath = $relativePath.Substring(1)
+              }
+              $relativePath = $relativePath.Replace($separator, '/').Replace($alternateSeparator, '/')
+              $hash = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+              "$hash  $relativePath"
+            } | Set-Content -LiteralPath $checksumPath -Encoding ASCII
 
           Get-ChildItem -LiteralPath $artifactRoot -Recurse -File | ForEach-Object { $_.FullName }
 
@@ -208,8 +225,17 @@ jobs:
           tests successfully. It contains the app executable plus first-party
           license/dependency notes, not FetchContent caches, source dependency
           checkouts, CMake build intermediates, test scratch data, plugins,
-          presets, samples, or proprietary assets.
+          presets, samples, or proprietary assets. It also includes
+          SHA256SUMS.txt for after-download integrity checks.
           EOF
+
+          (
+            cd "${artifact_root}"
+            while IFS= read -r -d '' file_path; do
+              relative_path="${file_path#./}"
+              sha256sum "${relative_path}"
+            done < <(find . -type f ! -name SHA256SUMS.txt -print0 | sort -z)
+          ) > "${artifact_root}/SHA256SUMS.txt"
 
           find "${artifact_root}" -maxdepth 3 -type f -print
 

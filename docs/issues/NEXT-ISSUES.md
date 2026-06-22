@@ -2,17 +2,7 @@
 
 # Next Issues
 
-## 1. Add CI Artifact Checksums
-
-Acceptance:
-- Generate a SHA-256 checksum file for each uploaded app artifact.
-- Include the checksum file inside the staged artifact package.
-- Document how to verify the checksum after downloading an artifact.
-- Preserve the existing short retention and exclusion of dependency caches,
-  build intermediates, test scratch data, plugins, presets, samples, and
-  proprietary assets.
-
-## 2. Add CI Artifact Download Instructions
+## 1. Add CI Artifact Download Instructions
 
 Acceptance:
 - Document where to find the Windows MSVC and Linux JUCE app artifacts for a
@@ -23,7 +13,7 @@ Acceptance:
 - Preserve the existing no-proprietary-plugins, no-presets, no-samples, and
   no-proprietary-assets claims.
 
-## 3. Add Save As Failed Target Reveal Action
+## 2. Add Save As Failed Target Reveal Action
 
 Acceptance:
 - After a post-copy Save As manifest failure, expose a non-destructive way to
@@ -33,7 +23,7 @@ Acceptance:
 - Add focused app smoke coverage for the reveal/copy action and status copy.
 - Keep all target package file operations off the real-time audio path.
 
-## 4. Add Project Save Permission Failure Coverage
+## 3. Add Project Save Permission Failure Coverage
 
 Acceptance:
 - Add focused core coverage for a project save failure before manifest commit,
@@ -44,7 +34,7 @@ Acceptance:
   unchanged for successful saves.
 - Keep the fixture deterministic on Windows, macOS, and Linux.
 
-## 5. Add App Settings Save Commit Failure Coverage
+## 4. Add App Settings Save Commit Failure Coverage
 
 Acceptance:
 - Add focused core coverage for an app settings save failure when the final
@@ -53,3 +43,13 @@ Acceptance:
 - Verify the occupied settings path remains unchanged and the error is
   human-readable.
 - Preserve the existing successful settings save/load and reset tests.
+
+## 5. Add CI Artifact Package Contents Gate
+
+Acceptance:
+- Add a CI-side check that the staged Windows MSVC and Linux JUCE app artifacts
+  contain only the expected executable, `LICENSE`, `README.md`,
+  `docs/DEPENDENCIES.md`, `ARTIFACT.txt`, and `SHA256SUMS.txt`.
+- Fail the workflow if dependency caches, build intermediates, test scratch
+  data, plugins, presets, samples, or proprietary assets are staged.
+- Preserve the current 7-day artifact retention and checksum verification flow.
