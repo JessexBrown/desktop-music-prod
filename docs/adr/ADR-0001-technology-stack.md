@@ -40,6 +40,11 @@ On Windows, the developer desktop-app preset currently targets the Visual Studio
 2026 generator with MSVC and x64. The core-only and Win32 fallback presets remain
 available for dependency-light local verification when JUCE is not being built.
 
+CMake enables both `C` and `CXX` project languages. Rabbington Studio source
+remains C++20, but JUCE's Linux app configure/generate path can introduce C
+build rules through generated helper targets and platform checks; enabling C at
+the top level keeps the Linux JUCE app preset generator-correct.
+
 Do not add Tracktion Engine in the first implementation. Tracktion Engine remains
 a candidate for a later prototype milestone, but it is not needed to prove the
 first app shell/audio/project round trip. Deferring it keeps the dependency set
