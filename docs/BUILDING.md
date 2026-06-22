@@ -157,6 +157,57 @@ Visual Studio/CMake build intermediates, test scratch directories, plugins,
 presets, samples, and proprietary assets. These CI artifacts are unsigned
 debug/smoke packages, not release installers.
 
+### Downloading CI App Artifacts
+
+For a successful `CI` workflow run, open the repository's GitHub Actions page,
+choose the completed run, and use the `Artifacts` section on the run summary.
+The app artifacts are only present after the matching app job has passed:
+
+- Windows: `rabbington-studio-windows-msvc-app-<commit-sha>`
+- Linux: `rabbington-studio-linux-juce-app-<commit-sha>`
+
+GitHub keeps these CI artifacts for 7 days. The `<commit-sha>` suffix is the
+full commit SHA for that workflow run. macOS does not have a CI app artifact
+yet; build it locally with the `dev-host` preset until macOS CI/package policy
+is added.
+
+With GitHub CLI, find a successful run and download one or both app artifacts:
+
+```powershell
+gh run list --repo JessexBrown/desktop-music-prod --workflow CI --branch main --limit 5
+
+$runId = '<run-id>'
+$commitSha = '<commit-sha>'
+$artifactRoot = Join-Path $env:TEMP 'rabbington-studio-artifacts'
+
+gh run download $runId --repo JessexBrown/desktop-music-prod `
+    --name "rabbington-studio-windows-msvc-app-$commitSha" `
+    --dir (Join-Path $artifactRoot 'windows')
+
+gh run download $runId --repo JessexBrown/desktop-music-prod `
+    --name "rabbington-studio-linux-juce-app-$commitSha" `
+    --dir (Join-Path $artifactRoot 'linux')
+```
+
+After extraction, the Windows artifact starts from its artifact root with:
+
+```powershell
+Start-Process ".\Rabbington Studio.exe"
+```
+
+The Linux artifact starts from its artifact root with:
+
+```bash
+chmod +x "./Rabbington Studio"
+"./Rabbington Studio"
+```
+
+These downloaded artifacts are unsigned debug/smoke builds. They are useful for
+manual inspection of the current app shell after CI has passed, but they do not
+install Rabbington Studio, configure system audio dependencies, create desktop
+shortcuts, sign/notarize binaries, or bundle proprietary plugins, presets,
+samples, commercial sounds, or proprietary assets.
+
 After downloading and extracting a CI app artifact, verify it from the extracted
 artifact root. On Windows PowerShell:
 
