@@ -208,6 +208,22 @@ void setButtonEnabledFromCommand(juce::Button& button,
         || status == projectname::ProjectPackageSaveAsCopyStatus::noCopyNeeded;
 }
 
+[[nodiscard]] juce::String formatSaveAsManifestFailureStatus(
+    const std::string& error,
+    const projectname::BackgroundSaveAsPackageCopyResult& result)
+{
+    auto status = "Save As failed: " + juce::String(error);
+
+    if (result.copy.status == projectname::ProjectPackageSaveAsCopyStatus::completed
+        && result.copy.copiedFileCount > 0)
+    {
+        status += ". Copied assets were kept in the selected target package for retry or manual cleanup; "
+                  "active project stayed on the source package.";
+    }
+
+    return status;
+}
+
 [[nodiscard]] std::string projectNameFromPackagePath(const std::filesystem::path& packageDirectory)
 {
     auto name = packageDirectory.stem().string();
@@ -1691,6 +1707,12 @@ bool MainComponent::runProjectChooserSmokeTest(const std::filesystem::path& scra
 
     if (saveAsStatus != projectname::ProjectPackageSaveAsCopyStatus::completed)
         return fail("Save As manifest-failure smoke did not complete asset copy before manifest save.");
+
+    if (!statusText_.contains("Copied assets were kept in the selected target package")
+        || !statusText_.contains("active project stayed on the source package"))
+    {
+        return fail("Save As manifest-failure smoke did not surface the kept-target recovery status copy.");
+    }
 
     if (!packagePathsMatch(getCurrentProjectPackagePath(), packageBeforeFailedSaveAs))
         return fail("Save As manifest-failure smoke changed the active project package.");
@@ -3666,7 +3688,7 @@ void MainComponent::applyCompletedSaveAsPackageCopy(
     else
     {
         requestPackageMediaMaintenanceRefresh();
-        setStatus("Save As failed: " + juce::String(error));
+        setStatus(formatSaveAsManifestFailureStatus(error, result));
         refreshAppCommandEnabledState();
     }
 }

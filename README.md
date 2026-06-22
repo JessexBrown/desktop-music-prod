@@ -210,7 +210,8 @@ Third-party dependencies remain under their own licenses as recorded in
   target manifest is saved, preserve explicit external references, and start
   target-package backups fresh. If the final manifest commit fails after a
   completed copy, the active project stays on the source package and copied
-  target assets are left in the chosen package for recovery or manual cleanup.
+  target assets are left in the chosen package for recovery or manual cleanup;
+  the app status makes that recovery boundary visible.
 - Save As package asset copying runs on a cancellable background job with
   phase, file-count, and byte-count progress, plus a guarded top-bar Cancel
   Save affordance.
@@ -600,6 +601,12 @@ for a launch smoke check or use `ctest --preset dev --output-on-failure`.
 - `docs/adr/ADR-0098-package-maintenance-restore-detail-actions.md` records
   non-mutating restore review detail actions for conflict and partial-failure
   entries.
+- `docs/adr/ADR-0099-cmake-presets-spdx-metadata.md` records the CMake presets
+  SPDX metadata decision.
+- `docs/adr/ADR-0100-app-settings-corruption-smoke-hook.md` records the hidden
+  app settings corruption recovery smoke hook.
+- `docs/adr/ADR-0101-save-as-failed-target-cleanup-policy.md` records the
+  post-copy Save As manifest-failure cleanup/recovery policy.
 - `docs/AUDIO_MIDI_SETUP_UX.md` documents the first-run device setup UX states.
 - `docs/CI_ACTION_PIN_REVIEW.md` documents the scheduled review checklist for
   GitHub-maintained CI action major pins.

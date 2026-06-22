@@ -2,17 +2,7 @@
 
 # Next Issues
 
-## 1. Add Save As Failed Target Cleanup Policy
-
-Acceptance:
-- Decide whether post-copy Save As manifest failures should keep, quarantine, or
-  offer deletion for copied target assets.
-- Record the cleanup/recovery policy in an ADR and user-facing status copy.
-- Add focused smoke or core coverage for the chosen cleanup/recovery path.
-- Preserve the current guarantee that the active project package is not switched
-  when the final Save As manifest write fails.
-
-## 2. Add Project Manifest Commit Failure Core Coverage
+## 1. Add Project Manifest Commit Failure Core Coverage
 
 Acceptance:
 - Add a core save-package test that forces the staged `manifest.json.tmp` commit
@@ -22,7 +12,7 @@ Acceptance:
   human-readable.
 - Preserve the existing successful save, backup, and load round-trip tests.
 
-## 3. Add Unsupported App Settings Version Smoke Coverage
+## 2. Add Unsupported App Settings Version Smoke Coverage
 
 Acceptance:
 - Seed the hidden app settings corruption smoke path with a future
@@ -32,7 +22,7 @@ Acceptance:
 - Preserve the existing malformed settings recovery smoke behavior.
 - Keep all settings recovery work outside the real-time audio path.
 
-## 4. Add CI Artifact Checksums
+## 3. Add CI Artifact Checksums
 
 Acceptance:
 - Generate a SHA-256 checksum file for each uploaded app artifact.
@@ -42,7 +32,7 @@ Acceptance:
   build intermediates, test scratch data, plugins, presets, samples, and
   proprietary assets.
 
-## 5. Add CI Artifact Download Instructions
+## 4. Add CI Artifact Download Instructions
 
 Acceptance:
 - Document where to find the Windows MSVC and Linux JUCE app artifacts for a
@@ -52,3 +42,13 @@ Acceptance:
 - Keep the docs clear that CI artifacts are not release installers.
 - Preserve the existing no-proprietary-plugins, no-presets, no-samples, and
   no-proprietary-assets claims.
+
+## 5. Add Save As Failed Target Reveal Action
+
+Acceptance:
+- After a post-copy Save As manifest failure, expose a non-destructive way to
+  reveal or copy the kept target package path.
+- Preserve the policy that copied target assets are not automatically deleted or
+  quarantined.
+- Add focused app smoke coverage for the reveal/copy action and status copy.
+- Keep all target package file operations off the real-time audio path.

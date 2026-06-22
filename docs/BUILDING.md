@@ -293,9 +293,11 @@ Save As copies package-local `audio/`, `analysis/`, `samples/`, and `presets/`
 on a cancellable background job before writing the target manifest, while
 source-package `backups/` are not cloned. If the final manifest write fails
 after copying, the active package remains unchanged and the copied target assets
-remain in the chosen package for recovery or manual cleanup. Import Audio uses a
-native WAV file chooser and a background import job with frame-level decode
-progress, byte-level staged-copy progress, and cancel state.
+remain in the chosen package for recovery or manual cleanup. The project chooser
+smoke test also verifies the visible status copy for that kept-target recovery
+boundary. Import Audio uses a native WAV file chooser and a background import
+job with frame-level decode progress, byte-level staged-copy progress, and
+cancel state.
 The right inspector's selected-clip Relink button uses a native WAV chooser and
 a cancellable background job for staged relink preparation before committing
 current-selection results on the UI thread.

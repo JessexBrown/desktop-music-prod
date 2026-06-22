@@ -33,7 +33,8 @@ native `FileChooser` callbacks. The sequence covers:
   and manifest unchanged;
 - Save As final-manifest failure after a completed package-asset copy, leaving
   the active package and manifest unchanged while copied target assets remain
-  recoverable in the selected package;
+  recoverable in the selected package and status copy explains that the target
+  assets were kept for retry or manual cleanup;
 - Save As package-asset-copy completion for package-local audio and analysis
   files.
 
