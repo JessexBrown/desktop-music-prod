@@ -115,7 +115,9 @@ GitHub Actions currently runs two jobs on pushes and pull requests:
   SPDX check, and the core unit tests.
 - `Linux Core` configures, builds, and tests the `core-dev` preset on
   `ubuntu-latest` for second-host coverage before Linux app packaging work is
-  ready.
+  ready. Linux JUCE app CI prerequisites are documented in
+  `docs/LINUX_JUCE_APP_PREREQUISITES.md`; do not add package installation to CI
+  until that future job is implemented as a separate task.
 
 Both jobs set `FETCHCONTENT_BASE_DIR` to a job-specific directory under
 `.cache/fetchcontent` and cache that directory with `actions/cache`. This
@@ -167,8 +169,10 @@ Signing/notarization are release tasks, not part of the local prototype build.
 
 Install CMake, GCC or Clang, and the native development packages required by
 JUCE for Linux desktop/audio builds, then use `dev-host` for the JUCE desktop app
-build. ALSA/JACK/PipeWire policy and plugin scan paths will be documented when
-device and plugin milestones expand.
+build. See `docs/LINUX_JUCE_APP_PREREQUISITES.md` for the current Ubuntu package
+baseline to use before enabling a Linux JUCE app CI job. ALSA/JACK/PipeWire
+policy and plugin scan paths will be documented when device and plugin
+milestones expand.
 
 ## Current Local Verification Note
 

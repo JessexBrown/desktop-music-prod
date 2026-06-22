@@ -2,16 +2,7 @@
 
 # Next Issues
 
-## 1. Add Linux JUCE App CI Prerequisite Note
-
-Acceptance:
-- Document the Linux desktop/audio system packages expected before enabling a
-  Linux JUCE app CI job.
-- Keep the current `Linux Core` workflow job unchanged.
-- Link the note from `docs/BUILDING.md`.
-- Do not add or install packages in CI yet.
-
-## 2. Add Restore Manifest Reveal App Wiring
+## 1. Add Restore Manifest Reveal App Wiring
 
 Acceptance:
 - Wire the restore detail model's manifest-path action to a platform-aware
@@ -21,7 +12,7 @@ Acceptance:
 - Cover the focused-row action mapping with a small app or core test.
 - Do not re-run restore or touch package media from the reveal/copy path.
 
-## 3. Resolve CMake Presets SPDX Exception
+## 2. Resolve CMake Presets SPDX Exception
 
 Acceptance:
 - Decide whether `CMakePresets.json` should keep a reviewed SPDX exception or
@@ -31,7 +22,7 @@ Acceptance:
 - Update `docs/SOURCE_HEADER_POLICY.md` if JSON configuration files need a
   documented exception rule.
 
-## 4. Add Save As Failure App Smoke Coverage
+## 3. Add Save As Failure App Smoke Coverage
 
 Acceptance:
 - Extend hidden project chooser smoke coverage to a deterministic Save As
@@ -43,7 +34,7 @@ Acceptance:
 - Preserve the existing successful, cancelled, duplicate New, and failed Open
   chooser smoke coverage.
 
-## 5. Add App Settings Corruption Recovery Smoke Coverage
+## 4. Add App Settings Corruption Recovery Smoke Coverage
 
 Acceptance:
 - Add a hidden app smoke hook that points `MainComponent` at an isolated
@@ -54,3 +45,14 @@ Acceptance:
   settings file at the isolated path.
 - Preserve the existing launch, project chooser, and Audio/MIDI reset smoke
   tests.
+
+## 5. Add Linux JUCE App CI Job
+
+Acceptance:
+- Add a separate `Linux JUCE App` workflow job that installs the package baseline
+  from `docs/LINUX_JUCE_APP_PREREQUISITES.md`.
+- Keep the existing `Linux Core` job unchanged.
+- Configure and build `dev-host`, then run `ctest --preset dev-host
+  --output-on-failure` under `xvfb-run -a`.
+- Use a Linux-app-specific FetchContent cache directory and key so it does not
+  collide with Windows MSVC or Linux core caches.

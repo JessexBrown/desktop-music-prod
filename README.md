@@ -325,7 +325,10 @@ The Windows `dev` preset uses Visual Studio 2026, MSVC, and x64. Both
 desktop-app presets fetch JUCE 8.0.13 and nlohmann/json 3.12.0 from their
 official GitHub repositories. Their test suites include the app launch,
 project-chooser, and Audio/MIDI reset smoke tests plus the core unit tests. See
-`docs/BUILDING.md` for platform notes and the local-JUCE option.
+`docs/BUILDING.md` for platform notes and the local-JUCE option. Linux JUCE app
+CI prerequisites are tracked separately in
+`docs/LINUX_JUCE_APP_PREREQUISITES.md`; the current GitHub Actions Linux job
+still runs only the dependency-light `core-dev` preset.
 
 To run only the domain tests without building the JUCE desktop app:
 
@@ -378,6 +381,8 @@ or use `ctest --preset dev --output-on-failure`.
 - `docs/SPDX_EXCEPTIONS.txt` records the current SPDX enforcement baseline.
 - `docs/DEPENDENCIES.md` tracks dependency/license decisions.
 - `docs/BUILDING.md` explains setup and verification.
+- `docs/LINUX_JUCE_APP_PREREQUISITES.md` records the Linux desktop/audio system
+  packages expected before adding Linux JUCE app CI.
 - `docs/adr/ADR-0001-technology-stack.md` records the initial stack decision.
 - `docs/adr/ADR-0003-win32-fallback-verification-app.md` scopes the fallback
   launcher.

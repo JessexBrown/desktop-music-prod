@@ -45,6 +45,12 @@ Update the SPDX checker to ignore local/generated roots such as `.cache/`,
 `out/`, and `build/`. Restored third-party dependency sources should not be
 treated as first-party files for license-header enforcement.
 
+On June 22, 2026, document Linux JUCE app CI prerequisites in
+`docs/LINUX_JUCE_APP_PREREQUISITES.md` without changing the workflow. The note
+uses JUCE 8.0.13's Linux dependency guidance, adjusted for Rabbington Studio's
+current `JUCE_WEB_BROWSER=0`, `JUCE_USE_CURL=0`, no-plugin-host, and no-OpenGL
+app target. Linux desktop app CI remains a separate future job.
+
 ## Consequences
 
 - Windows CI continues to verify the desktop app launch smoke test.
@@ -55,12 +61,12 @@ treated as first-party files for license-header enforcement.
 - CI uses GitHub-maintained Node 24 action runtimes for checkout and caching.
 - SPDX enforcement remains focused on first-party files even when CI restores a
   dependency cache into the workspace.
-- Linux JUCE app CI remains a future task once its system package requirements
-  are documented.
+- Linux JUCE app CI remains a future task, but the expected Ubuntu desktop/audio
+  package baseline is now documented before that job is added.
 
 ## Follow-Ups
 
 - Add a README CI status badge after the public branch protection/check naming
   settles.
-- Add Linux JUCE app CI after documenting required desktop/audio development
-  packages.
+- Add Linux JUCE app CI as a separate job using the documented prerequisite
+  package baseline.
