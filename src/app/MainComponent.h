@@ -160,6 +160,8 @@ public:
     void resized() override;
     [[nodiscard]] bool runProjectChooserSmokeTest(const std::filesystem::path& scratchRoot,
                                                   std::string& error);
+    [[nodiscard]] bool runAudioMidiResetSmokeTest(const std::filesystem::path& scratchRoot,
+                                                  std::string& error);
 
 private:
     void buttonClicked(juce::Button* button) override;
@@ -261,6 +263,7 @@ private:
     [[nodiscard]] projectname::AppCommandResult resetAudioSetupPreferences();
     void dismissAudioSetupPrompt();
     void loadApplicationSettings();
+    void loadApplicationSettingsFromPath(std::filesystem::path settingsPath);
     [[nodiscard]] bool persistApplicationSettings(juce::String failureStatus);
     void persistAudioSetupPreferencesIfChanged(const projectname::AudioDeviceSummary& summary);
     void setStatus(juce::String status);

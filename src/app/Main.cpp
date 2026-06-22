@@ -36,6 +36,7 @@ public:
     {
         smokeTestMode_ = commandLine.contains("--smoke-test");
         projectChooserSmokeTestMode_ = commandLine.contains("--smoke-project-choosers");
+        audioMidiResetSmokeTestMode_ = commandLine.contains("--smoke-audio-midi-reset");
         mainWindow_ = std::make_unique<MainWindow>(getApplicationName());
 
         if (projectChooserSmokeTestMode_)
@@ -44,6 +45,14 @@ public:
                                         [this]
                                         {
                                             runProjectChooserSmokeTestAndQuit();
+                                        });
+        }
+        else if (audioMidiResetSmokeTestMode_)
+        {
+            juce::Timer::callAfterDelay(500,
+                                        [this]
+                                        {
+                                            runAudioMidiResetSmokeTestAndQuit();
                                         });
         }
         else if (smokeTestMode_)
@@ -101,6 +110,36 @@ private:
         systemRequestedQuit();
     }
 
+    void runAudioMidiResetSmokeTestAndQuit()
+    {
+        std::string error;
+        std::error_code filesystemError;
+        const auto tempDirectory = std::filesystem::temp_directory_path(filesystemError);
+        auto passed = false;
+
+        if (filesystemError)
+        {
+            error = "Could not locate a temporary directory: " + filesystemError.message();
+        }
+        else
+        {
+            const auto scratchRoot =
+                tempDirectory
+                / ("rabbington-studio-audio-midi-reset-smoke-"
+                   + std::to_string(juce::Time::currentTimeMillis()));
+            passed = mainWindow_ != nullptr
+                && mainWindow_->getMainComponent().runAudioMidiResetSmokeTest(scratchRoot, error);
+        }
+
+        if (!passed)
+        {
+            std::cerr << "Audio/MIDI reset smoke failed: " << error << '\n';
+            setApplicationReturnValue(1);
+        }
+
+        systemRequestedQuit();
+    }
+
     class MainWindow final : public juce::DocumentWindow
     {
     public:
@@ -134,6 +173,7 @@ private:
     std::unique_ptr<MainWindow> mainWindow_;
     bool smokeTestMode_ = false;
     bool projectChooserSmokeTestMode_ = false;
+    bool audioMidiResetSmokeTestMode_ = false;
 };
 
 START_JUCE_APPLICATION(RabbingtonStudioApplication)

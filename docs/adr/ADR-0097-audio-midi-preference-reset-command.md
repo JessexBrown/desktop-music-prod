@@ -25,6 +25,13 @@ preference auto-persistence now waits until the setup prompt has been dismissed
 or the Audio/MIDI setup dialog has been opened, so a reset is not immediately
 repopulated by the current device summary.
 
+Register a hidden JUCE app smoke mode, `--smoke-audio-midi-reset`, with CTest.
+The smoke test seeds an isolated temporary app settings file, dispatches the
+same reset command used by the Device Panel action, reloads the settings file,
+and verifies first-run dismissal and preferred output intent are cleared while
+the active project package path remains unchanged. The smoke hook is not exposed
+through normal UI.
+
 ## Consequences
 
 - Users can recover from stale Audio/MIDI restore preferences without removing
@@ -33,3 +40,5 @@ repopulated by the current device summary.
   callback thread.
 - Current audio playback can continue using the already-open device until the
   user changes setup or restarts.
+- CI can catch regressions where reset accidentally repopulates settings,
+  mutates project package state, or writes to the user's real settings path.

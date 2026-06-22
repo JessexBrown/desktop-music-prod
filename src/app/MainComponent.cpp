@@ -1609,6 +1609,92 @@ bool MainComponent::runProjectChooserSmokeTest(const std::filesystem::path& scra
     return true;
 }
 
+bool MainComponent::runAudioMidiResetSmokeTest(const std::filesystem::path& scratchRoot,
+                                               std::string& error)
+{
+    error.clear();
+
+    auto fail = [&error](std::string message)
+    {
+        error = std::move(message);
+        return false;
+    };
+
+    if (scratchRoot.empty())
+        return fail("Audio/MIDI reset smoke requires a scratch directory.");
+
+    std::error_code filesystemError;
+    std::filesystem::remove_all(scratchRoot, filesystemError);
+    if (filesystemError)
+        return fail("Could not reset Audio/MIDI reset smoke scratch directory: "
+                    + filesystemError.message());
+
+    std::filesystem::create_directories(scratchRoot, filesystemError);
+    if (filesystemError)
+        return fail("Could not create Audio/MIDI reset smoke scratch directory: "
+                    + filesystemError.message());
+
+    const auto previousPackage = getCurrentProjectPackagePath();
+    const auto isolatedSettingsPath =
+        scratchRoot / "Rabbington Studio" / projectname::appSettingsFileName;
+
+    projectname::AppSettings seededSettings;
+    seededSettings.audioSetup.firstRunPromptDismissed = true;
+    seededSettings.audioSetup.preferredOutput.hasOutputDevice = true;
+    seededSettings.audioSetup.preferredOutput.deviceType = "Smoke Device Type";
+    seededSettings.audioSetup.preferredOutput.deviceName = "Smoke Output";
+    seededSettings.audioSetup.preferredOutput.sampleRateHz = 48000.0;
+    seededSettings.audioSetup.preferredOutput.bufferSizeSamples = 256;
+    seededSettings.audioSetup.preferredOutput.outputChannelCount = 2;
+    seededSettings.audioSetup.preferredOutput.juceDeviceStateXml =
+        "<DEVICESETUP deviceType=\"Smoke Device Type\" audioOutputDeviceName=\"Smoke Output\"/>";
+
+    std::string settingsError;
+    if (!projectname::saveAppSettings(seededSettings, isolatedSettingsPath, settingsError))
+        return fail("Could not seed isolated Audio/MIDI settings: " + settingsError);
+
+    loadApplicationSettingsFromPath(isolatedSettingsPath);
+
+    if (!audioSetupPromptDismissed_)
+        return fail("Seeded Audio/MIDI settings did not restore first-run dismissal.");
+
+    if (!(appSettings_.audioSetup.preferredOutput == seededSettings.audioSetup.preferredOutput))
+        return fail("Seeded Audio/MIDI settings did not restore preferred output intent.");
+
+    const auto result = dispatchAppCommand(projectname::AppCommandIds::audioSettingsReset);
+    if (result.status != projectname::AppCommandResultStatus::handledWithStatus)
+        return fail("Audio/MIDI reset command did not report a handled status.");
+
+    if (!packagePathsMatch(getCurrentProjectPackagePath(), previousPackage))
+        return fail("Audio/MIDI reset command changed the active project package.");
+
+    if (hasProjectChooserOpen())
+        return fail("Audio/MIDI reset command opened a native project chooser during smoke.");
+
+    const auto emptyAudioSetup = projectname::AudioSetupSettings {};
+    if (!(appSettings_.audioSetup == emptyAudioSetup))
+        return fail("Audio/MIDI reset command did not clear in-memory setup preferences.");
+
+    auto reloadedSettings = projectname::loadAppSettings(isolatedSettingsPath, settingsError);
+    if (!reloadedSettings)
+        return fail(settingsError.empty()
+                        ? "Audio/MIDI reset command did not write isolated settings."
+                        : "Could not reload isolated Audio/MIDI settings: " + settingsError);
+
+    if (!(reloadedSettings->audioSetup == emptyAudioSetup))
+        return fail("Audio/MIDI reset command did not clear persisted setup preferences.");
+
+    if (saveAsPackageCopyJob_ != nullptr)
+        return fail("Audio/MIDI reset command left a Save As package copy job running.");
+
+    std::filesystem::remove_all(scratchRoot, filesystemError);
+    if (filesystemError)
+        return fail("Audio/MIDI reset smoke passed but could not clean up scratch directory: "
+                    + filesystemError.message());
+
+    return true;
+}
+
 void MainComponent::paint(juce::Graphics& graphics)
 {
     graphics.fillAll(background);
@@ -4321,8 +4407,13 @@ void MainComponent::dismissAudioSetupPrompt()
 
 void MainComponent::loadApplicationSettings()
 {
-    appSettingsPath_ = getDefaultApplicationSettingsPath();
+    loadApplicationSettingsFromPath(getDefaultApplicationSettingsPath());
+}
 
+void MainComponent::loadApplicationSettingsFromPath(std::filesystem::path settingsPath)
+{
+    appSettingsPath_ = std::move(settingsPath);
+    appSettings_ = {};
     std::string error;
     if (auto loadedSettings = projectname::loadAppSettings(appSettingsPath_, error))
         appSettings_ = *loadedSettings;

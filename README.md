@@ -281,6 +281,9 @@ Third-party dependencies remain under their own licenses as recorded in
   deterministic New/Open/Save As coverage, including cancelled selections,
   duplicate New targets, failed Open attempts, Save As no-copy, and
   package-asset-copy paths.
+- JUCE app `--smoke-audio-midi-reset` mode registered with CTest for hidden,
+  deterministic Audio/MIDI preference reset coverage against an isolated
+  temporary settings file.
 
 ## What Does Not Exist Yet
 
@@ -320,9 +323,9 @@ ctest --preset dev-host --output-on-failure
 
 The Windows `dev` preset uses Visual Studio 2026, MSVC, and x64. Both
 desktop-app presets fetch JUCE 8.0.13 and nlohmann/json 3.12.0 from their
-official GitHub repositories. Their test suites include the app launch smoke test
-and the core unit tests. See `docs/BUILDING.md` for platform notes and the
-local-JUCE option.
+official GitHub repositories. Their test suites include the app launch,
+project-chooser, and Audio/MIDI reset smoke tests plus the core unit tests. See
+`docs/BUILDING.md` for platform notes and the local-JUCE option.
 
 To run only the domain tests without building the JUCE desktop app:
 
@@ -332,10 +335,10 @@ cmake --build --preset core-dev
 ctest --preset core-dev --output-on-failure
 ```
 
-GitHub Actions runs the Windows MSVC desktop app build and
-`projectname_app_smoke`, plus a Linux `core-dev` build/test job for second-host
-coverage. CI caches CMake FetchContent downloads for JUCE and nlohmann/json
-outside the build tree; generated build outputs remain untracked.
+GitHub Actions runs the Windows MSVC desktop app build, including the JUCE app
+smoke tests, plus a Linux `core-dev` build/test job for second-host coverage. CI
+caches CMake FetchContent downloads for JUCE and nlohmann/json outside the build
+tree; generated build outputs remain untracked.
 
 On Windows machines with MinGW but without a JUCE-supported compiler, the
 fallback launcher can be verified with the non-JUCE fallback preset:
@@ -353,9 +356,11 @@ ctest --preset win32-fallback --output-on-failure
 ## Run
 
 After building, launch the `projectname` app target from the generated build
-directory or your IDE. Press Play to hear the generated test tone or the first
-relevant imported PCM16 WAV timeline clip, use Save/Open for the first project
-package round trip, and use Audio/MIDI to open the device setup dialog.
+directory or your IDE. On Windows with the `dev` preset, the executable is
+`out/build/dev-vs2026/projectname_artefacts/Debug/Rabbington Studio.exe`. Press
+Play to hear the generated test tone or the first relevant imported PCM16 WAV
+timeline clip, use Save/Open for the first project package round trip, and use
+Audio/MIDI to open the device setup dialog.
 
 For automation on supported desktop toolchains, run `projectname --smoke-test`
 or use `ctest --preset dev --output-on-failure`.
