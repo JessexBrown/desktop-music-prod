@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
+
 # Codex Starting Prompt
 
 Paste this after invoking your `/goal` workflow, or use it as the first Codex task in a clean repository.

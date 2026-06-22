@@ -4,8 +4,4 @@
 # New files should include SPDX-License-Identifier: AGPL-3.0-or-later instead
 # of growing this list unless there is a specific reviewed reason.
 
-AGENTS.md
 CMakePresets.json
-CODEX_STARTING_PROMPT.md
-GOAL.md
-README.md

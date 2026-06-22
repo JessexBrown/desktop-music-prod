@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
+
 # Rabbington Studio
 
 Rabbington Studio is a free/open-source native desktop music production app. The
