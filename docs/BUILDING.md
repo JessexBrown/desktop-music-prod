@@ -104,8 +104,9 @@ ctest --preset dev --output-on-failure
   smoke test for clearing first-run Audio/MIDI dismissal and preferred output
   intent from an isolated temporary settings file.
 - `projectname_app_settings_corruption_smoke` runs the hidden JUCE app
-  settings-recovery smoke test for malformed isolated `settings.json` fallback
-  warning, valid rewrite, and unchanged active project package.
+  settings-recovery smoke test for malformed and unsupported-version isolated
+  `settings.json` fallback warning, valid rewrite, and unchanged active project
+  package.
 - `projectname_restore_detail_smoke` runs the hidden JUCE app Package
   Maintenance review-row smoke test for conflict/partial-failure restore
   manifests, Command/Ctrl+C package-relative path copy, and restore-manifest
@@ -288,7 +289,7 @@ settings file is malformed or unsupported, the app falls back to defaults,
 surfaces the ignored-settings warning in the Device Panel, and clears that
 warning after a successful settings rewrite. The hidden app reset and
 corruption-recovery smoke tests verify that behavior against temporary settings
-files.
+files, including malformed JSON and unsupported future settings versions.
 Save As copies package-local `audio/`, `analysis/`, `samples/`, and `presets/`
 on a cancellable background job before writing the target manifest, while
 source-package `backups/` are not cloned. If the final manifest write fails

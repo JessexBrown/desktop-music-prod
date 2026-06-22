@@ -1895,71 +1895,133 @@ bool MainComponent::runAppSettingsCorruptionSmokeTest(const std::filesystem::pat
     const auto isolatedSettingsPath =
         scratchRoot / "Rabbington Studio" / projectname::appSettingsFileName;
 
-    if (!writeSmokeFile(isolatedSettingsPath, "{ malformed app settings", error))
-        return false;
-
-    loadApplicationSettingsFromPath(isolatedSettingsPath);
-
-    if (appSettingsLoadError_.isEmpty())
-        return fail("Malformed app settings did not record a load warning.");
-
-    if (!appSettingsLoadError_.contains("Could not parse app settings file"))
-        return fail("Malformed app settings warning did not include the parse failure.");
-
-    refreshDevicePanel(true);
-    const auto expectedSettingsWarningPrefix = juce::String("Settings ignored: ") + appSettingsLoadError_;
-    if (!statusText_.isEmpty() && statusText_.contains("Settings ignored"))
-        return fail("Malformed app settings warning leaked into status text before user action.");
-
-    if (audioSetupPromptDismissed_)
-        return fail("Malformed app settings did not restore default first-run prompt state.");
-
-    if (!(appSettings_ == projectname::AppSettings {}))
-        return fail("Malformed app settings did not fall back to default settings.");
-
-    if (!packagePathsMatch(getCurrentProjectPackagePath(), previousPackage))
-        return fail("Malformed app settings changed the active project package.");
-
-    if (hasProjectChooserOpen())
-        return fail("Malformed app settings opened a native project chooser during smoke.");
-
-    const auto result = dispatchAppCommand(projectname::AppCommandIds::audioSettingsReset);
-    if (result.status != projectname::AppCommandResultStatus::handledWithStatus)
-        return fail("App settings corruption smoke reset command did not report a handled status.");
-
-    if (!appSettingsLoadError_.isEmpty())
-        return fail("App settings corruption smoke reset did not clear the load warning.");
-
-    refreshDevicePanel(true);
-    if (statusText_.contains(expectedSettingsWarningPrefix))
-        return fail("App settings corruption smoke left the settings warning visible after reset.");
-
-    if (!packagePathsMatch(getCurrentProjectPackagePath(), previousPackage))
-        return fail("App settings corruption reset changed the active project package.");
-
-    std::string settingsError;
-    auto reloadedSettings = projectname::loadAppSettings(isolatedSettingsPath, settingsError);
-    if (!reloadedSettings)
-        return fail(settingsError.empty()
-                        ? "App settings corruption smoke did not write isolated settings."
-                        : "Could not reload recovered app settings: " + settingsError);
-
-    if (!(*reloadedSettings == projectname::AppSettings {}))
-        return fail("Recovered app settings file did not contain default settings.");
-
-    std::string recoveredText;
-    if (!readSmokeFile(isolatedSettingsPath, recoveredText, error))
-        return false;
-
-    if (recoveredText.find('\n') == std::string::npos
-        || recoveredText.find("  \"audioSetup\"") == std::string::npos
-        || recoveredText.find("\"settingsVersion\": 1") == std::string::npos)
+    auto hasSettingsWarningLine = [this]()
     {
-        return fail("Recovered app settings file is not human-readable JSON.");
+        const auto summary = audioService_.getDeviceSummary();
+
+        projectname::AudioSetupStatusRequest request;
+        request.firstRunPromptDismissed = audioSetupPromptDismissed_;
+        request.outputDeviceOpen = summary.isOpen;
+        request.outputChannelCount = summary.outputChannels;
+        request.sampleRateHz = summary.sampleRate;
+        request.bufferSizeSamples = summary.bufferSizeSamples;
+        request.outputDeviceName = summary.name.toStdString();
+        request.initializationError = audioSetupInitializationError_.toStdString();
+        request.settingsLoadError = appSettingsLoadError_.toStdString();
+
+        const auto model = projectname::buildAudioSetupStatusViewModel(request);
+        return std::any_of(model.lines.begin(),
+                           model.lines.end(),
+                           [](const std::string& line)
+                           {
+                               return line.find("Settings ignored: ") != std::string::npos;
+                           });
+    };
+
+    auto verifyIgnoredSettingsFixture =
+        [&](std::string_view label,
+            std::string_view contents,
+            std::string_view expectedWarningFragment) -> bool
+        {
+            if (!writeSmokeFile(isolatedSettingsPath, contents, error))
+                return false;
+
+            loadApplicationSettingsFromPath(isolatedSettingsPath);
+
+            if (appSettingsLoadError_.isEmpty())
+                return fail(std::string(label) + " did not record a load warning.");
+
+            if (!appSettingsLoadError_.contains(juce::String(std::string(expectedWarningFragment))))
+                return fail(std::string(label) + " warning did not include the expected failure.");
+
+            refreshDevicePanel(true);
+            if (!hasSettingsWarningLine())
+                return fail(std::string(label) + " did not surface a Device Panel ignored-settings warning.");
+
+            if (!statusText_.isEmpty() && statusText_.contains("Settings ignored"))
+                return fail(std::string(label) + " warning leaked into status text before user action.");
+
+            if (audioSetupPromptDismissed_)
+                return fail(std::string(label) + " did not restore default first-run prompt state.");
+
+            if (!(appSettings_ == projectname::AppSettings {}))
+                return fail(std::string(label) + " did not fall back to default settings.");
+
+            if (!packagePathsMatch(getCurrentProjectPackagePath(), previousPackage))
+                return fail(std::string(label) + " changed the active project package.");
+
+            if (hasProjectChooserOpen())
+                return fail(std::string(label) + " opened a native project chooser during smoke.");
+
+            const auto result = dispatchAppCommand(projectname::AppCommandIds::audioSettingsReset);
+            if (result.status != projectname::AppCommandResultStatus::handledWithStatus)
+                return fail(std::string(label) + " reset command did not report a handled status.");
+
+            if (!appSettingsLoadError_.isEmpty())
+                return fail(std::string(label) + " reset did not clear the load warning.");
+
+            refreshDevicePanel(true);
+            if (hasSettingsWarningLine())
+                return fail(std::string(label) + " left the Device Panel ignored-settings warning visible after reset.");
+
+            if (!packagePathsMatch(getCurrentProjectPackagePath(), previousPackage))
+                return fail(std::string(label) + " reset changed the active project package.");
+
+            std::string settingsError;
+            auto reloadedSettings = projectname::loadAppSettings(isolatedSettingsPath, settingsError);
+            if (!reloadedSettings)
+                return fail(settingsError.empty()
+                                ? std::string(label) + " did not write isolated settings."
+                                : std::string("Could not reload recovered app settings for ")
+                                    + std::string(label) + ": " + settingsError);
+
+            if (!(*reloadedSettings == projectname::AppSettings {}))
+                return fail(std::string(label) + " recovered file did not contain default settings.");
+
+            std::string recoveredText;
+            if (!readSmokeFile(isolatedSettingsPath, recoveredText, error))
+                return false;
+
+            if (recoveredText.find('\n') == std::string::npos
+                || recoveredText.find("  \"audioSetup\"") == std::string::npos
+                || recoveredText.find("\"settingsVersion\": 1") == std::string::npos)
+            {
+                return fail(std::string(label) + " recovered file is not human-readable JSON.");
+            }
+
+            if (saveAsPackageCopyJob_ != nullptr)
+                return fail(std::string(label) + " left a Save As package copy job running.");
+
+            return true;
+        };
+
+    if (!verifyIgnoredSettingsFixture("Malformed app settings",
+                                      "{ malformed app settings",
+                                      "Could not parse app settings file"))
+    {
+        return false;
     }
 
-    if (saveAsPackageCopyJob_ != nullptr)
-        return fail("App settings corruption smoke left a Save As package copy job running.");
+    if (!verifyIgnoredSettingsFixture("Unsupported app settings version",
+                                      R"({
+  "settingsVersion": 2,
+  "audioSetup": {
+    "firstRunPromptDismissed": true,
+    "preferredOutput": {
+      "hasOutputDevice": true,
+      "deviceType": "Unsupported Smoke Device",
+      "deviceName": "Ignored Output",
+      "sampleRateHz": 48000,
+      "bufferSizeSamples": 256,
+      "outputChannelCount": 2,
+      "juceDeviceStateXml": "<DEVICESETUP deviceType=\"Unsupported Smoke Device\"/>"
+    }
+  }
+})",
+                                      "Unsupported app settings version"))
+    {
+        return false;
+    }
 
     std::filesystem::remove_all(scratchRoot, filesystemError);
     if (filesystemError)

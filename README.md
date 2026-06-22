@@ -296,8 +296,8 @@ Third-party dependencies remain under their own licenses as recorded in
   deterministic Audio/MIDI preference reset coverage against an isolated
   temporary settings file.
 - JUCE app `--smoke-app-settings-corruption` mode registered with CTest for
-  hidden malformed settings fallback, Device Panel warning, and reset recovery
-  coverage.
+  hidden malformed and unsupported-version settings fallback, Device Panel
+  warning, and reset recovery coverage.
 - JUCE app `--smoke-restore-details` mode registered with CTest for hidden,
   deterministic Package Maintenance review-row copy/activation and status-copy
   coverage.

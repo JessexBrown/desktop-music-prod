@@ -24,13 +24,14 @@ Add a hidden JUCE app command-line mode,
 `--smoke-app-settings-corruption`, registered as
 `projectname_app_settings_corruption_smoke` in CTest.
 
-The smoke mode creates a temporary malformed `settings.json`, points
-`MainComponent` at that isolated file, verifies default in-memory app settings
-are restored without changing the active project package, and verifies the load
-error is retained in app state for the Device Panel warning. It then dispatches
-the existing Audio/MIDI reset command, verifies the warning is cleared after a
-successful settings rewrite, and reloads the same isolated path to verify valid,
-human-readable JSON was written.
+The smoke mode creates temporary malformed and unsupported-version
+`settings.json` fixtures, points `MainComponent` at each isolated file, verifies
+default in-memory app settings are restored without changing the active project
+package, and verifies the load error is retained in app state for the Device
+Panel warning. For each fixture it then dispatches the existing Audio/MIDI
+reset command, verifies the warning is cleared after a successful settings
+rewrite, and reloads the same isolated path to verify valid, human-readable JSON
+was written.
 
 The Device Panel view model owns the visible warning copy with a
 `Settings ignored:` line. Unit coverage verifies that warning line independently

@@ -2,17 +2,7 @@
 
 # Next Issues
 
-## 1. Add Unsupported App Settings Version Smoke Coverage
-
-Acceptance:
-- Seed the hidden app settings corruption smoke path with a future
-  `settingsVersion` fixture in addition to malformed JSON.
-- Verify the app falls back to defaults, surfaces the ignored-settings warning,
-  and clears it after reset.
-- Preserve the existing malformed settings recovery smoke behavior.
-- Keep all settings recovery work outside the real-time audio path.
-
-## 2. Add CI Artifact Checksums
+## 1. Add CI Artifact Checksums
 
 Acceptance:
 - Generate a SHA-256 checksum file for each uploaded app artifact.
@@ -22,7 +12,7 @@ Acceptance:
   build intermediates, test scratch data, plugins, presets, samples, and
   proprietary assets.
 
-## 3. Add CI Artifact Download Instructions
+## 2. Add CI Artifact Download Instructions
 
 Acceptance:
 - Document where to find the Windows MSVC and Linux JUCE app artifacts for a
@@ -33,7 +23,7 @@ Acceptance:
 - Preserve the existing no-proprietary-plugins, no-presets, no-samples, and
   no-proprietary-assets claims.
 
-## 4. Add Save As Failed Target Reveal Action
+## 3. Add Save As Failed Target Reveal Action
 
 Acceptance:
 - After a post-copy Save As manifest failure, expose a non-destructive way to
@@ -43,7 +33,7 @@ Acceptance:
 - Add focused app smoke coverage for the reveal/copy action and status copy.
 - Keep all target package file operations off the real-time audio path.
 
-## 5. Add Project Save Permission Failure Coverage
+## 4. Add Project Save Permission Failure Coverage
 
 Acceptance:
 - Add focused core coverage for a project save failure before manifest commit,
@@ -53,3 +43,13 @@ Acceptance:
 - Verify the existing manifest and previous-manifest backup behavior remain
   unchanged for successful saves.
 - Keep the fixture deterministic on Windows, macOS, and Linux.
+
+## 5. Add App Settings Save Commit Failure Coverage
+
+Acceptance:
+- Add focused core coverage for an app settings save failure when the final
+  `settings.json.tmp` commit cannot replace `settings.json`.
+- Verify the failed save removes `settings.json.tmp`.
+- Verify the occupied settings path remains unchanged and the error is
+  human-readable.
+- Preserve the existing successful settings save/load and reset tests.
