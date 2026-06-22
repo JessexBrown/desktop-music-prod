@@ -6974,6 +6974,21 @@ void audioSetupStatusModelsFirstRunReadyAndErrorStates()
     const auto recovered = projectname::buildAudioSetupStatusViewModel(request);
     expect(recovered.kind == projectname::AudioSetupStatusKind::ready,
            "Audio setup model treats a recovered open output as ready despite a stale init error");
+
+    request.initializationError.clear();
+    request.settingsLoadError = "Could not parse app settings file.";
+    const auto settingsWarning = projectname::buildAudioSetupStatusViewModel(request);
+    const auto warningLine = std::find_if(settingsWarning.lines.begin(),
+                                          settingsWarning.lines.end(),
+                                          [](const std::string& line)
+                                          {
+                                              return line.find("Settings ignored: Could not parse app settings file.")
+                                                  != std::string::npos;
+                                          });
+    expect(warningLine != settingsWarning.lines.end(),
+           "Audio setup model surfaces ignored app settings as visible Device Panel copy");
+    expect(settingsWarning.needsAttention,
+           "Audio setup model marks ignored app settings as needing attention");
 }
 
 void appCommandRoutesImportedClipEditUndoRedo()

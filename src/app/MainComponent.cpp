@@ -1878,6 +1878,17 @@ bool MainComponent::runAppSettingsCorruptionSmokeTest(const std::filesystem::pat
 
     loadApplicationSettingsFromPath(isolatedSettingsPath);
 
+    if (appSettingsLoadError_.isEmpty())
+        return fail("Malformed app settings did not record a load warning.");
+
+    if (!appSettingsLoadError_.contains("Could not parse app settings file"))
+        return fail("Malformed app settings warning did not include the parse failure.");
+
+    refreshDevicePanel(true);
+    const auto expectedSettingsWarningPrefix = juce::String("Settings ignored: ") + appSettingsLoadError_;
+    if (!statusText_.isEmpty() && statusText_.contains("Settings ignored"))
+        return fail("Malformed app settings warning leaked into status text before user action.");
+
     if (audioSetupPromptDismissed_)
         return fail("Malformed app settings did not restore default first-run prompt state.");
 
@@ -1893,6 +1904,13 @@ bool MainComponent::runAppSettingsCorruptionSmokeTest(const std::filesystem::pat
     const auto result = dispatchAppCommand(projectname::AppCommandIds::audioSettingsReset);
     if (result.status != projectname::AppCommandResultStatus::handledWithStatus)
         return fail("App settings corruption smoke reset command did not report a handled status.");
+
+    if (!appSettingsLoadError_.isEmpty())
+        return fail("App settings corruption smoke reset did not clear the load warning.");
+
+    refreshDevicePanel(true);
+    if (statusText_.contains(expectedSettingsWarningPrefix))
+        return fail("App settings corruption smoke left the settings warning visible after reset.");
 
     if (!packagePathsMatch(getCurrentProjectPackagePath(), previousPackage))
         return fail("App settings corruption reset changed the active project package.");
@@ -4851,6 +4869,7 @@ void MainComponent::refreshDevicePanel(bool force)
     request.bufferSizeSamples = summary.bufferSizeSamples;
     request.outputDeviceName = summary.name.toStdString();
     request.initializationError = audioSetupInitializationError_.toStdString();
+    request.settingsLoadError = appSettingsLoadError_.toStdString();
 
     const auto model = projectname::buildAudioSetupStatusViewModel(request);
 
@@ -4860,7 +4879,8 @@ void MainComponent::refreshDevicePanel(bool force)
               << model.setupActionVisible << '|'
               << model.setupActionEnabled << '|'
               << model.dismissActionVisible << '|'
-              << audioSetupPromptDismissed_;
+              << audioSetupPromptDismissed_ << '|'
+              << appSettingsLoadError_.toStdString();
     for (const auto& line : model.lines)
         signature << '|' << line;
 
@@ -5007,9 +5027,17 @@ void MainComponent::loadApplicationSettingsFromPath(std::filesystem::path settin
 {
     appSettingsPath_ = std::move(settingsPath);
     appSettings_ = {};
+    appSettingsLoadError_.clear();
+
     std::string error;
     if (auto loadedSettings = projectname::loadAppSettings(appSettingsPath_, error))
+    {
         appSettings_ = *loadedSettings;
+    }
+    else if (!error.empty())
+    {
+        appSettingsLoadError_ = juce::String(error);
+    }
 
     audioSetupPromptDismissed_ = appSettings_.audioSetup.firstRunPromptDismissed;
     lastPersistedAudioSetupPreferenceSignature_ = makeAudioSetupPreferenceSignature(appSettings_);
@@ -5028,6 +5056,7 @@ bool MainComponent::persistApplicationSettings(juce::String failureStatus)
     }
 
     lastPersistedAudioSetupPreferenceSignature_ = makeAudioSetupPreferenceSignature(appSettings_);
+    appSettingsLoadError_.clear();
     return true;
 }
 

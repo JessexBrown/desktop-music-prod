@@ -30,7 +30,8 @@ Third-party dependencies remain under their own licenses as recorded in
   per-user `Rabbington Studio/settings.json`, including first-run prompt
   dismissal, a readable output summary, and JUCE restore state when available.
 - Malformed app settings fall back to defaults, and a hidden smoke test verifies
-  recovery can rewrite valid human-readable settings without touching projects.
+  the Device Panel warning and recovery path that rewrites valid human-readable
+  settings without touching projects.
 - The Device Panel exposes a visible `Reset Prefs` action that clears the saved
   Audio/MIDI reminder dismissal and preferred output intent without touching
   project packages or the current audio callback.
@@ -293,6 +294,9 @@ Third-party dependencies remain under their own licenses as recorded in
 - JUCE app `--smoke-audio-midi-reset` mode registered with CTest for hidden,
   deterministic Audio/MIDI preference reset coverage against an isolated
   temporary settings file.
+- JUCE app `--smoke-app-settings-corruption` mode registered with CTest for
+  hidden malformed settings fallback, Device Panel warning, and reset recovery
+  coverage.
 - JUCE app `--smoke-restore-details` mode registered with CTest for hidden,
   deterministic Package Maintenance review-row copy/activation and status-copy
   coverage.

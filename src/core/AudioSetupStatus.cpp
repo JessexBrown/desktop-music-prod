@@ -52,6 +52,15 @@ void addOutputDetails(AudioSetupStatusViewModel& model, const AudioSetupStatusRe
                           + " / " + formatBufferSize(request.bufferSizeSamples));
     model.lines.push_back(formatOutputChannels(request.outputChannelCount));
 }
+
+void addSettingsWarning(AudioSetupStatusViewModel& model, const AudioSetupStatusRequest& request)
+{
+    if (!request.settingsLoadError.empty())
+    {
+        model.lines.push_back("Settings ignored: " + request.settingsLoadError);
+        model.needsAttention = true;
+    }
+}
 } // namespace
 
 AudioSetupStatusViewModel buildAudioSetupStatusViewModel(const AudioSetupStatusRequest& request)
@@ -66,6 +75,7 @@ AudioSetupStatusViewModel buildAudioSetupStatusViewModel(const AudioSetupStatusR
         model.lines.push_back("Error: " + request.initializationError);
         model.lines.push_back("Choose another output device");
         model.needsAttention = true;
+        addSettingsWarning(model, request);
         return model;
     }
 
@@ -77,6 +87,7 @@ AudioSetupStatusViewModel buildAudioSetupStatusViewModel(const AudioSetupStatusR
         model.lines.push_back("Choose an output before recording");
         model.lines.push_back(formatOutputChannels(request.outputChannelCount));
         model.needsAttention = true;
+        addSettingsWarning(model, request);
         return model;
     }
 
@@ -88,6 +99,7 @@ AudioSetupStatusViewModel buildAudioSetupStatusViewModel(const AudioSetupStatusR
         model.lines.push_back("Press Play to check output");
         model.dismissActionVisible = true;
         model.needsAttention = false;
+        addSettingsWarning(model, request);
         return model;
     }
 
@@ -96,6 +108,7 @@ AudioSetupStatusViewModel buildAudioSetupStatusViewModel(const AudioSetupStatusR
     addOutputDetails(model, request);
     model.lines.push_back("Generated tone path ready");
     model.needsAttention = false;
+    addSettingsWarning(model, request);
     return model;
 }
 } // namespace projectname

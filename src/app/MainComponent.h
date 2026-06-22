@@ -319,6 +319,7 @@ private:
     juce::ToggleButton soloToggle_ { "Solo" };
     juce::String statusText_;
     juce::String audioSetupInitializationError_;
+    juce::String appSettingsLoadError_;
     juce::String lastPackageMediaDetailCopiedText_;
     std::filesystem::path appSettingsPath_;
     std::filesystem::path currentProjectPackagePath_;

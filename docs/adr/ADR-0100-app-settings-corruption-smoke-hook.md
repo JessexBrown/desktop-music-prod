@@ -26,9 +26,16 @@ Add a hidden JUCE app command-line mode,
 
 The smoke mode creates a temporary malformed `settings.json`, points
 `MainComponent` at that isolated file, verifies default in-memory app settings
-are restored without changing the active project package, then dispatches the
-existing Audio/MIDI reset command. The test reloads the same isolated path to
-verify valid, human-readable JSON was written.
+are restored without changing the active project package, and verifies the load
+error is retained in app state for the Device Panel warning. It then dispatches
+the existing Audio/MIDI reset command, verifies the warning is cleared after a
+successful settings rewrite, and reloads the same isolated path to verify valid,
+human-readable JSON was written.
+
+The Device Panel view model owns the visible warning copy with a
+`Settings ignored:` line. Unit coverage verifies that warning line independently
+from the app smoke hook, while the smoke hook verifies the app boundary records
+and clears the underlying load error.
 
 ## Consequences
 
@@ -37,3 +44,5 @@ verify valid, human-readable JSON was written.
 - The recovery path stays on the application/settings side and performs no
   real-time audio callback work.
 - Project package state remains isolated from app settings recovery.
+- Users get visible feedback that saved preferences were ignored instead of the
+  app silently falling back to defaults.

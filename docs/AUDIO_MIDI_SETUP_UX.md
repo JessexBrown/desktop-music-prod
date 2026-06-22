@@ -33,6 +33,9 @@ startup feel blocked or modal-heavy.
   not occupying the secondary action slot. Reset clears the saved reminder
   dismissal and preferred output intent, but it does not stop the current output
   device or modify project packages.
+- If app-level settings cannot be loaded, the app falls back to defaults and
+  the Device Panel shows that settings were ignored. A successful settings
+  rewrite, such as Reset Prefs, clears that warning.
 
 ## Error And Unavailable States
 
@@ -42,6 +45,8 @@ startup feel blocked or modal-heavy.
   Device Panel reports output as unavailable.
 - Error states do not replace the current project, stop project save/load, or
   launch plugin scanning.
+- Invalid or unsupported app settings are treated as recoverable UI/settings
+  warnings, not audio-device or project-package failures.
 - Recovery is always through the Audio/MIDI setup dialog, not a plugin browser,
   project chooser, or modal startup wizard.
 

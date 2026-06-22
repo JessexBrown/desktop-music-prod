@@ -24,6 +24,7 @@ struct AudioSetupStatusRequest
     int bufferSizeSamples = 0;
     std::string outputDeviceName;
     std::string initializationError;
+    std::string settingsLoadError;
 };
 
 struct AudioSetupStatusViewModel

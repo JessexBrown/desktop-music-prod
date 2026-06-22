@@ -105,7 +105,7 @@ ctest --preset dev --output-on-failure
   intent from an isolated temporary settings file.
 - `projectname_app_settings_corruption_smoke` runs the hidden JUCE app
   settings-recovery smoke test for malformed isolated `settings.json` fallback
-  and valid rewrite without changing the active project package.
+  warning, valid rewrite, and unchanged active project package.
 - `projectname_restore_detail_smoke` runs the hidden JUCE app Package
   Maintenance review-row smoke test for conflict/partial-failure restore
   manifests, Command/Ctrl+C package-relative path copy, and restore-manifest
@@ -218,8 +218,9 @@ seeds an isolated temporary settings file, dispatches the Audio/MIDI reset
 command, and verifies persisted setup preferences are cleared without changing
 the active project package, and `projectname_app_settings_corruption_smoke`,
 which verifies malformed isolated app settings fall back to defaults and can be
-rewritten as valid human-readable JSON without changing the active project
-package, and `projectname_restore_detail_smoke`, which verifies Package
+surfaced as a Device Panel warning before reset rewrites valid human-readable
+JSON without changing the active project package, and
+`projectname_restore_detail_smoke`, which verifies Package
 Maintenance review-row copy/activation behavior for conflict and partial-failure
 restore manifests, including distinct package-relative and restore-manifest
 fallback status copy, without starting cleanup or restore jobs. The same run also
@@ -271,9 +272,12 @@ Application-level settings, including Audio/MIDI setup prompt dismissal and the
 preferred output intent, are stored separately under JUCE's per-user application
 data location as `Rabbington Studio/settings.json`; these settings are not part
 of project packages. The Device Panel's `Reset Prefs` action clears those saved
-Audio/MIDI preferences without deleting or moving project packages, and the
-hidden app reset and corruption-recovery smoke tests verify that behavior
-against temporary settings files.
+Audio/MIDI preferences without deleting or moving project packages. If the
+settings file is malformed or unsupported, the app falls back to defaults,
+surfaces the ignored-settings warning in the Device Panel, and clears that
+warning after a successful settings rewrite. The hidden app reset and
+corruption-recovery smoke tests verify that behavior against temporary settings
+files.
 Save As copies package-local `audio/`, `analysis/`, `samples/`, and `presets/`
 on a cancellable background job before writing the target manifest, while
 source-package `backups/` are not cloned. If the final manifest write fails
