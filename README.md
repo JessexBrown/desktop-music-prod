@@ -207,7 +207,9 @@ Third-party dependencies remain under their own licenses as recorded in
 - A plain C++ Save As package relocation policy and copy command clone
   package-local `audio/`, `analysis/`, `samples/`, and `presets/` before the
   target manifest is saved, preserve explicit external references, and start
-  target-package backups fresh.
+  target-package backups fresh. If the final manifest commit fails after a
+  completed copy, the active project stays on the source package and copied
+  target assets are left in the chosen package for recovery or manual cleanup.
 - Save As package asset copying runs on a cancellable background job with
   phase, file-count, and byte-count progress, plus a guarded top-bar Cancel
   Save affordance.
@@ -228,7 +230,8 @@ Third-party dependencies remain under their own licenses as recorded in
   while repeat restore stays disabled for review-blocked batches.
 - A hidden JUCE app restore-detail smoke test verifies focused review-row
   Command/Ctrl+C copy and restore-manifest activation fallback without starting
-  cleanup or restore jobs.
+  cleanup or restore jobs, including distinct status copy for package-relative
+  and restore-manifest fallback paths.
 - Restore-entry selection in the Package Maintenance browser is keyboard
   reachable: Up/Down keeps cleanup-batch navigation, Tab/Shift-Tab moves browser
   row focus, Enter/Space activates the focused row, Command/Ctrl+A selects all
@@ -286,12 +289,13 @@ Third-party dependencies remain under their own licenses as recorded in
 - JUCE app `--smoke-project-choosers` mode registered with CTest for hidden,
   deterministic New/Open/Save As coverage, including cancelled selections,
   duplicate New targets, failed Open attempts, Save As no-copy, and
-  package-asset-copy paths.
+  occupied-target, final-manifest, and package-asset-copy paths.
 - JUCE app `--smoke-audio-midi-reset` mode registered with CTest for hidden,
   deterministic Audio/MIDI preference reset coverage against an isolated
   temporary settings file.
 - JUCE app `--smoke-restore-details` mode registered with CTest for hidden,
-  deterministic Package Maintenance review-row copy/activation coverage.
+  deterministic Package Maintenance review-row copy/activation and status-copy
+  coverage.
 - CTest now includes an SPDX checker fixture target that proves comment-free
   `CMakePresets.json` vendor metadata is accepted while missing headers and
   stale or nonzero exception baselines fail.

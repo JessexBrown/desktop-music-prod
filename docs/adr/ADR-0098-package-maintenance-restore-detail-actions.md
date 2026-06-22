@@ -29,7 +29,10 @@ focused review rows to copy the package-relative path through Command/Ctrl+C.
 Direct row activation prefers the restore-manifest action: it reveals the
 manifest with the platform file browser when the file exists, or copies the
 manifest path if reveal is unavailable. Restore execution remains disabled for
-review-blocked batches.
+review-blocked batches. The JUCE app keeps the clipboard write for users but
+the deterministic smoke assertion records the copied value in app state and
+checks the visible status copy, avoiding platform clipboard timing as the test
+oracle.
 
 ## Consequences
 
@@ -40,8 +43,8 @@ review-blocked batches.
 - Core tests cover action availability and focused-row mapping for conflict and
   partial-failure rows.
 - The hidden JUCE app `--smoke-restore-details` path covers focused review-row
-  Command/Ctrl+C copy and restore-manifest activation fallback without starting
-  cleanup or restore jobs.
+  Command/Ctrl+C copy, distinct status copy, and restore-manifest activation
+  fallback without starting cleanup or restore jobs.
 - Manifest path evidence is reachable without adding modal review UI.
 
 ## Follow-Ups

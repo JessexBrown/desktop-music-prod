@@ -2,19 +2,7 @@
 
 # Next Issues
 
-## 1. Add Save As Manifest Write Failure Smoke Coverage
-
-Acceptance:
-- Add a hidden project chooser smoke path for a target where package asset copy
-  succeeds or is unnecessary but final manifest save fails deterministically.
-- Verify the app does not switch the active project package when the final
-  manifest write fails.
-- Verify copied package assets are left in a clearly recoverable state or a
-  follow-up cleanup policy is documented.
-- Preserve the existing successful, cancelled, occupied-target failure,
-  duplicate New, and failed Open chooser smoke coverage.
-
-## 2. Add App Settings Load Warning Surface
+## 1. Add App Settings Load Warning Surface
 
 Acceptance:
 - Preserve the current safe fallback for malformed app settings.
@@ -23,7 +11,7 @@ Acceptance:
 - Keep the warning out of the real-time audio path.
 - Cover the visible warning with a focused unit or smoke assertion.
 
-## 3. Add Linux JUCE App CI Artifact Upload
+## 2. Add Linux JUCE App CI Artifact Upload
 
 Acceptance:
 - Upload the Linux JUCE app executable or packaged build directory as a CI
@@ -34,15 +22,7 @@ Acceptance:
 - Preserve the existing Windows MSVC App, Linux Core, and Linux JUCE App test
   behavior.
 
-## 4. Add Restore Detail Status Copy Coverage
-
-Acceptance:
-- Add focused coverage that the Package Maintenance status line distinguishes
-  package-relative path copy from restore-manifest fallback copy.
-- Keep the coverage deterministic and avoid opening platform file browsers.
-- Preserve the existing restore-detail smoke path and core row-model tests.
-
-## 5. Add Windows MSVC App CI Artifact Upload
+## 3. Add Windows MSVC App CI Artifact Upload
 
 Acceptance:
 - Upload the Windows app executable or packaged build directory as a CI artifact
@@ -52,3 +32,23 @@ Acceptance:
   test scratch directories in the artifact.
 - Preserve the existing Windows MSVC App, Linux Core, and Linux JUCE App test
   behavior.
+
+## 4. Add Save As Failed Target Cleanup Policy
+
+Acceptance:
+- Decide whether post-copy Save As manifest failures should keep, quarantine, or
+  offer deletion for copied target assets.
+- Record the cleanup/recovery policy in an ADR and user-facing status copy.
+- Add focused smoke or core coverage for the chosen cleanup/recovery path.
+- Preserve the current guarantee that the active project package is not switched
+  when the final Save As manifest write fails.
+
+## 5. Add Project Manifest Commit Failure Core Coverage
+
+Acceptance:
+- Add a core save-package test that forces the staged `manifest.json.tmp` commit
+  to fail deterministically.
+- Verify the failed save removes `manifest.json.tmp`.
+- Verify the occupied manifest path remains unchanged and the error is
+  human-readable.
+- Preserve the existing successful save, backup, and load round-trip tests.

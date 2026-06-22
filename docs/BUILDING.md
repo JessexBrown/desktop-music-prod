@@ -98,7 +98,8 @@ ctest --preset dev --output-on-failure
   `PROJECTNAME_BUILD_APP=ON` and `BUILD_TESTING=ON`.
 - `projectname_project_chooser_smoke` runs the hidden JUCE app chooser-flow
   smoke test for New/Open/Save As success, cancellation, occupied-target Save
-  As failure, and failed Open states without opening native chooser dialogs.
+  As failure, final-manifest Save As failure, and failed Open states without
+  opening native chooser dialogs.
 - `projectname_audio_midi_reset_smoke` runs the hidden JUCE app settings-flow
   smoke test for clearing first-run Audio/MIDI dismissal and preferred output
   intent from an isolated temporary settings file.
@@ -108,7 +109,7 @@ ctest --preset dev --output-on-failure
 - `projectname_restore_detail_smoke` runs the hidden JUCE app Package
   Maintenance review-row smoke test for conflict/partial-failure restore
   manifests, Command/Ctrl+C package-relative path copy, and restore-manifest
-  activation fallback without starting cleanup or restore jobs.
+  activation fallback/status copy without starting cleanup or restore jobs.
 - `projectname_spdx_check` verifies first-party files either carry
   `SPDX-License-Identifier: AGPL-3.0-or-later` or are listed in
   `docs/SPDX_EXCEPTIONS.txt`, and currently enforces zero first-party baseline
@@ -210,7 +211,8 @@ The `dev` CTest run passed `projectname_app_smoke`, which launches the JUCE app
 with `--smoke-test` and exits automatically after startup, plus
 `projectname_project_chooser_smoke`, which exercises deterministic chooser
 success, cancellation, duplicate New, occupied-target Save As failure, and
-failed Open states without opening native dialogs. The run also passed
+final-manifest Save As failure after a completed asset copy, and failed Open
+states without opening native dialogs. The run also passed
 `projectname_audio_midi_reset_smoke`, which
 seeds an isolated temporary settings file, dispatches the Audio/MIDI reset
 command, and verifies persisted setup preferences are cleared without changing
@@ -219,7 +221,8 @@ which verifies malformed isolated app settings fall back to defaults and can be
 rewritten as valid human-readable JSON without changing the active project
 package, and `projectname_restore_detail_smoke`, which verifies Package
 Maintenance review-row copy/activation behavior for conflict and partial-failure
-restore manifests without starting cleanup or restore jobs. The same run also
+restore manifests, including distinct package-relative and restore-manifest
+fallback status copy, without starting cleanup or restore jobs. The same run also
 passed `projectname_spdx_check`, `projectname_spdx_fixture_check`, and
 `projectname_tests`, including cached prepared voice-window playback,
 background voice-window preparation, imported clip inspector metadata,
@@ -273,9 +276,11 @@ hidden app reset and corruption-recovery smoke tests verify that behavior
 against temporary settings files.
 Save As copies package-local `audio/`, `analysis/`, `samples/`, and `presets/`
 on a cancellable background job before writing the target manifest, while
-source-package `backups/` are not cloned. Import Audio uses a native WAV file
-chooser and a background import job with frame-level decode progress, byte-level
-staged-copy progress, and cancel state.
+source-package `backups/` are not cloned. If the final manifest write fails
+after copying, the active package remains unchanged and the copied target assets
+remain in the chosen package for recovery or manual cleanup. Import Audio uses a
+native WAV file chooser and a background import job with frame-level decode
+progress, byte-level staged-copy progress, and cancel state.
 The right inspector's selected-clip Relink button uses a native WAV chooser and
 a cancellable background job for staged relink preparation before committing
 current-selection results on the UI thread.

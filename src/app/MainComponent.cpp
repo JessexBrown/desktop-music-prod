@@ -130,22 +130,6 @@ void setButtonEnabledFromCommand(juce::Button& button,
     return juce::File(juce::String(path.string()));
 }
 
-[[nodiscard]] bool waitForClipboardText(const juce::String& expectedText)
-{
-    constexpr auto attempts = 10;
-    constexpr auto sleepMilliseconds = 20;
-
-    for (auto attempt = 0; attempt < attempts; ++attempt)
-    {
-        if (juce::SystemClipboard::getTextFromClipboard() == expectedText)
-            return true;
-
-        juce::Thread::sleep(sleepMilliseconds);
-    }
-
-    return false;
-}
-
 [[nodiscard]] std::filesystem::path projectPackagePathFromChooserResult(juce::File file,
                                                                         bool appendProjectExtension)
 {
@@ -1693,6 +1677,56 @@ bool MainComponent::runProjectChooserSmokeTest(const std::filesystem::path& scra
     if (projectManifestExists(conflictPackage))
         return fail("Save As failure smoke wrote a manifest into the conflict target.");
 
+    const auto manifestFailureSelection = toJuceFile(scratchRoot / "Chooser Save Manifest Failure");
+    const auto manifestFailurePackage = projectPackagePathFromChooserResult(manifestFailureSelection, true);
+    std::filesystem::create_directories(manifestFailurePackage / "manifest.json", filesystemError);
+    if (filesystemError)
+        return fail("Could not create Save As manifest-failure fixture: " + filesystemError.message());
+
+    if (!beginSaveAsFromChooserSelection(manifestFailureSelection, error))
+        return false;
+
+    if (!finishManifestFailedSaveAsPackageCopyForSmoke(saveAsStatus, error))
+        return false;
+
+    if (saveAsStatus != projectname::ProjectPackageSaveAsCopyStatus::completed)
+        return fail("Save As manifest-failure smoke did not complete asset copy before manifest save.");
+
+    if (!packagePathsMatch(getCurrentProjectPackagePath(), packageBeforeFailedSaveAs))
+        return fail("Save As manifest-failure smoke changed the active project package.");
+
+    if (!readSmokeFile(packageBeforeFailedSaveAs / "manifest.json", manifestAfterFailedSaveAs, error))
+        return false;
+
+    if (manifestAfterFailedSaveAs != manifestBeforeFailedSaveAs)
+        return fail("Save As manifest-failure smoke changed the active project manifest.");
+
+    filesystemError.clear();
+    if (!std::filesystem::is_directory(manifestFailurePackage / "manifest.json", filesystemError))
+        return fail("Save As manifest-failure smoke did not preserve the recoverable target manifest fixture.");
+
+    filesystemError.clear();
+    if (!std::filesystem::is_regular_file(manifestFailurePackage / "audio" / "chooser-smoke.wav", filesystemError))
+        return fail("Save As manifest-failure smoke did not leave copied package audio recoverable.");
+
+    filesystemError.clear();
+    if (!std::filesystem::is_regular_file(
+            manifestFailurePackage / "analysis" / "chooser-smoke.waveform.json",
+            filesystemError))
+    {
+        return fail("Save As manifest-failure smoke did not leave copied package analysis recoverable.");
+    }
+
+    filesystemError.clear();
+    const auto temporaryManifestExists =
+        std::filesystem::exists(manifestFailurePackage / "manifest.json.tmp", filesystemError);
+    if (filesystemError)
+        return fail("Could not inspect Save As manifest-failure temporary manifest: "
+                    + filesystemError.message());
+
+    if (temporaryManifestExists)
+        return fail("Save As manifest-failure smoke left a temporary manifest in the target.");
+
     const auto copySelection = toJuceFile(scratchRoot / "Chooser Save Copy");
     if (!beginSaveAsFromChooserSelection(copySelection, error))
         return false;
@@ -2009,13 +2043,18 @@ bool MainComponent::runPackageMediaRestoreDetailSmokeTest(const std::filesystem:
     if (!std::filesystem::is_regular_file(manifestPath, filesystemError))
         return fail("Restore detail smoke manifest was not written before activation.");
 
-    juce::SystemClipboard::copyTextToClipboard("restore-detail-smoke-sentinel");
+    lastPackageMediaDetailCopiedText_.clear();
     const auto copyKey = juce::KeyPress('c', juce::ModifierKeys::commandModifier, 'c');
     if (!browserPanel_.keyPressed(copyKey))
         return fail("Restore detail smoke Command/Ctrl+C was not handled by the browser panel.");
 
-    if (!waitForClipboardText(juce::String(reviewOriginalPath)))
+    if (lastPackageMediaDetailCopiedText_ != juce::String(reviewOriginalPath))
         return fail("Restore detail smoke Command/Ctrl+C did not copy the package-relative path.");
+
+    const auto expectedPackageRelativeCopyStatus =
+        juce::String("Copied package media path: ") + juce::String(reviewOriginalPath);
+    if (statusText_ != expectedPackageRelativeCopyStatus)
+        return fail("Restore detail smoke package-relative copy status was not specific.");
 
     filesystemError.clear();
     std::filesystem::remove(manifestPath, filesystemError);
@@ -2031,12 +2070,17 @@ bool MainComponent::runPackageMediaRestoreDetailSmokeTest(const std::filesystem:
         return fail("Could not verify restore detail smoke manifest removal: "
                     + filesystemError.message());
 
-    juce::SystemClipboard::copyTextToClipboard("restore-detail-smoke-sentinel");
+    lastPackageMediaDetailCopiedText_.clear();
     if (!browserPanel_.keyPressed(juce::KeyPress(juce::KeyPress::returnKey)))
         return fail("Restore detail smoke activation was not handled by the browser panel.");
 
-    if (!waitForClipboardText(juce::String(manifestPath.string())))
+    if (lastPackageMediaDetailCopiedText_ != juce::String(manifestPath.string()))
         return fail("Restore detail smoke activation did not copy the restore manifest fallback path.");
+
+    const auto expectedFallbackCopyStatus =
+        juce::String("Restore manifest unavailable; copied path: ") + juce::String(manifestPath.string());
+    if (statusText_ != expectedFallbackCopyStatus)
+        return fail("Restore detail smoke fallback copy status was not specific.");
 
     if (packageMediaCleanupJob_ != nullptr)
         return fail("Restore detail smoke activation started a cleanup or restore job.");
@@ -3066,6 +3110,76 @@ bool MainComponent::finishFailedSaveAsPackageCopyForSmoke(
     return true;
 }
 
+bool MainComponent::finishManifestFailedSaveAsPackageCopyForSmoke(
+    projectname::ProjectPackageSaveAsCopyStatus& status,
+    std::string& error)
+{
+    error.clear();
+
+    if (saveAsPackageCopyJob_ == nullptr)
+    {
+        error = "Save As manifest-failure smoke expected an active package copy job.";
+        return false;
+    }
+
+    auto result = saveAsPackageCopyJob_->waitForResult();
+    saveAsPackageCopyJob_.reset();
+    canCancelSaveAsPackageCopy_ = false;
+
+    const auto targetPackage = result.targetPackageDirectory;
+    status = result.copy.status;
+    const auto resultMessage = result.error.empty()
+        ? projectname::describeProjectPackageSaveAsPlan(result.copy.plan)
+        : result.error;
+
+    applyCompletedSaveAsPackageCopy(std::move(result));
+    refreshAppCommandEnabledState();
+
+    if (!saveAsCopyStatusAllowsManifestSave(status))
+    {
+        error = "Save As manifest-failure smoke failed before manifest save: " + resultMessage;
+        return false;
+    }
+
+    if (projectManifestExists(targetPackage))
+    {
+        error = "Save As manifest-failure smoke unexpectedly wrote a target manifest.";
+        return false;
+    }
+
+    if (saveAsPackageCopyJob_ != nullptr)
+    {
+        error = "Save As manifest-failure smoke left a package copy job running.";
+        return false;
+    }
+
+    if (canCancelSaveAsPackageCopy_)
+    {
+        error = "Save As manifest-failure smoke left cancel state enabled.";
+        return false;
+    }
+
+    if (buildAppCommandRegistry().isEnabled(projectname::AppCommandIds::projectSaveAsCancel))
+    {
+        error = "Save As manifest-failure smoke left the cancel command enabled.";
+        return false;
+    }
+
+    if (cancelSaveAsButton_.isEnabled())
+    {
+        error = "Save As manifest-failure smoke left the Cancel Save button enabled.";
+        return false;
+    }
+
+    if (hasProjectChooserOpen())
+    {
+        error = "Save As manifest-failure smoke left a native project chooser open.";
+        return false;
+    }
+
+    return true;
+}
+
 bool MainComponent::addProjectChooserSmokePackageAsset(std::string& error)
 {
     error.clear();
@@ -4015,6 +4129,7 @@ void MainComponent::copyPackageMediaMaintenanceDetailAction(
         return;
     }
 
+    lastPackageMediaDetailCopiedText_ = value;
     juce::SystemClipboard::copyTextToClipboard(value);
     const auto prefix =
         action.kind == projectname::PackageMediaMaintenanceDetailActionKind::revealRestoreManifest
@@ -4047,6 +4162,7 @@ void MainComponent::activatePackageMediaMaintenanceDetailAction(
         return;
     }
 
+    lastPackageMediaDetailCopiedText_ = manifestPath;
     juce::SystemClipboard::copyTextToClipboard(manifestPath);
     setStatus("Restore manifest unavailable; copied path: " + manifestPath);
 }

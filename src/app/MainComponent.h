@@ -202,6 +202,9 @@ private:
     [[nodiscard]] bool finishFailedSaveAsPackageCopyForSmoke(
         projectname::ProjectPackageSaveAsCopyStatus& status,
         std::string& error);
+    [[nodiscard]] bool finishManifestFailedSaveAsPackageCopyForSmoke(
+        projectname::ProjectPackageSaveAsCopyStatus& status,
+        std::string& error);
     [[nodiscard]] bool addProjectChooserSmokePackageAsset(std::string& error);
     void refreshAfterProjectPackageChange(juce::String status);
     [[nodiscard]] projectname::AppCommandResult undoImportedClipEdit();
@@ -316,6 +319,7 @@ private:
     juce::ToggleButton soloToggle_ { "Solo" };
     juce::String statusText_;
     juce::String audioSetupInitializationError_;
+    juce::String lastPackageMediaDetailCopiedText_;
     std::filesystem::path appSettingsPath_;
     std::filesystem::path currentProjectPackagePath_;
     std::unique_ptr<juce::FileChooser> projectNewChooser_;

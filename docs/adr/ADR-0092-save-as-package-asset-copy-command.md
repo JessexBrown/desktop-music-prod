@@ -36,7 +36,10 @@ policy module. The command:
   rollback is possible.
 
 The native `Save As...` handler runs this command before calling the existing
-manifest save path and switching the active package path.
+manifest save path and switching the active package path. If the copy command
+completes but the final manifest save fails, the active project package remains
+unchanged and copied assets stay in the selected target package so the user can
+inspect, recover, retry, or clean them up explicitly.
 
 ## Consequences
 
@@ -44,6 +47,9 @@ manifest save path and switching the active package path.
   producing a manifest that points at missing target-package files.
 - Target backup history starts fresh because source `backups/` are never copied.
 - Conflict failures happen before partial target copies.
+- Final manifest-save failures after a completed copy do not roll back copied
+  target assets yet; they leave a recoverable target package candidate while the
+  active project keeps using the source package.
 - ADR-0093 wraps the copy command in a background job with progress and
   cancellation for the JUCE app.
 
