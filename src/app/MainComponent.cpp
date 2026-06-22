@@ -1732,6 +1732,91 @@ bool MainComponent::runAudioMidiResetSmokeTest(const std::filesystem::path& scra
     return true;
 }
 
+bool MainComponent::runAppSettingsCorruptionSmokeTest(const std::filesystem::path& scratchRoot,
+                                                      std::string& error)
+{
+    error.clear();
+
+    auto fail = [&error](std::string message)
+    {
+        error = std::move(message);
+        return false;
+    };
+
+    if (scratchRoot.empty())
+        return fail("App settings corruption smoke requires a scratch directory.");
+
+    std::error_code filesystemError;
+    std::filesystem::remove_all(scratchRoot, filesystemError);
+    if (filesystemError)
+        return fail("Could not reset app settings corruption smoke scratch directory: "
+                    + filesystemError.message());
+
+    std::filesystem::create_directories(scratchRoot, filesystemError);
+    if (filesystemError)
+        return fail("Could not create app settings corruption smoke scratch directory: "
+                    + filesystemError.message());
+
+    const auto previousPackage = getCurrentProjectPackagePath();
+    const auto isolatedSettingsPath =
+        scratchRoot / "Rabbington Studio" / projectname::appSettingsFileName;
+
+    if (!writeSmokeFile(isolatedSettingsPath, "{ malformed app settings", error))
+        return false;
+
+    loadApplicationSettingsFromPath(isolatedSettingsPath);
+
+    if (audioSetupPromptDismissed_)
+        return fail("Malformed app settings did not restore default first-run prompt state.");
+
+    if (!(appSettings_ == projectname::AppSettings {}))
+        return fail("Malformed app settings did not fall back to default settings.");
+
+    if (!packagePathsMatch(getCurrentProjectPackagePath(), previousPackage))
+        return fail("Malformed app settings changed the active project package.");
+
+    if (hasProjectChooserOpen())
+        return fail("Malformed app settings opened a native project chooser during smoke.");
+
+    const auto result = dispatchAppCommand(projectname::AppCommandIds::audioSettingsReset);
+    if (result.status != projectname::AppCommandResultStatus::handledWithStatus)
+        return fail("App settings corruption smoke reset command did not report a handled status.");
+
+    if (!packagePathsMatch(getCurrentProjectPackagePath(), previousPackage))
+        return fail("App settings corruption reset changed the active project package.");
+
+    std::string settingsError;
+    auto reloadedSettings = projectname::loadAppSettings(isolatedSettingsPath, settingsError);
+    if (!reloadedSettings)
+        return fail(settingsError.empty()
+                        ? "App settings corruption smoke did not write isolated settings."
+                        : "Could not reload recovered app settings: " + settingsError);
+
+    if (!(*reloadedSettings == projectname::AppSettings {}))
+        return fail("Recovered app settings file did not contain default settings.");
+
+    std::string recoveredText;
+    if (!readSmokeFile(isolatedSettingsPath, recoveredText, error))
+        return false;
+
+    if (recoveredText.find('\n') == std::string::npos
+        || recoveredText.find("  \"audioSetup\"") == std::string::npos
+        || recoveredText.find("\"settingsVersion\": 1") == std::string::npos)
+    {
+        return fail("Recovered app settings file is not human-readable JSON.");
+    }
+
+    if (saveAsPackageCopyJob_ != nullptr)
+        return fail("App settings corruption smoke left a Save As package copy job running.");
+
+    std::filesystem::remove_all(scratchRoot, filesystemError);
+    if (filesystemError)
+        return fail("App settings corruption smoke passed but could not clean up scratch directory: "
+                    + filesystemError.message());
+
+    return true;
+}
+
 void MainComponent::paint(juce::Graphics& graphics)
 {
     graphics.fillAll(background);

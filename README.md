@@ -29,6 +29,8 @@ Third-party dependencies remain under their own licenses as recorded in
 - App-level Audio/MIDI setup preferences persist outside project packages in a
   per-user `Rabbington Studio/settings.json`, including first-run prompt
   dismissal, a readable output summary, and JUCE restore state when available.
+- Malformed app settings fall back to defaults, and a hidden smoke test verifies
+  recovery can rewrite valid human-readable settings without touching projects.
 - The Device Panel exposes a visible `Reset Prefs` action that clears the saved
   Audio/MIDI reminder dismissal and preferred output intent without touching
   project packages or the current audio callback.
@@ -367,7 +369,7 @@ timeline clip, use Save/Open for the first project package round trip, and use
 Audio/MIDI to open the device setup dialog.
 
 For automation on supported desktop toolchains, run `projectname --smoke-test`
-or use `ctest --preset dev --output-on-failure`.
+for a launch smoke check or use `ctest --preset dev --output-on-failure`.
 
 ## Documentation
 

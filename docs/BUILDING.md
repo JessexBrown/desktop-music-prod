@@ -39,8 +39,9 @@ macOS/Linux `dev-host` preset configures in `out/build/dev`. Both enable tests
 and fetch JUCE by default. Their CTest runs include the JUCE app launch smoke
 test (`projectname --smoke-test`), hidden project chooser smoke test
 (`projectname --smoke-project-choosers`), hidden Audio/MIDI reset smoke test
-(`projectname --smoke-audio-midi-reset`), the SPDX license-header check, and the
-core unit tests.
+(`projectname --smoke-audio-midi-reset`), hidden app settings corruption
+recovery smoke test (`projectname --smoke-app-settings-corruption`), the SPDX
+license-header check, and the core unit tests.
 
 For domain-only model/transport/tone tests without building the JUCE app:
 
@@ -100,6 +101,9 @@ ctest --preset dev --output-on-failure
 - `projectname_audio_midi_reset_smoke` runs the hidden JUCE app settings-flow
   smoke test for clearing first-run Audio/MIDI dismissal and preferred output
   intent from an isolated temporary settings file.
+- `projectname_app_settings_corruption_smoke` runs the hidden JUCE app
+  settings-recovery smoke test for malformed isolated `settings.json` fallback
+  and valid rewrite without changing the active project package.
 - `projectname_spdx_check` verifies first-party files either carry
   `SPDX-License-Identifier: AGPL-3.0-or-later` or are listed in
   `docs/SPDX_EXCEPTIONS.txt`.
@@ -111,8 +115,9 @@ GitHub Actions currently runs two jobs on pushes and pull requests:
 
 - `Windows MSVC App` configures, builds, and tests the `dev` preset on
   `windows-latest`. Its CTest run includes `projectname_app_smoke`,
-  `projectname_project_chooser_smoke`, `projectname_audio_midi_reset_smoke`, the
-  SPDX check, and the core unit tests.
+  `projectname_project_chooser_smoke`, `projectname_audio_midi_reset_smoke`,
+  `projectname_app_settings_corruption_smoke`, the SPDX check, and the core unit
+  tests.
 - `Linux Core` configures, builds, and tests the `core-dev` preset on
   `ubuntu-latest` for second-host coverage before Linux app packaging work is
   ready. Linux JUCE app CI prerequisites are documented in
@@ -199,7 +204,10 @@ failed Open states without opening native dialogs. The run also passed
 `projectname_audio_midi_reset_smoke`, which
 seeds an isolated temporary settings file, dispatches the Audio/MIDI reset
 command, and verifies persisted setup preferences are cleared without changing
-the active project package. The same run also passed `projectname_spdx_check` and
+the active project package, and `projectname_app_settings_corruption_smoke`,
+which verifies malformed isolated app settings fall back to defaults and can be
+rewritten as valid human-readable JSON without changing the active project
+package. The same run also passed `projectname_spdx_check` and
 `projectname_tests`, including cached prepared voice-window playback,
 background voice-window preparation, imported clip inspector metadata,
 deterministic imported clip selection, and persisted track mix
@@ -248,8 +256,8 @@ preferred output intent, are stored separately under JUCE's per-user application
 data location as `Rabbington Studio/settings.json`; these settings are not part
 of project packages. The Device Panel's `Reset Prefs` action clears those saved
 Audio/MIDI preferences without deleting or moving project packages, and the
-hidden app reset smoke test verifies that behavior against a temporary settings
-file.
+hidden app reset and corruption-recovery smoke tests verify that behavior
+against temporary settings files.
 Save As copies package-local `audio/`, `analysis/`, `samples/`, and `presets/`
 on a cancellable background job before writing the target manifest, while
 source-package `backups/` are not cloned. Import Audio uses a native WAV file
