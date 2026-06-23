@@ -405,6 +405,9 @@ ProjectModel ProjectModel::createDefault()
 std::optional<ProjectModel> ProjectModel::loadPackage(const std::filesystem::path& packageDirectory,
                                                       std::string& error)
 {
+    if (!rejectSymlinkedProjectPackagePath(packageDirectory, error))
+        return std::nullopt;
+
     const auto manifestPath = packageDirectory / manifestFileName;
 
     std::error_code filesystemError;

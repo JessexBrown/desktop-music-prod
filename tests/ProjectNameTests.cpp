@@ -11729,6 +11729,55 @@ void projectManifestDirectoryLoadFailureKeepsSessionProject()
            "Temporary manifest-directory load package deleted");
 }
 
+void projectLinkedPackageParentSymlinkLoadFailureRejectsBeforeParsingManifest()
+{
+    const auto parentSymlink =
+        makeTemporaryPackagePath("projectname-linked-package-parent-load-symlink-link-test");
+    const auto linkedParentTarget =
+        makeTemporaryPackagePath("projectname-linked-package-parent-load-symlink-target-test");
+    const auto linkedTargetPackage = linkedParentTarget / "Nested Load.project";
+    const auto requestedPackage = parentSymlink / "Nested Load.project";
+    const auto linkedParentSentinel = linkedParentTarget / "sentinel.txt";
+    const auto linkedManifestText =
+        R"({"manifestVersion":1,"name":"Linked Parent Manifest Should Not Load","transport":{"tempoBpm":88.0,"timeSignature":{"numerator":5,"denominator":4},"positionBeats":2.0},"tracks":[]})";
+
+    writeManifestText(linkedTargetPackage, linkedManifestText);
+    writeTextFile(linkedParentSentinel, "linked parent load sentinel");
+
+    std::error_code symlinkError;
+    std::filesystem::create_directory_symlink(linkedParentTarget, parentSymlink, symlinkError);
+    if (symlinkError)
+    {
+        std::filesystem::remove_all(linkedParentTarget);
+        return;
+    }
+
+    std::string error = "stale linked package-parent load error";
+    auto loaded = projectname::ProjectModel::loadPackage(requestedPackage, error);
+    expect(!loaded.has_value(),
+           "Project load rejects a package through a linked intermediate parent");
+    expect(error.find("Project package path contains a symlink") != std::string::npos
+               && error.find(parentSymlink.generic_string()) != std::string::npos,
+           "Linked package-parent load failure error is human-readable");
+    expect(error.find("JSON") == std::string::npos,
+           "Linked package-parent load failure does not parse JSON through the symlink");
+    expect(std::filesystem::is_symlink(std::filesystem::symlink_status(parentSymlink)),
+           "Linked package-parent load failure leaves the parent symlink unchanged");
+    expect(readTextFile(linkedTargetPackage / "manifest.json") == linkedManifestText,
+           "Linked package-parent load failure preserves the linked target manifest");
+    expect(readTextFile(linkedParentSentinel) == "linked parent load sentinel",
+           "Linked package-parent load failure preserves the linked target sentinel");
+    expect(!std::filesystem::exists(requestedPackage / "manifest.json.tmp"),
+           "Linked package-parent load failure does not create a temporary manifest through the link");
+    expect(!std::filesystem::exists(linkedTargetPackage / "manifest.json.tmp"),
+           "Linked package-parent load failure does not write target temporary manifest");
+
+    expect(std::filesystem::remove(parentSymlink),
+           "Temporary linked package-parent load symlink deleted");
+    expect(std::filesystem::remove_all(linkedParentTarget) > 0,
+           "Temporary linked package-parent load target deleted");
+}
+
 void projectManifestDirectoryLoadFailureLeavesAppSettingsUntouched()
 {
     projectname::AppSettings settings;
@@ -12033,6 +12082,7 @@ int main()
     appSessionImportsAudioWithoutResumingGeneratedTone();
     appSessionLoadFailureKeepsCurrentProject();
     projectManifestDirectoryLoadFailureKeepsSessionProject();
+    projectLinkedPackageParentSymlinkLoadFailureRejectsBeforeParsingManifest();
     projectManifestDirectoryLoadFailureLeavesAppSettingsUntouched();
     projectManifestSymlinkLoadFailureKeepsSessionProject();
     projectManifestBrokenSymlinkLoadFailureKeepsSessionProject();

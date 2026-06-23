@@ -374,7 +374,8 @@ restore-manifest/preflight/file-moving/restore/background-job tests, workspace c
 registry metadata/enablement/dispatch-result tests, timeline viewport indicator
 formatting tests, persisted track mix state/static mix command tests, stereo
 prepared voice summing tests, previous-manifest backup success/failure tests,
-manifest-directory load failure/app-settings isolation tests, manifest symlink
+manifest-directory load failure/app-settings isolation tests, linked
+package-parent load rejection tests when host-supported, manifest symlink
 and broken-symlink load failure/app-settings isolation tests when host-supported,
 package-path file rejection tests, package directory creation failure tests,
 package and asset-folder symlink path failure tests, including broken asset
