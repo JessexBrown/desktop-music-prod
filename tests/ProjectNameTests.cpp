@@ -987,6 +987,73 @@ void appSettingsLoadDirectoryPathKeepsCallerFallbackSettings()
            "Temporary directory app settings path deleted");
 }
 
+void appSettingsLoadSymlinkPathKeepsCallerFallbackSettings()
+{
+    projectname::AppSettings fallbackSettings;
+    fallbackSettings.audioSetup.firstRunPromptDismissed = true;
+    fallbackSettings.audioSetup.preferredOutput.hasOutputDevice = true;
+    fallbackSettings.audioSetup.preferredOutput.deviceType = "Windows Audio";
+    fallbackSettings.audioSetup.preferredOutput.deviceName = "Fallback Output";
+    fallbackSettings.audioSetup.preferredOutput.sampleRateHz = 44100.0;
+    fallbackSettings.audioSetup.preferredOutput.bufferSizeSamples = 512;
+    fallbackSettings.audioSetup.preferredOutput.outputChannelCount = 2;
+    fallbackSettings.audioSetup.preferredOutput.juceDeviceStateXml =
+        R"(<DEVICESETUP deviceType="Windows Audio" audioOutputDeviceName="Fallback Output"/>)";
+    const auto originalFallbackSettings = fallbackSettings;
+
+    projectname::AppSettings linkedSettings;
+    linkedSettings.audioSetup.firstRunPromptDismissed = true;
+    linkedSettings.audioSetup.preferredOutput.hasOutputDevice = true;
+    linkedSettings.audioSetup.preferredOutput.deviceType = "Linked Audio";
+    linkedSettings.audioSetup.preferredOutput.deviceName = "Linked Output";
+    linkedSettings.audioSetup.preferredOutput.sampleRateHz = 96000.0;
+    linkedSettings.audioSetup.preferredOutput.bufferSizeSamples = 128;
+    linkedSettings.audioSetup.preferredOutput.outputChannelCount = 8;
+
+    const auto settingsSymlinkPath =
+        makeTemporarySettingsPath("projectname-app-settings-load-symlink-test");
+    const auto linkedSettingsTargetPath =
+        makeTemporarySettingsPath("projectname-app-settings-load-symlink-target-test");
+    const auto linkedSettingsText = projectname::makeAppSettingsJson(linkedSettings).dump();
+    writeTextFile(linkedSettingsTargetPath, linkedSettingsText);
+
+    std::error_code symlinkError;
+    std::filesystem::create_symlink(linkedSettingsTargetPath, settingsSymlinkPath, symlinkError);
+    if (symlinkError)
+    {
+        std::filesystem::remove(linkedSettingsTargetPath);
+        return;
+    }
+
+    std::string error = "stale symlink settings load error";
+    const auto loaded = projectname::loadAppSettings(settingsSymlinkPath, error);
+    expect(!loaded.has_value(),
+           "App settings load rejects a symlink settings path");
+    expect(error.find("App settings") != std::string::npos
+               && error.find("symlink") != std::string::npos,
+           "App settings symlink load failure error is human-readable");
+    expect(error.find("parse") == std::string::npos
+               && error.find("Unsupported app settings version") == std::string::npos,
+           "App settings symlink load failure does not parse JSON through the symlink");
+
+    if (loaded.has_value())
+        fallbackSettings = *loaded;
+
+    expect(fallbackSettings == originalFallbackSettings,
+           "App settings symlink load leaves caller fallback settings unchanged");
+    expect(std::filesystem::is_symlink(std::filesystem::symlink_status(settingsSymlinkPath)),
+           "App settings symlink load leaves the settings symlink unchanged");
+    expect(readTextFile(linkedSettingsTargetPath) == linkedSettingsText,
+           "App settings symlink load preserves the symlink target contents");
+    expect(!std::filesystem::exists(settingsSymlinkPath.string() + ".tmp"),
+           "App settings symlink load does not create a temporary settings file");
+
+    expect(std::filesystem::remove(settingsSymlinkPath),
+           "Temporary app settings symlink deleted");
+    expect(std::filesystem::remove(linkedSettingsTargetPath),
+           "Temporary app settings symlink target deleted");
+}
+
 void appSettingsLoadsAudioSetupDefaultsFromMinimalJson()
 {
     std::string error;
@@ -9689,6 +9756,7 @@ int main()
     appSettingsDirectoryCreationFailurePreservesOccupiedParentPath();
     appSettingsEmptyPathFailsBeforeFilesystemWork();
     appSettingsLoadDirectoryPathKeepsCallerFallbackSettings();
+    appSettingsLoadSymlinkPathKeepsCallerFallbackSettings();
     appSettingsLoadsAudioSetupDefaultsFromMinimalJson();
     appSettingsRejectsUnsupportedVersion();
     appSettingsResetClearsAudioSetupPreferences();

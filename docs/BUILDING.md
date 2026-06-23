@@ -379,7 +379,7 @@ package-path file rejection tests, package directory creation failure tests,
 package symlink path failure tests when host-supported, staged
 temporary-manifest open/commit failure tests, Save As retry manifest/asset
 symlink conflict tests when host-supported, plus
-app settings load-directory/empty-path/path/write-failure tests.
+app settings load-directory/symlink/empty-path/path/write-failure tests.
 It also
 configured, built, launched, audio-smoke-tested,
 project-save/load-smoke-tested, and audio-import-smoke-tested the Windows-only
@@ -397,11 +397,13 @@ preferred output intent, are stored separately under JUCE's per-user application
 data location as `Rabbington Studio/settings.json`; these settings are not part
 of project packages. The Device Panel's `Reset Prefs` action clears those saved
 Audio/MIDI preferences without deleting or moving project packages. If the
-settings file is malformed or unsupported, the app falls back to defaults,
-surfaces the ignored-settings warning in the Device Panel, and clears that
-warning after a successful settings rewrite. The hidden app reset and
-corruption-recovery smoke tests verify that behavior against temporary settings
-files, including malformed JSON and unsupported future settings versions.
+settings file is malformed, unsupported, or a symlink, the app falls back to
+defaults, surfaces the ignored-settings warning in the Device Panel, and clears
+that warning after a successful settings rewrite. The hidden app reset and
+corruption-recovery smoke tests verify the fallback/rewrite behavior against
+temporary settings files, including malformed JSON and unsupported future
+settings versions; core tests cover symlinked settings-file rejection when
+host-supported.
 Save As copies package-local `audio/`, `analysis/`, `samples/`, and `presets/`
 on a cancellable background job before writing the target manifest, while
 source-package `backups/` are not cloned. If the final manifest write fails

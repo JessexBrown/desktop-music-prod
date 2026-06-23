@@ -158,13 +158,24 @@ std::optional<AppSettings> loadAppSettings(const std::filesystem::path& settings
     error.clear();
 
     std::error_code filesystemError;
-    if (!std::filesystem::is_regular_file(settingsPath, filesystemError))
+    const auto settingsStatus = std::filesystem::symlink_status(settingsPath, filesystemError);
+    if (filesystemError)
     {
-        if (filesystemError)
-            error = "Could not inspect app settings file: " + filesystemError.message();
-
+        error = "Could not inspect app settings file: " + filesystemError.message();
         return std::nullopt;
     }
+
+    if (settingsStatus.type() == std::filesystem::file_type::not_found)
+        return std::nullopt;
+
+    if (std::filesystem::is_symlink(settingsStatus))
+    {
+        error = "App settings path is a symlink.";
+        return std::nullopt;
+    }
+
+    if (!std::filesystem::is_regular_file(settingsStatus))
+        return std::nullopt;
 
     std::ifstream settingsFile(settingsPath);
     if (!settingsFile)
