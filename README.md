@@ -47,8 +47,9 @@ Third-party dependencies remain under their own licenses as recorded in
 - Project package model that writes a human-readable `manifest.json` plus
   `audio`, `samples`, `presets`, `analysis`, and `backups` folders, including
   tracks, clips, static track mix state, and device-chain placeholders. Saving
-  rejects symlinked package paths or asset folders, and loading rejects
-  symlinked manifest paths, including broken links, instead of following them.
+  rejects symlinked package paths, asset folders, or final manifest paths, and
+  loading rejects symlinked manifest paths, including broken links, instead of
+  following them.
 - Core project-package audio import that copies PCM16 WAV files into `audio/`,
   records `audio-file` clips with package-relative paths, and returns a prepared
   mono playback buffer.
@@ -260,8 +261,8 @@ Third-party dependencies remain under their own licenses as recorded in
 - Project save creates `backups/manifest.previous.json` before overwriting an
   existing manifest, writes the next manifest through `manifest.json.tmp`, and
   removes the staged manifest if previous-backup creation fails. Stale temporary
-  manifest symlinks are removed before writing so the save path does not follow
-  them.
+  manifest symlinks are removed before writing, while final manifest symlinks
+  are rejected before backup or commit so the save path does not follow them.
 - Shared app session that keeps UI playback state tied to the project-backed
   transport.
 - Project menu, Import control, and deterministic initial

@@ -515,6 +515,22 @@ bool ProjectModel::savePackage(const std::filesystem::path& packageDirectory, st
     std::filesystem::remove(temporaryManifestPath, filesystemError);
     filesystemError.clear();
 
+    const auto manifestStatus = std::filesystem::symlink_status(manifestPath, filesystemError);
+    if (filesystemError)
+    {
+        if (!isMissingPathError(filesystemError))
+        {
+            error = "Could not inspect project manifest path: " + filesystemError.message();
+            return false;
+        }
+    }
+    else if (std::filesystem::is_symlink(manifestStatus))
+    {
+        error = "Project manifest path is a symlink.";
+        return false;
+    }
+    filesystemError.clear();
+
     std::ofstream temporaryManifestFile(temporaryManifestPath, std::ios::trunc);
     if (!temporaryManifestFile)
     {
