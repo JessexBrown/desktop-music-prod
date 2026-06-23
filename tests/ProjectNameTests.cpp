@@ -3482,6 +3482,87 @@ void projectSaveFailsBeforeManifestCommitWhenAssetFolderPathIsBrokenSymlink()
     std::filesystem::remove_all(missingAudioTarget);
 }
 
+void projectSaveRejectsBrokenLaterAssetFolderSymlinkBeforeManifestStaging()
+{
+    auto project = projectname::ProjectModel::createDefault();
+    project.setName("Before Broken Later Asset Folder Symlink");
+
+    const auto package =
+        makeTemporaryPackagePath("projectname-save-broken-later-asset-folder-symlink-test");
+
+    std::string error;
+    expect(project.savePackage(package, error),
+           "Initial later asset-folder symlink fixture save succeeds");
+
+    const auto manifestPath = package / "manifest.json";
+    const auto temporaryManifestPath = package / "manifest.json.tmp";
+    const auto originalManifestText = readTextFile(manifestPath);
+    expect(originalManifestText.find("Before Broken Later Asset Folder Symlink") != std::string::npos,
+           "Broken later asset-folder symlink fixture starts with the original manifest state");
+
+    writeTextFile(package / "audio" / "sentinel.txt", "audio sentinel before later symlink failure");
+    writeTextFile(temporaryManifestPath,
+                  "stale temporary manifest before broken later asset-folder symlink failure");
+
+    const auto samplesSymlinkPath = package / "samples";
+    const auto missingSamplesTarget =
+        makeTemporaryPackagePath("projectname-save-broken-later-asset-folder-symlink-target-test");
+    expect(std::filesystem::remove_all(samplesSymlinkPath) > 0,
+           "Broken later asset-folder symlink fixture removes initial samples folder");
+
+    std::error_code symlinkError;
+    std::filesystem::create_directory_symlink(missingSamplesTarget, samplesSymlinkPath, symlinkError);
+    if (symlinkError)
+    {
+        std::filesystem::remove_all(package);
+        return;
+    }
+
+    project.setName("After Broken Later Asset Folder Symlink");
+    error = "stale broken later asset-folder symlink failure error";
+    expect(!project.savePackage(package, error),
+           "Project save rejects a broken later asset folder symlink path");
+    expect(error.find("asset folder") != std::string::npos
+               && error.find("symlink") != std::string::npos
+               && error.find("samples") != std::string::npos,
+           "Broken later asset-folder symlink failure error names the samples folder");
+    expect(error.find("not found") == std::string::npos,
+           "Broken later asset-folder symlink failure is not reported as a missing folder");
+    expect(std::filesystem::is_symlink(std::filesystem::symlink_status(samplesSymlinkPath)),
+           "Broken later asset-folder symlink failure leaves the samples symlink unchanged");
+    expect(!std::filesystem::exists(missingSamplesTarget),
+           "Broken later asset-folder symlink failure does not create the missing target");
+    expect(std::filesystem::is_directory(package / "audio"),
+           "Broken later asset-folder symlink failure preserves the earlier audio directory");
+    expect(readTextFile(package / "audio" / "sentinel.txt") == "audio sentinel before later symlink failure",
+           "Broken later asset-folder symlink failure preserves earlier audio contents");
+    expect(std::filesystem::is_directory(package / "presets"),
+           "Broken later asset-folder symlink failure preserves later pre-existing presets directory");
+    expect(std::filesystem::is_directory(package / "analysis"),
+           "Broken later asset-folder symlink failure preserves later pre-existing analysis directory");
+    expect(std::filesystem::is_directory(package / "backups"),
+           "Broken later asset-folder symlink failure preserves later pre-existing backups directory");
+    expect(readTextFile(manifestPath) == originalManifestText,
+           "Broken later asset-folder symlink failure leaves the active manifest unchanged");
+    expect(readTextFile(manifestPath).find("After Broken Later Asset Folder Symlink") == std::string::npos,
+           "Broken later asset-folder symlink failure does not commit the new project state");
+    expect(readTextFile(temporaryManifestPath)
+               == "stale temporary manifest before broken later asset-folder symlink failure",
+           "Broken later asset-folder symlink failure happens before temporary manifest staging");
+    expect(!std::filesystem::exists(package / "backups" / "manifest.previous.json"),
+           "Broken later asset-folder symlink failure happens before previous-manifest backup creation");
+    expect(!std::filesystem::exists(missingSamplesTarget / "manifest.json"),
+           "Broken later asset-folder symlink failure does not write target manifest through the link");
+    expect(!std::filesystem::exists(missingSamplesTarget / "manifest.json.tmp"),
+           "Broken later asset-folder symlink failure does not write target temporary manifest through the link");
+
+    expect(std::filesystem::remove(samplesSymlinkPath),
+           "Temporary broken later asset-folder symlink deleted");
+    expect(std::filesystem::remove_all(package) > 0,
+           "Temporary broken later asset-folder symlink package deleted");
+    std::filesystem::remove_all(missingSamplesTarget);
+}
+
 void projectSaveCommitFailureRemovesTemporaryManifest()
 {
     auto project = projectname::ProjectModel::createDefault();
@@ -11386,6 +11467,7 @@ int main()
     projectSaveFailsBeforeManifestCommitWhenAssetFolderPathIsFile();
     projectSaveFailsBeforeManifestCommitWhenAssetFolderPathIsSymlink();
     projectSaveFailsBeforeManifestCommitWhenAssetFolderPathIsBrokenSymlink();
+    projectSaveRejectsBrokenLaterAssetFolderSymlinkBeforeManifestStaging();
     projectSaveCommitFailureRemovesTemporaryManifest();
     projectManifestLoadsLegacyTrackWithoutDevices();
     projectManifestFailuresAreRecoverable();

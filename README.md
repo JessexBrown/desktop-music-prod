@@ -49,10 +49,11 @@ Third-party dependencies remain under their own licenses as recorded in
   `audio`, `samples`, `presets`, `analysis`, and `backups` folders, including
   tracks, clips, static track mix state, and device-chain placeholders. Saving
   rejects symlinked package paths, asset folders, or final manifest paths,
-  including broken links, and loading rejects directory or symlinked manifest
-  paths, including broken links, instead of following them. Core tests cover
-  failed manifest-directory and symlinked-manifest loads leaving isolated app
-  settings untouched.
+  including broken links and later asset-folder failures before manifest
+  staging, and loading rejects directory or symlinked manifest paths, including
+  broken links, instead of following them. Core tests cover failed
+  manifest-directory and symlinked-manifest loads leaving isolated app settings
+  untouched.
 - Core project-package audio import that copies PCM16 WAV files into `audio/`,
   records `audio-file` clips with package-relative paths, and returns a prepared
   mono playback buffer.

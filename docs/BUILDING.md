@@ -378,9 +378,9 @@ manifest-directory load failure/app-settings isolation tests, manifest symlink
 and broken-symlink load failure/app-settings isolation tests when host-supported,
 package-path file rejection tests, package directory creation failure tests,
 package and asset-folder symlink path failure tests, including broken asset
-folder links, when host-supported, staged temporary-manifest symlink cleanup
-tests, including broken links, when host-supported, manifest symlink and
-broken-symlink save rejection tests,
+folder links and later broken asset folder links, when host-supported, staged
+temporary-manifest symlink cleanup tests, including broken links, when
+host-supported, manifest symlink and broken-symlink save rejection tests,
 session-level manifest symlink and broken-symlink save failure tests when
 host-supported, staged temporary-manifest open/commit failure tests, Save As retry manifest/asset
 symlink conflict tests when host-supported, Save As source and target symlink
