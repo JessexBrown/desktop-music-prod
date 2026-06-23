@@ -386,7 +386,7 @@ tests, when host-supported, staged temporary-manifest open/commit failure
 tests, Save As retry manifest/asset
 symlink conflict tests when host-supported, Save As source and target symlink
 rejection tests, including broken source and target links, when host-supported,
-background Save As broken source and target symlink failure tests when
+background Save As linked and broken source/target symlink failure tests when
 host-supported, plus app settings load-directory, symlink, broken-symlink,
 empty-path, load-linked-parent-symlink, load-broken-parent-symlink,
 save-symlink, save-broken-symlink, save-broken-parent-symlink,

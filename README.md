@@ -303,7 +303,8 @@ Third-party dependencies remain under their own licenses as recorded in
   relink preparation jobs, imported media package inventory classification,
   package media quarantine restore-manifest validation, preflight planning,
   file-moving rollback behavior, restore/conflict behavior, Save As package
-  relocation/copy policy/background job progress and cancellation, and
+  relocation/copy policy, linked/broken symlink rejection, background job
+  progress and cancellation, and
   background cleanup job status propagation,
   workspace command routing, app command registry metadata, enablement, and
   dispatch results, timeline lane
