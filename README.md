@@ -30,10 +30,10 @@ Third-party dependencies remain under their own licenses as recorded in
   per-user `Rabbington Studio/settings.json`, including first-run prompt
   dismissal, a readable output summary, and JUCE restore state when available.
 - Malformed or symlinked app settings, including broken settings links, fall
-  back to defaults; core tests cover load/save symlink rejection and stale
-  temporary symlink cleanup, and a hidden smoke test verifies the Device Panel
-  warning and recovery path that rewrites valid human-readable settings without
-  touching projects.
+  back to defaults; core tests cover load/save symlink rejection, broken-link
+  save rejection, and stale temporary symlink cleanup, and a hidden smoke test
+  verifies the Device Panel warning and recovery path that rewrites valid
+  human-readable settings without touching projects.
 - The Device Panel exposes a visible `Reset Prefs` action that clears the saved
   Audio/MIDI reminder dismissal and preferred output intent without touching
   project packages or the current audio callback.
