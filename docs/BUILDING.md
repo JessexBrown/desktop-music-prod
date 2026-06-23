@@ -378,7 +378,8 @@ manifest-directory and symlink load failure tests when host-supported,
 package-path file rejection tests, package directory creation failure tests,
 package symlink path failure tests when host-supported, staged
 temporary-manifest open/commit failure tests, Save As retry manifest/asset
-symlink conflict tests when host-supported, plus
+symlink conflict tests when host-supported, Save As source symlink rejection
+tests when host-supported, plus
 app settings load-directory/symlink/empty-path/save-symlink/path/write-failure tests.
 It also
 configured, built, launched, audio-smoke-tested,
@@ -411,9 +412,11 @@ after copying, the active package remains unchanged and the copied target assets
 remain in the chosen package for recovery or manual cleanup. The Project menu's
 `Copy Failed Save As Target` action copies that kept target package path, and
 the `Retry Failed Save As` action writes only the kept target manifest after the
-blocking manifest path is fixed. Retry refuses existing target manifests,
-non-regular manifest paths, and missing or symlinked copied target assets
-without starting cleanup, recopying assets, or touching the audio callback. The
+blocking manifest path is fixed. Copy refuses symlinked source package folders
+or source asset entries before mutating the target package. Retry refuses
+existing target manifests, non-regular manifest paths, and missing or symlinked
+copied target assets without starting cleanup, recopying assets, or touching the
+audio callback. The
 project chooser smoke test verifies the copy action plus retry conflict,
 missing-asset, stale
 temporary-manifest, and successful recovery paths without starting another Save

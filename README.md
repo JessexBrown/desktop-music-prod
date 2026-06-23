@@ -216,9 +216,10 @@ Third-party dependencies remain under their own licenses as recorded in
   target assets are left in the chosen package for recovery or manual cleanup;
   the app status makes that recovery boundary visible, and the Project menu can
   copy the kept target package path or run a manifest-only retry after the
-  blocking target manifest path is fixed. Retry refuses existing target
-  manifests, non-regular manifest paths, and missing or symlinked copied assets
-  without recopying, deleting, quarantining, or touching audio playback.
+  blocking target manifest path is fixed. Copy rejects symlinked source package
+  folders or asset entries before target mutation, and retry refuses existing
+  target manifests, non-regular manifest paths, and missing or symlinked copied
+  assets without recopying, deleting, quarantining, or touching audio playback.
 - Save As package asset copying runs on a cancellable background job with
   phase, file-count, and byte-count progress, plus a guarded top-bar Cancel
   Save affordance.

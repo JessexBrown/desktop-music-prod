@@ -2,19 +2,7 @@
 
 # Next Issues
 
-## 1. Add Save As Copy Source Symlink Rejection Coverage
-
-Acceptance:
-- Add focused Save As copy coverage for source package folders or copied source
-  asset entries that are symlinks instead of real directories/files.
-- Fixture-gate cleanly when the host cannot create test symlinks without
-  elevated permissions.
-- Verify copy fails before target package mutation, leaves the symlink target
-  untouched, and reports a human-readable unsupported-source-entry error.
-- Preserve target-conflict, source-missing, cancellation, progress, and
-  successful copy coverage.
-
-## 2. Add Project Manifest Load Broken Symlink Coverage
+## 1. Add Project Manifest Load Broken Symlink Coverage
 
 Acceptance:
 - Add focused core coverage for loading a project package whose `manifest.json`
@@ -28,7 +16,7 @@ Acceptance:
   malformed JSON, unsupported-version, schema, and successful load/save
   coverage.
 
-## 3. Add Project Save Asset Folder Symlink Failure Coverage
+## 2. Add Project Save Asset Folder Symlink Failure Coverage
 
 Acceptance:
 - Add focused core coverage for saving a project package when an existing asset
@@ -42,7 +30,7 @@ Acceptance:
   temporary-manifest failure, backup failure, commit failure, and successful
   save/load tests.
 
-## 4. Add App Settings Load Broken Symlink Coverage
+## 3. Add App Settings Load Broken Symlink Coverage
 
 Acceptance:
 - Add focused core coverage for loading app settings when the settings path is a
@@ -56,7 +44,7 @@ Acceptance:
   load-directory, malformed JSON, unsupported-version, reset, and successful
   load/save coverage.
 
-## 5. Add App Settings Temporary Symlink Cleanup Coverage
+## 4. Add App Settings Temporary Symlink Cleanup Coverage
 
 Acceptance:
 - Add focused core coverage for saving app settings when a stale
@@ -69,3 +57,15 @@ Acceptance:
 - Preserve app-settings save-path symlink rejection, empty-path,
   directory-creation failure, temporary-write failure, commit failure,
   load-directory, and successful load/save coverage.
+
+## 5. Add Save As Copy Target Parent Symlink Failure Coverage
+
+Acceptance:
+- Add focused Save As copy coverage for target package paths or intermediate
+  target parent directories that are symlinks.
+- Fixture-gate cleanly when the host cannot create test symlinks without
+  elevated permissions.
+- Verify copy fails before package asset mutation, leaves the symlink target
+  untouched, and reports a human-readable target-directory symlink error.
+- Preserve Save As source-symlink rejection, target-conflict, source-missing,
+  cancellation, progress, and successful copy coverage.

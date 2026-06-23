@@ -1406,6 +1406,125 @@ void projectPackageSaveAsCopyCommandRejectsTargetConflictsBeforeCopy()
            "Temporary Save As conflict target package deleted");
 }
 
+void projectPackageSaveAsCopyCommandRejectsSourceSymlinksBeforeCopy()
+{
+    auto folderSymlinkProject = projectname::ProjectModel::createDefault();
+
+    projectname::ProjectClip folderSymlinkClip;
+    folderSymlinkClip.id = "save-as-source-folder-symlink-imported";
+    folderSymlinkClip.name = "Save As Source Folder Symlink Imported";
+    folderSymlinkClip.type = "audio-file";
+    folderSymlinkClip.relativePath = "audio/take.wav";
+    folderSymlinkClip.lengthBeats = 4.0;
+    expect(folderSymlinkProject.addClipToTrack("track-1", folderSymlinkClip),
+           "Save As source-folder symlink test adds imported clip");
+
+    const auto folderSymlinkSourcePackage =
+        makeTemporaryPackagePath("projectname-save-as-source-folder-symlink-source-test");
+    const auto folderSymlinkTargetPackage =
+        makeTemporaryPackagePath("projectname-save-as-source-folder-symlink-target-test");
+    const auto linkedAudioFolderTarget =
+        makeTemporaryPackagePath("projectname-save-as-source-folder-symlink-audio-target-test");
+    const auto linkedAudioFolderSentinel = linkedAudioFolderTarget / "sentinel.txt";
+    writeTextFile(linkedAudioFolderTarget / "take.wav", "linked folder audio");
+    writeTextFile(linkedAudioFolderSentinel, "linked folder sentinel");
+    std::filesystem::create_directories(folderSymlinkSourcePackage);
+
+    auto entrySymlinkProject = projectname::ProjectModel::createDefault();
+
+    projectname::ProjectClip entrySymlinkClip;
+    entrySymlinkClip.id = "save-as-source-entry-symlink-imported";
+    entrySymlinkClip.name = "Save As Source Entry Symlink Imported";
+    entrySymlinkClip.type = "audio-file";
+    entrySymlinkClip.relativePath = "audio/take.wav";
+    entrySymlinkClip.lengthBeats = 4.0;
+    expect(entrySymlinkProject.addClipToTrack("track-1", entrySymlinkClip),
+           "Save As source-entry symlink test adds imported clip");
+
+    const auto entrySymlinkSourcePackage =
+        makeTemporaryPackagePath("projectname-save-as-source-entry-symlink-source-test");
+    const auto entrySymlinkTargetPackage =
+        makeTemporaryPackagePath("projectname-save-as-source-entry-symlink-target-test");
+    const auto linkedAudioEntryTarget =
+        makeTemporaryAudioPath("projectname-save-as-source-entry-symlink-target-test");
+    const auto sourceEntrySymlink = entrySymlinkSourcePackage / entrySymlinkClip.relativePath;
+    writeTextFile(linkedAudioEntryTarget, "linked entry audio");
+    std::filesystem::create_directories(sourceEntrySymlink.parent_path());
+
+    std::error_code symlinkError;
+    std::filesystem::create_directory_symlink(linkedAudioFolderTarget,
+                                             folderSymlinkSourcePackage / "audio",
+                                             symlinkError);
+    if (symlinkError)
+    {
+        std::filesystem::remove_all(folderSymlinkSourcePackage);
+        std::filesystem::remove_all(linkedAudioFolderTarget);
+        std::filesystem::remove_all(entrySymlinkSourcePackage);
+        std::filesystem::remove(linkedAudioEntryTarget);
+        return;
+    }
+
+    symlinkError.clear();
+    std::filesystem::create_symlink(linkedAudioEntryTarget, sourceEntrySymlink, symlinkError);
+    if (symlinkError)
+    {
+        std::filesystem::remove(folderSymlinkSourcePackage / "audio");
+        std::filesystem::remove_all(folderSymlinkSourcePackage);
+        std::filesystem::remove_all(linkedAudioFolderTarget);
+        std::filesystem::remove_all(entrySymlinkSourcePackage);
+        std::filesystem::remove(linkedAudioEntryTarget);
+        return;
+    }
+
+    const auto folderSymlinkResult = projectname::copyProjectPackageAssetsForSaveAs(
+        { folderSymlinkProject, folderSymlinkSourcePackage, folderSymlinkTargetPackage });
+
+    expect(folderSymlinkResult.status == projectname::ProjectPackageSaveAsCopyStatus::unsupportedSourceEntry,
+           "Save As copy command rejects a symlink source package folder");
+    expect(folderSymlinkResult.error.find("Source package folder is a symlink") != std::string::npos,
+           "Save As source-folder symlink failure error is human-readable");
+    expect(folderSymlinkResult.plan.requiresPackageAssetCopy,
+           "Save As source-folder symlink failure preserves the copy plan");
+    expect(std::filesystem::is_symlink(
+               std::filesystem::symlink_status(folderSymlinkSourcePackage / "audio")),
+           "Save As source-folder symlink failure leaves the source symlink unchanged");
+    expect(readTextFile(linkedAudioFolderSentinel) == "linked folder sentinel",
+           "Save As source-folder symlink failure preserves the linked folder target");
+    expect(!std::filesystem::exists(folderSymlinkTargetPackage),
+           "Save As source-folder symlink failure does not mutate the target package");
+
+    const auto entrySymlinkResult = projectname::copyProjectPackageAssetsForSaveAs(
+        { entrySymlinkProject, entrySymlinkSourcePackage, entrySymlinkTargetPackage });
+
+    expect(entrySymlinkResult.status == projectname::ProjectPackageSaveAsCopyStatus::unsupportedSourceEntry,
+           "Save As copy command rejects a symlink source package asset entry");
+    expect(entrySymlinkResult.error.find("Source package entry is a symlink") != std::string::npos,
+           "Save As source-entry symlink failure error is human-readable");
+    expect(entrySymlinkResult.plan.requiresPackageAssetCopy,
+           "Save As source-entry symlink failure preserves the copy plan");
+    expect(std::filesystem::is_symlink(std::filesystem::symlink_status(sourceEntrySymlink)),
+           "Save As source-entry symlink failure leaves the source symlink unchanged");
+    expect(readTextFile(linkedAudioEntryTarget) == "linked entry audio",
+           "Save As source-entry symlink failure preserves the linked entry target");
+    expect(!std::filesystem::exists(entrySymlinkTargetPackage),
+           "Save As source-entry symlink failure does not mutate the target package");
+
+    expect(std::filesystem::remove(folderSymlinkSourcePackage / "audio"),
+           "Temporary Save As source-folder symlink deleted");
+    expect(std::filesystem::remove(sourceEntrySymlink),
+           "Temporary Save As source-entry symlink deleted");
+    expect(std::filesystem::remove_all(folderSymlinkSourcePackage) > 0,
+           "Temporary Save As source-folder symlink source package deleted");
+    expect(std::filesystem::remove_all(linkedAudioFolderTarget) > 0,
+           "Temporary Save As source-folder symlink target folder deleted");
+    expect(std::filesystem::remove_all(entrySymlinkSourcePackage) > 0,
+           "Temporary Save As source-entry symlink source package deleted");
+    expect(std::filesystem::remove(linkedAudioEntryTarget),
+           "Temporary Save As source-entry symlink target file deleted");
+    std::filesystem::remove_all(folderSymlinkTargetPackage);
+    std::filesystem::remove_all(entrySymlinkTargetPackage);
+}
+
 void projectPackageSaveAsCopyCommandRejectsTargetInsideSource()
 {
     auto project = projectname::ProjectModel::createDefault();
@@ -9852,6 +9971,7 @@ int main()
     projectPackageSaveAsPolicyPreservesExternalReferences();
     projectPackageSaveAsCopyCommandCopiesPackageAssetsAndStartsFreshBackups();
     projectPackageSaveAsCopyCommandRejectsTargetConflictsBeforeCopy();
+    projectPackageSaveAsCopyCommandRejectsSourceSymlinksBeforeCopy();
     projectPackageSaveAsCopyCommandRejectsTargetInsideSource();
     projectPackageSaveAsCopyCommandCancelsAndRollsBackPartialTarget();
     backgroundSaveAsPackageCopyJobCopiesAssetsAndReportsProgress();
