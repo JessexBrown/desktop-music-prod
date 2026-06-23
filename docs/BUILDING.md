@@ -377,7 +377,7 @@ prepared voice summing tests, previous-manifest backup success/failure tests,
 manifest-directory, symlink, and broken-symlink load failure tests when
 host-supported,
 package-path file rejection tests, package directory creation failure tests,
-package symlink path failure tests when host-supported, staged
+package and asset-folder symlink path failure tests when host-supported, staged
 temporary-manifest open/commit failure tests, Save As retry manifest/asset
 symlink conflict tests when host-supported, Save As source symlink rejection
 tests when host-supported, plus

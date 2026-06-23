@@ -46,8 +46,8 @@ Third-party dependencies remain under their own licenses as recorded in
 - Project package model that writes a human-readable `manifest.json` plus
   `audio`, `samples`, `presets`, `analysis`, and `backups` folders, including
   tracks, clips, static track mix state, and device-chain placeholders. Saving
-  rejects symlinked package paths and loading rejects symlinked manifest paths,
-  including broken links, instead of following them.
+  rejects symlinked package paths or asset folders, and loading rejects
+  symlinked manifest paths, including broken links, instead of following them.
 - Core project-package audio import that copies PCM16 WAV files into `audio/`,
   records `audio-file` clips with package-relative paths, and returns a prepared
   mono playback buffer.

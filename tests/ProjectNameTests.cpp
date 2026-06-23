@@ -2454,6 +2454,57 @@ void projectSaveFailsBeforeManifestCommitWhenAssetFolderPathIsFile()
            "Temporary asset-folder conflict package deleted");
 }
 
+void projectSaveFailsBeforeManifestCommitWhenAssetFolderPathIsSymlink()
+{
+    auto project = projectname::ProjectModel::createDefault();
+    project.setName("Asset Folder Symlink Test");
+
+    const auto package = makeTemporaryPackagePath("projectname-save-asset-folder-symlink-test");
+    const auto linkedAudioTarget =
+        makeTemporaryPackagePath("projectname-save-asset-folder-symlink-target-test");
+    const auto linkedAudioSentinel = linkedAudioTarget / "sentinel.txt";
+    writeTextFile(linkedAudioSentinel, "linked audio target sentinel");
+    std::filesystem::create_directories(package);
+
+    const auto audioSymlinkPath = package / "audio";
+    std::error_code symlinkError;
+    std::filesystem::create_directory_symlink(linkedAudioTarget, audioSymlinkPath, symlinkError);
+    if (symlinkError)
+    {
+        std::filesystem::remove_all(package);
+        std::filesystem::remove_all(linkedAudioTarget);
+        return;
+    }
+
+    std::string error;
+    expect(!project.savePackage(package, error), "Project save reports asset folder symlink failure");
+    expect(error.find("asset folder") != std::string::npos
+               && error.find("symlink") != std::string::npos
+               && error.find("audio") != std::string::npos,
+           "Asset folder symlink failure error is human-readable");
+    expect(std::filesystem::is_symlink(std::filesystem::symlink_status(audioSymlinkPath)),
+           "Asset folder symlink failure leaves the audio symlink unchanged");
+    expect(readTextFile(linkedAudioSentinel) == "linked audio target sentinel",
+           "Asset folder symlink failure preserves the linked audio target");
+    expect(!std::filesystem::exists(package / "manifest.json"),
+           "Asset folder symlink failure does not write a project manifest");
+    expect(!std::filesystem::exists(package / "manifest.json.tmp"),
+           "Asset folder symlink failure does not leave a temporary manifest");
+    expect(!std::filesystem::exists(package / "samples"),
+           "Asset folder symlink failure stops before creating later asset folders");
+    expect(!std::filesystem::exists(linkedAudioTarget / "manifest.json"),
+           "Asset folder symlink failure does not write a manifest through the link target");
+    expect(!std::filesystem::exists(linkedAudioTarget / "manifest.json.tmp"),
+           "Asset folder symlink failure does not write a temporary manifest through the link target");
+
+    expect(std::filesystem::remove(audioSymlinkPath),
+           "Temporary asset-folder symlink deleted");
+    expect(std::filesystem::remove_all(package) > 0,
+           "Temporary asset-folder symlink package deleted");
+    expect(std::filesystem::remove_all(linkedAudioTarget) > 0,
+           "Temporary linked asset-folder target deleted");
+}
+
 void projectSaveCommitFailureRemovesTemporaryManifest()
 {
     auto project = projectname::ProjectModel::createDefault();
@@ -10041,6 +10092,7 @@ int main()
     projectSaveBackupFailureKeepsManifestAndRemovesTemporaryManifest();
     projectSaveTemporaryManifestOpenFailureKeepsManifestAndOccupiedPath();
     projectSaveFailsBeforeManifestCommitWhenAssetFolderPathIsFile();
+    projectSaveFailsBeforeManifestCommitWhenAssetFolderPathIsSymlink();
     projectSaveCommitFailureRemovesTemporaryManifest();
     projectManifestLoadsLegacyTrackWithoutDevices();
     projectManifestFailuresAreRecoverable();

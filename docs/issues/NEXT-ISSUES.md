@@ -2,21 +2,7 @@
 
 # Next Issues
 
-## 1. Add Project Save Asset Folder Symlink Failure Coverage
-
-Acceptance:
-- Add focused core coverage for saving a project package when an existing asset
-  folder path such as `audio/` is a symlink.
-- Fixture-gate the symlink case cleanly when the host cannot create test
-  symlinks without elevated permissions.
-- Verify save does not follow the symlink, does not write a manifest or
-  manifest temp file, and leaves the linked asset target untouched.
-- Preserve package-path symlink rejection, package-path file rejection,
-  package-directory-creation failure, asset-folder file failure,
-  temporary-manifest failure, backup failure, commit failure, and successful
-  save/load tests.
-
-## 2. Add App Settings Load Broken Symlink Coverage
+## 1. Add App Settings Load Broken Symlink Coverage
 
 Acceptance:
 - Add focused core coverage for loading app settings when the settings path is a
@@ -30,7 +16,7 @@ Acceptance:
   load-directory, malformed JSON, unsupported-version, reset, and successful
   load/save coverage.
 
-## 3. Add App Settings Temporary Symlink Cleanup Coverage
+## 2. Add App Settings Temporary Symlink Cleanup Coverage
 
 Acceptance:
 - Add focused core coverage for saving app settings when a stale
@@ -44,7 +30,7 @@ Acceptance:
   directory-creation failure, temporary-write failure, commit failure,
   load-directory, and successful load/save coverage.
 
-## 4. Add Save As Copy Target Parent Symlink Failure Coverage
+## 3. Add Save As Copy Target Parent Symlink Failure Coverage
 
 Acceptance:
 - Add focused Save As copy coverage for target package paths or intermediate
@@ -56,7 +42,7 @@ Acceptance:
 - Preserve Save As source-symlink rejection, target-conflict, source-missing,
   cancellation, progress, and successful copy coverage.
 
-## 5. Add Project Save Temporary Manifest Symlink Cleanup Coverage
+## 4. Add Project Save Temporary Manifest Symlink Cleanup Coverage
 
 Acceptance:
 - Add focused core coverage for saving a project package when a stale
@@ -68,4 +54,18 @@ Acceptance:
   link.
 - Preserve project save package-path symlink rejection, asset-folder failure,
   temporary-manifest write/commit failure, backup failure, and successful
+  save/load coverage.
+
+## 5. Add Project Save Manifest Symlink Failure Coverage
+
+Acceptance:
+- Add focused core coverage for saving a project package when an existing
+  `manifest.json` path is a symlink to a file.
+- Fixture-gate cleanly when the host cannot create test symlinks without
+  elevated permissions.
+- Verify save rejects the manifest symlink before backup or commit, leaves the
+  symlink target untouched, removes any staged temporary manifest, and keeps
+  the previous real manifest state intact when present.
+- Preserve package-path symlink rejection, asset-folder symlink rejection,
+  temporary-manifest failure, backup failure, commit failure, and successful
   save/load coverage.

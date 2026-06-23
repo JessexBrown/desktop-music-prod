@@ -483,7 +483,26 @@ bool ProjectModel::savePackage(const std::filesystem::path& packageDirectory, st
 
     for (const auto* folderName : assetFolders)
     {
-        std::filesystem::create_directories(packageDirectory / folderName, filesystemError);
+        const auto assetFolderPath = packageDirectory / folderName;
+        filesystemError.clear();
+        const auto assetFolderStatus = std::filesystem::symlink_status(assetFolderPath, filesystemError);
+        if (filesystemError)
+        {
+            if (!isMissingPathError(filesystemError))
+            {
+                error = std::string("Could not inspect asset folder: ")
+                    + folderName + " (" + filesystemError.message() + ")";
+                return false;
+            }
+        }
+        else if (std::filesystem::is_symlink(assetFolderStatus))
+        {
+            error = std::string("Project asset folder path is a symlink: ") + folderName + ".";
+            return false;
+        }
+
+        filesystemError.clear();
+        std::filesystem::create_directories(assetFolderPath, filesystemError);
         if (filesystemError)
         {
             error = std::string("Could not create asset folder: ") + folderName + " (" + filesystemError.message() + ")";
