@@ -273,7 +273,7 @@ Third-party dependencies remain under their own licenses as recorded in
   the save path does not follow them.
 - Project load rejects linked and broken package-parent paths, manifest
   directories, and manifest symlinks, including broken links, before parsing
-  them; session coverage keeps the active project unchanged for linked
+  them; session coverage keeps the active project unchanged for linked/broken
   package-parent failures and verifies manifest-link failures do not rewrite
   isolated app settings or create `manifest.json.tmp`.
 - Shared app session that keeps UI playback state tied to the project-backed
