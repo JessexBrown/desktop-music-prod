@@ -10701,6 +10701,115 @@ void projectManifestBrokenSymlinkLoadFailureKeepsSessionProject()
     expect(std::filesystem::remove_all(package) > 0,
            "Temporary broken manifest-symlink load package deleted");
 }
+
+void projectManifestSymlinkLoadFailuresLeaveAppSettingsUntouched()
+{
+    projectname::AppSettings settings;
+    settings.audioSetup.firstRunPromptDismissed = true;
+    settings.audioSetup.preferredOutput.hasOutputDevice = true;
+    settings.audioSetup.preferredOutput.deviceType = "Windows Audio";
+    settings.audioSetup.preferredOutput.deviceName = "Project Load Isolation Output";
+    settings.audioSetup.preferredOutput.sampleRateHz = 48000.0;
+    settings.audioSetup.preferredOutput.bufferSizeSamples = 256;
+    settings.audioSetup.preferredOutput.outputChannelCount = 2;
+    settings.audioSetup.preferredOutput.juceDeviceStateXml =
+        "<DEVICESETUP deviceType=\"Windows Audio\" audioOutputDeviceName=\"Project Load Isolation Output\"/>";
+
+    const auto settingsPath =
+        makeTemporarySettingsPath("projectname-manifest-symlink-load-settings-isolation-test");
+
+    std::string error;
+    expect(projectname::saveAppSettings(settings, settingsPath, error),
+           "Project load settings-isolation fixture saves app settings");
+    const auto originalSettingsText = readTextFile(settingsPath);
+
+    auto exerciseLoadFailure = [&](bool brokenLink)
+    {
+        projectname::AppSession session;
+        session.getProject().setName(brokenLink
+                                         ? "Keep Broken Manifest Settings Isolation Baseline"
+                                         : "Keep Manifest Settings Isolation Baseline");
+        session.setTempoBpm(brokenLink ? 117.0 : 115.0);
+        const auto originalProject = session.getProject();
+
+        const auto package = makeTemporaryPackagePath(
+            brokenLink
+                ? "projectname-broken-manifest-symlink-load-settings-isolation-test"
+                : "projectname-manifest-symlink-load-settings-isolation-test");
+        const auto manifestSymlinkPath = package / "manifest.json";
+        const auto symlinkTargetPath = brokenLink
+            ? package / "missing-manifest-target.json"
+            : package / "linked-manifest-target.json";
+
+        std::filesystem::create_directories(package);
+        if (!brokenLink)
+        {
+            writeTextFile(symlinkTargetPath,
+                          R"({"manifestVersion":1,"name":"Linked Manifest Should Not Touch Settings","transport":{"tempoBpm":88.0,"timeSignature":{"numerator":5,"denominator":4},"positionBeats":2.0},"tracks":[]})");
+        }
+
+        std::error_code symlinkError;
+        std::filesystem::create_symlink(symlinkTargetPath, manifestSymlinkPath, symlinkError);
+        if (symlinkError)
+        {
+            std::filesystem::remove_all(package);
+            return;
+        }
+
+        error = brokenLink
+            ? "stale broken manifest load settings-isolation error"
+            : "stale manifest load settings-isolation error";
+        expect(!session.loadProjectPackage(package, error),
+               brokenLink
+                   ? "Session rejects broken manifest symlink package during settings-isolation check"
+                   : "Session rejects manifest symlink package during settings-isolation check");
+        expect(error.find("manifest") != std::string::npos
+                   && error.find("symlink") != std::string::npos,
+               brokenLink
+                   ? "Broken manifest settings-isolation load failure error is human-readable"
+                   : "Manifest settings-isolation load failure error is human-readable");
+        expect(session.getProject() == originalProject,
+               brokenLink
+                   ? "Broken manifest settings-isolation load failure keeps current session project"
+                   : "Manifest settings-isolation load failure keeps current session project");
+        expect(readTextFile(settingsPath) == originalSettingsText,
+               brokenLink
+                   ? "Broken manifest settings-isolation load failure leaves app settings unchanged"
+                   : "Manifest settings-isolation load failure leaves app settings unchanged");
+
+        std::string settingsError;
+        const auto reloadedSettings = projectname::loadAppSettings(settingsPath, settingsError);
+        expect(reloadedSettings.has_value() && *reloadedSettings == settings,
+               brokenLink
+                   ? "Broken manifest settings-isolation load failure leaves app settings loadable"
+                   : "Manifest settings-isolation load failure leaves app settings loadable");
+        expect(!std::filesystem::exists(package / "manifest.json.tmp"),
+               brokenLink
+                   ? "Broken manifest settings-isolation load failure does not create a temporary manifest"
+                   : "Manifest settings-isolation load failure does not create a temporary manifest");
+
+        if (brokenLink)
+        {
+            expect(!std::filesystem::exists(symlinkTargetPath),
+                   "Broken manifest settings-isolation load failure does not create the missing target");
+            expect(std::filesystem::remove(manifestSymlinkPath),
+                   "Temporary settings-isolation broken manifest symlink deleted");
+        }
+
+        expect(std::filesystem::remove_all(package) > 0,
+               brokenLink
+                   ? "Temporary settings-isolation broken manifest package deleted"
+                   : "Temporary settings-isolation manifest package deleted");
+    };
+
+    exerciseLoadFailure(false);
+    exerciseLoadFailure(true);
+
+    expect(readTextFile(settingsPath) == originalSettingsText,
+           "Project load settings-isolation fixture leaves app settings unchanged after all failures");
+    expect(std::filesystem::remove(settingsPath),
+           "Temporary project load settings-isolation app settings file deleted");
+}
 } // namespace
 
 int main()
@@ -10741,6 +10850,7 @@ int main()
     projectManifestDirectoryLoadFailureKeepsSessionProject();
     projectManifestSymlinkLoadFailureKeepsSessionProject();
     projectManifestBrokenSymlinkLoadFailureKeepsSessionProject();
+    projectManifestSymlinkLoadFailuresLeaveAppSettingsUntouched();
     transportStateAdvancesOnlyWhilePlaying();
     projectManifestRoundTrips();
     appSettingsRoundTripsAudioSetupPreferences();

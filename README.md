@@ -265,8 +265,13 @@ Third-party dependencies remain under their own licenses as recorded in
   manifest symlinks, including broken links, are removed before writing, while
   final manifest symlinks, including broken links, are rejected before backup or
   commit so the save path does not follow them.
+- Project load rejects manifest directories and manifest symlinks, including
+  broken links, before parsing them; session coverage keeps the active project
+  unchanged and verifies manifest-link failures do not rewrite isolated app
+  settings or create `manifest.json.tmp`.
 - Shared app session that keeps UI playback state tied to the project-backed
-  transport and preserves the current in-memory project when package saves fail.
+  transport and preserves the current in-memory project when package saves or
+  loads fail.
 - Project menu, Import control, and deterministic initial
   `Rabbington Studio Demo.project` package in the user's documents folder.
 - Import uses a native file chooser in the JUCE shell, runs project-package WAV
