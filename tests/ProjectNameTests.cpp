@@ -11778,6 +11778,46 @@ void projectLinkedPackageParentSymlinkLoadFailureRejectsBeforeParsingManifest()
            "Temporary linked package-parent load target deleted");
 }
 
+void projectBrokenPackageParentSymlinkLoadFailureRejectsBeforeManifestWork()
+{
+    const auto parentSymlink =
+        makeTemporaryPackagePath("projectname-broken-package-parent-load-symlink-link-test");
+    const auto missingParentTarget =
+        makeTemporaryPackagePath("projectname-broken-package-parent-load-symlink-target-test");
+    const auto requestedPackage = parentSymlink / "Nested Load.project";
+
+    std::error_code symlinkError;
+    std::filesystem::create_directory_symlink(missingParentTarget, parentSymlink, symlinkError);
+    if (symlinkError)
+        return;
+
+    std::string error = "stale broken package-parent load error";
+    auto loaded = projectname::ProjectModel::loadPackage(requestedPackage, error);
+    expect(!loaded.has_value(),
+           "Project load rejects a package through a broken intermediate parent");
+    expect(error.find("Project package path contains a symlink") != std::string::npos
+               && error.find(parentSymlink.generic_string()) != std::string::npos,
+           "Broken package-parent load failure error is human-readable");
+    expect(error.find("not found") == std::string::npos,
+           "Broken package-parent load failure is not reported as a missing manifest");
+    expect(error.find("JSON") == std::string::npos,
+           "Broken package-parent load failure does not parse JSON through the symlink");
+    expect(std::filesystem::is_symlink(std::filesystem::symlink_status(parentSymlink)),
+           "Broken package-parent load failure leaves the parent symlink unchanged");
+    expect(!std::filesystem::exists(missingParentTarget),
+           "Broken package-parent load failure does not create the missing parent target");
+    expect(!std::filesystem::exists(missingParentTarget / "Nested Load.project"),
+           "Broken package-parent load failure does not create a package through the broken link");
+    expect(!std::filesystem::exists(requestedPackage / "manifest.json.tmp"),
+           "Broken package-parent load failure does not create a temporary manifest through the link");
+    expect(!std::filesystem::exists(missingParentTarget / "Nested Load.project" / "manifest.json.tmp"),
+           "Broken package-parent load failure does not write target temporary manifest");
+
+    expect(std::filesystem::remove(parentSymlink),
+           "Temporary broken package-parent load symlink deleted");
+    std::filesystem::remove_all(missingParentTarget);
+}
+
 void projectManifestDirectoryLoadFailureLeavesAppSettingsUntouched()
 {
     projectname::AppSettings settings;
@@ -12083,6 +12123,7 @@ int main()
     appSessionLoadFailureKeepsCurrentProject();
     projectManifestDirectoryLoadFailureKeepsSessionProject();
     projectLinkedPackageParentSymlinkLoadFailureRejectsBeforeParsingManifest();
+    projectBrokenPackageParentSymlinkLoadFailureRejectsBeforeManifestWork();
     projectManifestDirectoryLoadFailureLeavesAppSettingsUntouched();
     projectManifestSymlinkLoadFailureKeepsSessionProject();
     projectManifestBrokenSymlinkLoadFailureKeepsSessionProject();

@@ -271,10 +271,11 @@ Third-party dependencies remain under their own licenses as recorded in
   asset-folder and final manifest symlinks, including linked and broken later
   asset-folder links, are rejected before manifest staging, backup, or commit so
   the save path does not follow them.
-- Project load rejects linked package-parent paths, manifest directories, and
-  manifest symlinks, including broken links, before parsing them; session
-  coverage keeps the active project unchanged and verifies manifest-link
-  failures do not rewrite isolated app settings or create `manifest.json.tmp`.
+- Project load rejects linked and broken package-parent paths, manifest
+  directories, and manifest symlinks, including broken links, before parsing
+  them; session coverage keeps the active project unchanged and verifies
+  manifest-link failures do not rewrite isolated app settings or create
+  `manifest.json.tmp`.
 - Shared app session that keeps UI playback state tied to the project-backed
   transport and preserves the current in-memory project when package saves or
   loads fail, including final manifest and linked/broken asset-folder symlink

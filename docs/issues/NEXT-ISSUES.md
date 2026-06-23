@@ -2,21 +2,7 @@
 
 # Next Issues
 
-## 1. Add Project Load Broken Package Parent Symlink Failure Coverage
-
-Acceptance:
-- Add focused core coverage for loading a project package through a broken
-  intermediate package parent symlink.
-- Fixture-gate cleanly when the host cannot create test symlinks without
-  elevated permissions.
-- Verify load rejects the path, leaves the missing symlink target uncreated,
-  leaves the current session project unchanged, and does not create a temporary
-  manifest through the link.
-- Preserve manifest symlink and broken-symlink load rejection, manifest
-  directory rejection, linked package-parent load rejection, package save parent
-  symlink rejection, and successful save/load coverage.
-
-## 2. Add AppSession Load Linked Package Parent Symlink Failure Coverage
+## 1. Add AppSession Load Linked Package Parent Symlink Failure Coverage
 
 Acceptance:
 - Add focused `AppSession` coverage for loading a project package through an
@@ -30,7 +16,7 @@ Acceptance:
   and broken-symlink load rejection, manifest directory rejection, and
   successful session save/load coverage.
 
-## 3. Add AppSession Load Broken Package Parent Symlink Failure Coverage
+## 2. Add AppSession Load Broken Package Parent Symlink Failure Coverage
 
 Acceptance:
 - Add focused `AppSession` coverage for loading a project package through a
@@ -45,7 +31,7 @@ Acceptance:
   rejection, manifest directory rejection, and successful session save/load
   coverage.
 
-## 4. Add Project Load Direct Package Symlink Failure Coverage
+## 3. Add Project Load Direct Package Symlink Failure Coverage
 
 Acceptance:
 - Add focused core coverage for loading a project package through a direct
@@ -59,7 +45,7 @@ Acceptance:
   broken-symlink load rejection, manifest directory rejection, package save
   symlink rejection, and successful save/load coverage.
 
-## 5. Add Project Load Broken Direct Package Symlink Failure Coverage
+## 4. Add Project Load Broken Direct Package Symlink Failure Coverage
 
 Acceptance:
 - Add focused core coverage for loading a project package through a direct
@@ -72,3 +58,18 @@ Acceptance:
   symlink rejection, manifest symlink and broken-symlink load rejection,
   manifest directory rejection, package save symlink rejection, and successful
   save/load coverage.
+
+## 5. Add AppSession Load Direct Package Symlink Failure Coverage
+
+Acceptance:
+- Add focused `AppSession` coverage for loading a project package through a
+  direct package-directory symlink to an existing directory.
+- Fixture-gate cleanly when the host cannot create test symlinks without
+  elevated permissions.
+- Verify the session load reports failure before parsing the linked target
+  manifest, preserves the linked target manifest, leaves the current session
+  project unchanged, and does not create a temporary manifest through the link.
+- Preserve core direct linked/broken package symlink rejection,
+  linked/broken package-parent load rejection, manifest symlink and
+  broken-symlink load rejection, manifest directory rejection, and successful
+  session save/load coverage.
