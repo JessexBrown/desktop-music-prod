@@ -2,21 +2,7 @@
 
 # Next Issues
 
-## 1. Add AppSession Save Linked Asset Folder Symlink Failure Coverage
-
-Acceptance:
-- Add focused `AppSession` coverage for saving a project package whose existing
-  asset folder path, such as `audio/`, is a symlink to an existing directory.
-- Fixture-gate cleanly when the host cannot create test symlinks without
-  elevated permissions.
-- Verify the session save reports failure, leaves the current session project
-  unchanged, preserves the linked target contents, and does not create a project
-  temporary manifest.
-- Preserve core linked and broken asset-folder symlink rejection, session broken
-  asset-folder symlink rejection, session manifest symlink rejection, and
-  successful session save/load coverage.
-
-## 2. Add Background Save As Linked Target Symlink Failure Coverage
+## 1. Add Background Save As Linked Target Symlink Failure Coverage
 
 Acceptance:
 - Add focused background Save As package-copy job coverage for a target package
@@ -29,7 +15,7 @@ Acceptance:
   and source symlink coverage, cancellation progress, and successful background
   copy coverage.
 
-## 3. Add Project Load Linked Package Parent Symlink Failure Coverage
+## 2. Add Project Load Linked Package Parent Symlink Failure Coverage
 
 Acceptance:
 - Add focused core coverage for loading a project package through an
@@ -43,7 +29,7 @@ Acceptance:
   directory rejection, package save parent symlink rejection, and successful
   save/load coverage.
 
-## 4. Add Project Load Broken Package Parent Symlink Failure Coverage
+## 3. Add Project Load Broken Package Parent Symlink Failure Coverage
 
 Acceptance:
 - Add focused core coverage for loading a project package through a broken
@@ -57,7 +43,7 @@ Acceptance:
   directory rejection, linked package-parent load rejection, package save parent
   symlink rejection, and successful save/load coverage.
 
-## 5. Add AppSession Load Linked Package Parent Symlink Failure Coverage
+## 4. Add AppSession Load Linked Package Parent Symlink Failure Coverage
 
 Acceptance:
 - Add focused `AppSession` coverage for loading a project package through an
@@ -70,3 +56,18 @@ Acceptance:
 - Preserve core linked/broken package-parent load rejection, manifest symlink
   and broken-symlink load rejection, manifest directory rejection, and
   successful session save/load coverage.
+
+## 5. Add AppSession Load Broken Package Parent Symlink Failure Coverage
+
+Acceptance:
+- Add focused `AppSession` coverage for loading a project package through a
+  broken intermediate package parent symlink.
+- Fixture-gate cleanly when the host cannot create test symlinks without
+  elevated permissions.
+- Verify the session load reports failure, leaves the missing symlink target
+  uncreated, leaves the current session project unchanged, and does not create a
+  temporary manifest through the link.
+- Preserve core linked/broken package-parent load rejection, session linked
+  package-parent load rejection, manifest symlink and broken-symlink load
+  rejection, manifest directory rejection, and successful session save/load
+  coverage.
