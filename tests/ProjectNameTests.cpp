@@ -873,6 +873,57 @@ void appSettingsTemporaryWriteFailureKeepsExistingSettings()
            "Temporary original app settings file deleted");
 }
 
+void appSettingsSaveRemovesStaleTemporarySymlinkWithoutFollowingIt()
+{
+    projectname::AppSettings settings;
+    settings.audioSetup.firstRunPromptDismissed = true;
+    settings.audioSetup.preferredOutput.hasOutputDevice = true;
+    settings.audioSetup.preferredOutput.deviceType = "Windows Audio";
+    settings.audioSetup.preferredOutput.deviceName = "Temporary Symlink Output";
+    settings.audioSetup.preferredOutput.sampleRateHz = 48000.0;
+    settings.audioSetup.preferredOutput.bufferSizeSamples = 256;
+    settings.audioSetup.preferredOutput.outputChannelCount = 2;
+
+    const auto settingsPath =
+        makeTemporarySettingsPath("projectname-app-settings-temp-symlink-cleanup-test");
+    auto temporaryPath = settingsPath;
+    temporaryPath += ".tmp";
+    const auto temporarySymlinkTargetPath =
+        makeTemporarySettingsPath("projectname-app-settings-temp-symlink-target-test");
+    writeTextFile(temporarySymlinkTargetPath, "temporary symlink target sentinel");
+
+    std::error_code symlinkError;
+    std::filesystem::create_symlink(temporarySymlinkTargetPath, temporaryPath, symlinkError);
+    if (symlinkError)
+    {
+        std::filesystem::remove(temporarySymlinkTargetPath);
+        return;
+    }
+
+    std::string error;
+    expect(projectname::saveAppSettings(settings, settingsPath, error),
+           "App settings save succeeds after removing a stale temporary symlink");
+    expect(error.empty(),
+           "App settings stale temporary symlink cleanup leaves error empty");
+    expect(std::filesystem::is_regular_file(settingsPath),
+           "App settings stale temporary symlink cleanup writes a real settings file");
+    expect(!std::filesystem::is_symlink(std::filesystem::symlink_status(settingsPath)),
+           "App settings stale temporary symlink cleanup does not commit a settings symlink");
+    expect(!std::filesystem::exists(temporaryPath),
+           "App settings stale temporary symlink cleanup removes the temporary link");
+    expect(readTextFile(temporarySymlinkTargetPath) == "temporary symlink target sentinel",
+           "App settings stale temporary symlink cleanup preserves the symlink target");
+
+    const auto loaded = projectname::loadAppSettings(settingsPath, error);
+    expect(loaded.has_value() && *loaded == settings,
+           "App settings stale temporary symlink cleanup commits loadable settings");
+
+    expect(std::filesystem::remove(settingsPath),
+           "Temporary app settings file after temp-symlink cleanup deleted");
+    expect(std::filesystem::remove(temporarySymlinkTargetPath),
+           "Temporary app settings temp-symlink target deleted");
+}
+
 void appSettingsDirectoryCreationFailurePreservesOccupiedParentPath()
 {
     projectname::AppSettings settings;
@@ -10110,6 +10161,7 @@ int main()
     appSettingsRoundTripsAudioSetupPreferences();
     appSettingsCommitFailureRemovesTemporaryFile();
     appSettingsTemporaryWriteFailureKeepsExistingSettings();
+    appSettingsSaveRemovesStaleTemporarySymlinkWithoutFollowingIt();
     appSettingsDirectoryCreationFailurePreservesOccupiedParentPath();
     appSettingsSaveSymlinkPathFailureLeavesTargetsUntouched();
     appSettingsEmptyPathFailsBeforeFilesystemWork();

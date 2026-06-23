@@ -381,8 +381,8 @@ package and asset-folder symlink path failure tests when host-supported, staged
 temporary-manifest open/commit failure tests, Save As retry manifest/asset
 symlink conflict tests when host-supported, Save As source symlink rejection
 tests when host-supported, plus
-app settings load-directory/symlink/broken-symlink/empty-path/save-symlink/path/write-failure
-tests.
+app settings load-directory, symlink, broken-symlink, empty-path,
+save-symlink, temporary-symlink, path, and write-failure tests.
 It also
 configured, built, launched, audio-smoke-tested,
 project-save/load-smoke-tested, and audio-import-smoke-tested the Windows-only
