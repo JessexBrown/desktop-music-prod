@@ -9915,6 +9915,55 @@ void projectManifestSymlinkLoadFailureKeepsSessionProject()
     expect(std::filesystem::remove_all(package) > 0,
            "Temporary manifest-symlink load package deleted");
 }
+
+void projectManifestBrokenSymlinkLoadFailureKeepsSessionProject()
+{
+    projectname::AppSession session;
+    session.getProject().setName("Keep Manifest Broken Symlink Baseline");
+    session.setTempoBpm(107.0);
+    const auto originalProject = session.getProject();
+
+    const auto package = makeTemporaryPackagePath("projectname-manifest-broken-symlink-load-test");
+    const auto manifestSymlinkPath = package / "manifest.json";
+    const auto brokenTargetPath = package / "missing-manifest-target.json";
+    std::filesystem::create_directories(package);
+
+    std::error_code symlinkError;
+    std::filesystem::create_symlink(brokenTargetPath, manifestSymlinkPath, symlinkError);
+    if (symlinkError)
+    {
+        std::filesystem::remove_all(package);
+        return;
+    }
+
+    std::string error;
+    auto loaded = projectname::ProjectModel::loadPackage(package, error);
+    expect(!loaded.has_value(),
+           "Project load rejects a package whose manifest path is a broken symlink");
+    expect(error.find("manifest") != std::string::npos
+               && error.find("symlink") != std::string::npos,
+           "Manifest broken-symlink load failure error is human-readable");
+    expect(error.find("not found") == std::string::npos,
+           "Manifest broken-symlink load failure is not reported as a missing manifest");
+    expect(std::filesystem::is_symlink(std::filesystem::symlink_status(manifestSymlinkPath)),
+           "Manifest broken-symlink load failure leaves the manifest symlink unchanged");
+    expect(!std::filesystem::exists(brokenTargetPath),
+           "Manifest broken-symlink load failure does not create the missing target");
+
+    expect(!session.loadProjectPackage(package, error),
+           "Session rejects a package whose manifest path is a broken symlink");
+    expect(session.getProject() == originalProject,
+           "Session keeps current project after manifest broken-symlink load failure");
+    expect(!std::filesystem::exists(brokenTargetPath),
+           "Session broken-symlink load failure does not create the missing target");
+    expect(!std::filesystem::exists(package / "manifest.json.tmp"),
+           "Manifest broken-symlink load failure does not create a temporary manifest");
+
+    expect(std::filesystem::remove(manifestSymlinkPath),
+           "Temporary broken manifest symlink deleted");
+    expect(std::filesystem::remove_all(package) > 0,
+           "Temporary broken manifest-symlink load package deleted");
+}
 } // namespace
 
 int main()
@@ -9953,6 +10002,7 @@ int main()
     appSessionLoadFailureKeepsCurrentProject();
     projectManifestDirectoryLoadFailureKeepsSessionProject();
     projectManifestSymlinkLoadFailureKeepsSessionProject();
+    projectManifestBrokenSymlinkLoadFailureKeepsSessionProject();
     transportStateAdvancesOnlyWhilePlaying();
     projectManifestRoundTrips();
     appSettingsRoundTripsAudioSetupPreferences();
