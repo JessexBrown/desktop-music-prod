@@ -11813,6 +11813,59 @@ void projectBrokenDirectPackageSymlinkLoadFailureRejectsBeforeManifestWork()
     std::filesystem::remove_all(missingTargetPackage);
 }
 
+void appSessionDirectPackageSymlinkLoadFailureKeepsSessionProject()
+{
+    projectname::AppSession session;
+    session.getProject().setName("Keep Direct Package Symlink Session Baseline");
+    session.setTempoBpm(119.0);
+    const auto originalProject = session.getProject();
+
+    const auto packageSymlink =
+        makeTemporaryPackagePath("projectname-session-direct-package-load-symlink-link-test");
+    const auto linkedTargetPackage =
+        makeTemporaryPackagePath("projectname-session-direct-package-load-symlink-target-test");
+    const auto linkedTargetSentinel = linkedTargetPackage / "sentinel.txt";
+    const auto linkedManifestText =
+        R"({"manifestVersion":1,"name":"Direct Session Package Symlink Manifest Should Not Load","transport":{"tempoBpm":88.0,"timeSignature":{"numerator":5,"denominator":4},"positionBeats":2.0},"tracks":[]})";
+
+    writeManifestText(linkedTargetPackage, linkedManifestText);
+    writeTextFile(linkedTargetSentinel, "direct session package load sentinel");
+
+    std::error_code symlinkError;
+    std::filesystem::create_directory_symlink(linkedTargetPackage, packageSymlink, symlinkError);
+    if (symlinkError)
+    {
+        std::filesystem::remove_all(linkedTargetPackage);
+        return;
+    }
+
+    std::string error = "stale session direct package symlink load error";
+    expect(!session.loadProjectPackage(packageSymlink, error),
+           "Session load rejects a direct package directory symlink");
+    expect(error.find("Project package path contains a symlink") != std::string::npos
+               && error.find(packageSymlink.generic_string()) != std::string::npos,
+           "Session direct package symlink load failure error is human-readable");
+    expect(error.find("JSON") == std::string::npos,
+           "Session direct package symlink load failure does not parse JSON through the symlink");
+    expect(session.getProject() == originalProject,
+           "Session direct package symlink load failure keeps current session project");
+    expect(std::filesystem::is_symlink(std::filesystem::symlink_status(packageSymlink)),
+           "Session direct package symlink load failure leaves the package symlink unchanged");
+    expect(readTextFile(linkedTargetPackage / "manifest.json") == linkedManifestText,
+           "Session direct package symlink load failure preserves the linked target manifest");
+    expect(readTextFile(linkedTargetSentinel) == "direct session package load sentinel",
+           "Session direct package symlink load failure preserves the linked target sentinel");
+    expect(!std::filesystem::exists(packageSymlink / "manifest.json.tmp"),
+           "Session direct package symlink load failure does not create a temporary manifest through the link");
+    expect(!std::filesystem::exists(linkedTargetPackage / "manifest.json.tmp"),
+           "Session direct package symlink load failure does not write target temporary manifest");
+
+    expect(std::filesystem::remove(packageSymlink),
+           "Temporary session direct package load symlink deleted");
+    expect(std::filesystem::remove_all(linkedTargetPackage) > 0,
+           "Temporary session direct package load symlink target deleted");
+}
+
 void projectLinkedPackageParentSymlinkLoadFailureRejectsBeforeParsingManifest()
 {
     const auto parentSymlink =
@@ -12309,6 +12362,7 @@ int main()
     projectManifestDirectoryLoadFailureKeepsSessionProject();
     projectDirectPackageSymlinkLoadFailureRejectsBeforeParsingManifest();
     projectBrokenDirectPackageSymlinkLoadFailureRejectsBeforeManifestWork();
+    appSessionDirectPackageSymlinkLoadFailureKeepsSessionProject();
     projectLinkedPackageParentSymlinkLoadFailureRejectsBeforeParsingManifest();
     appSessionLinkedPackageParentSymlinkLoadFailureKeepsSessionProject();
     appSessionBrokenPackageParentSymlinkLoadFailureKeepsSessionProject();
