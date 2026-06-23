@@ -776,6 +776,39 @@ void appSettingsRoundTripsAudioSetupPreferences()
     expect(std::filesystem::remove(settingsPath), "Temporary app settings file deleted");
 }
 
+void appSettingsCommitFailureRemovesTemporaryFile()
+{
+    projectname::AppSettings settings;
+    settings.audioSetup.firstRunPromptDismissed = true;
+    settings.audioSetup.preferredOutput.hasOutputDevice = true;
+    settings.audioSetup.preferredOutput.deviceType = "Windows Audio";
+    settings.audioSetup.preferredOutput.deviceName = "Occupied Settings Output";
+    settings.audioSetup.preferredOutput.sampleRateHz = 48000.0;
+    settings.audioSetup.preferredOutput.bufferSizeSamples = 256;
+    settings.audioSetup.preferredOutput.outputChannelCount = 2;
+
+    const auto settingsPath = makeTemporarySettingsPath("projectname-app-settings-commit-failure-test");
+    auto temporaryPath = settingsPath;
+    temporaryPath += ".tmp";
+    const auto occupiedMarkerPath = settingsPath / "occupied-marker.txt";
+    writeTextFile(occupiedMarkerPath, "occupied settings path");
+
+    std::string error;
+    expect(!projectname::saveAppSettings(settings, settingsPath, error),
+           "App settings save reports commit failure when settings path is occupied");
+    expect(error.find("Could not commit app settings file") != std::string::npos,
+           "App settings commit failure error is human-readable");
+    expect(!std::filesystem::exists(temporaryPath),
+           "App settings commit failure removes temporary settings file");
+    expect(std::filesystem::is_directory(settingsPath),
+           "App settings commit failure leaves occupied settings path as a directory");
+    expect(readTextFile(occupiedMarkerPath) == "occupied settings path",
+           "App settings commit failure preserves occupied settings path contents");
+
+    expect(std::filesystem::remove_all(settingsPath) > 0,
+           "Temporary occupied app settings path deleted");
+}
+
 void appSettingsLoadsAudioSetupDefaultsFromMinimalJson()
 {
     std::string error;
@@ -8839,6 +8872,7 @@ int main()
     transportStateAdvancesOnlyWhilePlaying();
     projectManifestRoundTrips();
     appSettingsRoundTripsAudioSetupPreferences();
+    appSettingsCommitFailureRemovesTemporaryFile();
     appSettingsLoadsAudioSetupDefaultsFromMinimalJson();
     appSettingsRejectsUnsupportedVersion();
     appSettingsResetClearsAudioSetupPreferences();
