@@ -11958,6 +11958,84 @@ void projectLinkedPackageParentSymlinkLoadFailureRejectsBeforeParsingManifest()
            "Temporary linked package-parent load target deleted");
 }
 
+void projectLinkedPackageParentSymlinkLoadFailureLeavesAppSettingsUntouched()
+{
+    projectname::AppSettings settings;
+    settings.audioSetup.firstRunPromptDismissed = true;
+    settings.audioSetup.preferredOutput.hasOutputDevice = true;
+    settings.audioSetup.preferredOutput.deviceType = "Windows Audio";
+    settings.audioSetup.preferredOutput.deviceName = "Linked Parent Isolation Output";
+    settings.audioSetup.preferredOutput.sampleRateHz = 48000.0;
+    settings.audioSetup.preferredOutput.bufferSizeSamples = 256;
+    settings.audioSetup.preferredOutput.outputChannelCount = 2;
+    settings.audioSetup.preferredOutput.juceDeviceStateXml =
+        "<DEVICESETUP deviceType=\"Windows Audio\" audioOutputDeviceName=\"Linked Parent Isolation Output\"/>";
+
+    const auto settingsPath =
+        makeTemporarySettingsPath("projectname-linked-package-parent-load-settings-isolation-test");
+
+    std::string error;
+    expect(projectname::saveAppSettings(settings, settingsPath, error),
+           "Linked package-parent settings-isolation fixture saves app settings");
+    const auto originalSettingsText = readTextFile(settingsPath);
+
+    const auto parentSymlink =
+        makeTemporaryPackagePath("projectname-linked-package-parent-load-settings-isolation-link-test");
+    const auto linkedParentTarget =
+        makeTemporaryPackagePath("projectname-linked-package-parent-load-settings-isolation-target-test");
+    const auto linkedTargetPackage = linkedParentTarget / "Nested Load.project";
+    const auto requestedPackage = parentSymlink / "Nested Load.project";
+    const auto linkedParentSentinel = linkedParentTarget / "sentinel.txt";
+    const auto linkedManifestText =
+        R"({"manifestVersion":1,"name":"Linked Parent Settings Isolation Manifest Should Not Load","transport":{"tempoBpm":88.0,"timeSignature":{"numerator":5,"denominator":4},"positionBeats":2.0},"tracks":[]})";
+
+    writeManifestText(linkedTargetPackage, linkedManifestText);
+    writeTextFile(linkedParentSentinel, "linked parent settings-isolation sentinel");
+
+    std::error_code symlinkError;
+    std::filesystem::create_directory_symlink(linkedParentTarget, parentSymlink, symlinkError);
+    if (symlinkError)
+    {
+        std::filesystem::remove_all(linkedParentTarget);
+        std::filesystem::remove(settingsPath);
+        return;
+    }
+
+    error = "stale linked package-parent settings-isolation load error";
+    auto loaded = projectname::ProjectModel::loadPackage(requestedPackage, error);
+    expect(!loaded.has_value(),
+           "Project load rejects a linked intermediate parent during settings-isolation check");
+    expect(error.find("Project package path contains a symlink") != std::string::npos
+               && error.find(parentSymlink.generic_string()) != std::string::npos,
+           "Linked package-parent settings-isolation load failure error is human-readable");
+    expect(error.find("JSON") == std::string::npos,
+           "Linked package-parent settings-isolation load failure does not parse JSON through the symlink");
+    expect(readTextFile(settingsPath) == originalSettingsText,
+           "Linked package-parent settings-isolation load failure leaves app settings unchanged");
+
+    std::string settingsError;
+    const auto reloadedSettings = projectname::loadAppSettings(settingsPath, settingsError);
+    expect(reloadedSettings.has_value() && *reloadedSettings == settings,
+           "Linked package-parent settings-isolation load failure leaves app settings loadable");
+    expect(std::filesystem::is_symlink(std::filesystem::symlink_status(parentSymlink)),
+           "Linked package-parent settings-isolation load failure leaves the parent symlink unchanged");
+    expect(readTextFile(linkedTargetPackage / "manifest.json") == linkedManifestText,
+           "Linked package-parent settings-isolation load failure preserves the linked target manifest");
+    expect(readTextFile(linkedParentSentinel) == "linked parent settings-isolation sentinel",
+           "Linked package-parent settings-isolation load failure preserves the linked target sentinel");
+    expect(!std::filesystem::exists(requestedPackage / "manifest.json.tmp"),
+           "Linked package-parent settings-isolation load failure does not create a temporary manifest through the link");
+    expect(!std::filesystem::exists(linkedTargetPackage / "manifest.json.tmp"),
+           "Linked package-parent settings-isolation load failure does not write target temporary manifest");
+
+    expect(std::filesystem::remove(parentSymlink),
+           "Temporary linked package-parent settings-isolation symlink deleted");
+    expect(std::filesystem::remove_all(linkedParentTarget) > 0,
+           "Temporary linked package-parent settings-isolation target deleted");
+    expect(std::filesystem::remove(settingsPath),
+           "Temporary linked package-parent settings-isolation app settings file deleted");
+}
+
 void appSessionLinkedPackageParentSymlinkLoadFailureKeepsSessionProject()
 {
     projectname::AppSession session;
@@ -12408,6 +12486,7 @@ int main()
     appSessionDirectPackageSymlinkLoadFailureKeepsSessionProject();
     appSessionBrokenDirectPackageSymlinkLoadFailureKeepsSessionProject();
     projectLinkedPackageParentSymlinkLoadFailureRejectsBeforeParsingManifest();
+    projectLinkedPackageParentSymlinkLoadFailureLeavesAppSettingsUntouched();
     appSessionLinkedPackageParentSymlinkLoadFailureKeepsSessionProject();
     appSessionBrokenPackageParentSymlinkLoadFailureKeepsSessionProject();
     projectBrokenPackageParentSymlinkLoadFailureRejectsBeforeManifestWork();
