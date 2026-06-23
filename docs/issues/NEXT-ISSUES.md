@@ -2,21 +2,7 @@
 
 # Next Issues
 
-## 1. Add App Settings Save Broken Temporary Symlink Cleanup Coverage
-
-Acceptance:
-- Add focused core coverage for saving app settings when a stale
-  `settings.json.tmp` path is a broken symlink.
-- Fixture-gate cleanly when the host cannot create test symlinks without
-  elevated permissions.
-- Verify save removes the stale temporary link, leaves the missing symlink
-  target uncreated, writes a real final settings file, and does not leave a
-  temporary settings file behind.
-- Preserve settings-path symlink rejection, broken settings-path symlink
-  rejection, temporary-symlink-to-file cleanup, temporary-write failure, commit
-  failure, and successful load/save coverage.
-
-## 2. Add Project Load Manifest Symlink Settings Isolation Coverage
+## 1. Add Project Load Manifest Symlink Settings Isolation Coverage
 
 Acceptance:
 - Add focused session coverage proving project load failures caused by
@@ -30,7 +16,7 @@ Acceptance:
 - Preserve existing project load symlink rejection, app settings corruption
   recovery, and successful project load/save coverage.
 
-## 3. Add Save As Copy Broken Source Symlink Failure Coverage
+## 2. Add Save As Copy Broken Source Symlink Failure Coverage
 
 Acceptance:
 - Add focused Save As copy coverage for source package asset folders or asset
@@ -44,7 +30,7 @@ Acceptance:
   rejection, broken target symlink rejection, target-conflict, cancellation,
   progress, and successful copy coverage.
 
-## 4. Add Project Save Broken Asset Folder Symlink Failure Coverage
+## 3. Add Project Save Broken Asset Folder Symlink Failure Coverage
 
 Acceptance:
 - Add focused core coverage for saving a project package when an asset folder
@@ -58,7 +44,7 @@ Acceptance:
   rejection, temporary-manifest cleanup, manifest-symlink rejection, and
   successful save/load coverage.
 
-## 5. Add Project Save Broken Manifest Symlink Session Failure Coverage
+## 4. Add Project Save Broken Manifest Symlink Session Failure Coverage
 
 Acceptance:
 - Add focused `AppSession` coverage for saving a project package whose existing
@@ -71,3 +57,17 @@ Acceptance:
 - Preserve core broken-manifest-symlink save rejection, session
   manifest-symlink save rejection, temporary-manifest cleanup, and successful
   session save/load coverage.
+
+## 5. Add App Settings Save Broken Parent Symlink Failure Coverage
+
+Acceptance:
+- Add focused core coverage for saving app settings when an intermediate
+  settings parent directory is a broken symlink.
+- Fixture-gate cleanly when the host cannot create test symlinks without
+  elevated permissions.
+- Verify save rejects the parent path before creating the settings file, leaves
+  the missing symlink target uncreated, and does not write a temporary settings
+  file through the link.
+- Preserve settings-path symlink rejection, broken settings-path symlink
+  rejection, temporary-symlink cleanup, temporary-write failure, commit failure,
+  and successful load/save coverage.

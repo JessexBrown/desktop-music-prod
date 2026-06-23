@@ -385,8 +385,8 @@ temporary-manifest open/commit failure tests, Save As retry manifest/asset
 symlink conflict tests when host-supported, Save As source and target symlink
 rejection tests, including broken target links, when host-supported, plus
 app settings load-directory, symlink, broken-symlink, empty-path,
-save-symlink, save-broken-symlink, temporary-symlink, path, and write-failure
-tests.
+save-symlink, save-broken-symlink, temporary-symlink including broken links,
+path, and write-failure tests.
 It also
 configured, built, launched, audio-smoke-tested,
 project-save/load-smoke-tested, and audio-import-smoke-tested the Windows-only
