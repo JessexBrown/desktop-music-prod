@@ -2743,6 +2743,80 @@ void projectSaveManifestSymlinkFailureLeavesTargetUntouched()
            "Temporary save manifest-symlink target deleted");
 }
 
+void projectSaveBrokenManifestSymlinkFailureLeavesTargetUntouched()
+{
+    auto project = projectname::ProjectModel::createDefault();
+    project.setName("Before Broken Manifest Symlink Failure");
+    project.getTransport().setTempoBpm(106.0);
+
+    const auto package =
+        makeTemporaryPackagePath("projectname-save-broken-manifest-symlink-test");
+
+    std::string error;
+    expect(project.savePackage(package, error),
+           "Initial broken-manifest-symlink project save succeeds");
+
+    const auto manifestPath = package / "manifest.json";
+    const auto temporaryManifestPath = package / "manifest.json.tmp";
+    const auto brokenManifestTarget = package / "missing-manifest-target.json";
+    const auto originalManifestText = readTextFile(manifestPath);
+    expect(originalManifestText.find("Before Broken Manifest Symlink Failure") != std::string::npos,
+           "Broken manifest symlink fixture starts with the original manifest state");
+
+    writeTextFile(package / "audio" / "sentinel.txt", "audio sentinel");
+    writeTextFile(package / "samples" / "sentinel.txt", "samples sentinel");
+    writeTextFile(package / "presets" / "sentinel.txt", "presets sentinel");
+    writeTextFile(package / "analysis" / "sentinel.txt", "analysis sentinel");
+    writeTextFile(package / "backups" / "sentinel.txt", "backups sentinel");
+    writeTextFile(temporaryManifestPath, "stale temporary manifest before broken symlink failure");
+
+    expect(std::filesystem::remove(manifestPath),
+           "Broken manifest symlink fixture removes the package manifest before linking");
+
+    std::error_code symlinkError;
+    std::filesystem::create_symlink(brokenManifestTarget, manifestPath, symlinkError);
+    if (symlinkError)
+    {
+        std::filesystem::remove_all(package);
+        return;
+    }
+
+    project.setName("After Broken Manifest Symlink Failure");
+    project.getTransport().setTempoBpm(156.0);
+
+    error = "stale broken manifest symlink failure error";
+    expect(!project.savePackage(package, error),
+           "Project save rejects a broken symlink manifest path");
+    expect(error.find("manifest") != std::string::npos
+               && error.find("symlink") != std::string::npos,
+           "Broken manifest symlink save failure error is human-readable");
+    expect(error.find("not found") == std::string::npos,
+           "Broken manifest symlink save failure is not reported as missing manifest");
+    expect(std::filesystem::is_symlink(std::filesystem::symlink_status(manifestPath)),
+           "Broken manifest symlink save failure leaves the manifest symlink unchanged");
+    expect(!std::filesystem::exists(brokenManifestTarget),
+           "Broken manifest symlink save failure does not create the missing target");
+    expect(!std::filesystem::exists(temporaryManifestPath),
+           "Broken manifest symlink save failure removes stale temporary manifest before rejecting");
+    expect(!std::filesystem::exists(package / "backups" / "manifest.previous.json"),
+           "Broken manifest symlink save failure happens before previous-manifest backup creation");
+    expect(readTextFile(package / "audio" / "sentinel.txt") == "audio sentinel",
+           "Broken manifest symlink save failure preserves audio folder contents");
+    expect(readTextFile(package / "samples" / "sentinel.txt") == "samples sentinel",
+           "Broken manifest symlink save failure preserves samples folder contents");
+    expect(readTextFile(package / "presets" / "sentinel.txt") == "presets sentinel",
+           "Broken manifest symlink save failure preserves presets folder contents");
+    expect(readTextFile(package / "analysis" / "sentinel.txt") == "analysis sentinel",
+           "Broken manifest symlink save failure preserves analysis folder contents");
+    expect(readTextFile(package / "backups" / "sentinel.txt") == "backups sentinel",
+           "Broken manifest symlink save failure preserves backups folder contents");
+
+    expect(std::filesystem::remove(manifestPath),
+           "Temporary broken save manifest symlink deleted");
+    expect(std::filesystem::remove_all(package) > 0,
+           "Temporary broken save manifest-symlink package deleted");
+}
+
 void projectSaveTemporaryManifestOpenFailureKeepsManifestAndOccupiedPath()
 {
     auto project = projectname::ProjectModel::createDefault();
@@ -10451,6 +10525,7 @@ int main()
     projectSaveBackupFailureKeepsManifestAndRemovesTemporaryManifest();
     projectSaveRemovesStaleTemporaryManifestSymlinkWithoutFollowingIt();
     projectSaveManifestSymlinkFailureLeavesTargetUntouched();
+    projectSaveBrokenManifestSymlinkFailureLeavesTargetUntouched();
     projectSaveTemporaryManifestOpenFailureKeepsManifestAndOccupiedPath();
     projectSaveFailsBeforeManifestCommitWhenAssetFolderPathIsFile();
     projectSaveFailsBeforeManifestCommitWhenAssetFolderPathIsSymlink();
