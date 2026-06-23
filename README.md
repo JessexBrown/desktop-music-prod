@@ -259,7 +259,9 @@ Third-party dependencies remain under their own licenses as recorded in
   deterministic hard clipping.
 - Project save creates `backups/manifest.previous.json` before overwriting an
   existing manifest, writes the next manifest through `manifest.json.tmp`, and
-  removes the staged manifest if previous-backup creation fails.
+  removes the staged manifest if previous-backup creation fails. Stale temporary
+  manifest symlinks are removed before writing so the save path does not follow
+  them.
 - Shared app session that keeps UI playback state tied to the project-backed
   transport.
 - Project menu, Import control, and deterministic initial

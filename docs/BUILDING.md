@@ -378,6 +378,7 @@ manifest-directory, symlink, and broken-symlink load failure tests when
 host-supported,
 package-path file rejection tests, package directory creation failure tests,
 package and asset-folder symlink path failure tests when host-supported, staged
+temporary-manifest symlink cleanup tests when host-supported, staged
 temporary-manifest open/commit failure tests, Save As retry manifest/asset
 symlink conflict tests when host-supported, Save As source and target symlink
 rejection tests when host-supported, plus
