@@ -860,6 +860,41 @@ void appSettingsTemporaryWriteFailureKeepsExistingSettings()
            "Temporary original app settings file deleted");
 }
 
+void appSettingsDirectoryCreationFailurePreservesOccupiedParentPath()
+{
+    projectname::AppSettings settings;
+    settings.audioSetup.firstRunPromptDismissed = true;
+    settings.audioSetup.preferredOutput.hasOutputDevice = true;
+    settings.audioSetup.preferredOutput.deviceType = "Windows Audio";
+    settings.audioSetup.preferredOutput.deviceName = "Blocked Parent Output";
+    settings.audioSetup.preferredOutput.sampleRateHz = 48000.0;
+    settings.audioSetup.preferredOutput.bufferSizeSamples = 256;
+    settings.audioSetup.preferredOutput.outputChannelCount = 2;
+
+    const auto occupiedParentPath =
+        makeTemporarySettingsPath("projectname-app-settings-directory-failure-parent");
+    const auto settingsPath = occupiedParentPath / projectname::appSettingsFileName;
+    const auto temporaryPath = occupiedParentPath / "settings.json.tmp";
+    writeTextFile(occupiedParentPath, "occupied app settings parent path");
+
+    std::string error;
+    expect(!projectname::saveAppSettings(settings, settingsPath, error),
+           "App settings save reports directory creation failure when parent path is occupied");
+    expect(error.find("Could not create app settings directory") != std::string::npos,
+           "App settings directory creation failure error is human-readable");
+    expect(std::filesystem::is_regular_file(occupiedParentPath),
+           "App settings directory creation failure leaves occupied parent as a file");
+    expect(readTextFile(occupiedParentPath) == "occupied app settings parent path",
+           "App settings directory creation failure preserves occupied parent path contents");
+    expect(!std::filesystem::exists(settingsPath),
+           "App settings directory creation failure does not create settings file below occupied parent");
+    expect(!std::filesystem::exists(temporaryPath),
+           "App settings directory creation failure does not create temporary settings file below occupied parent");
+
+    expect(std::filesystem::remove(occupiedParentPath),
+           "Temporary occupied app settings parent path deleted");
+}
+
 void appSettingsLoadsAudioSetupDefaultsFromMinimalJson()
 {
     std::string error;
@@ -8969,6 +9004,7 @@ int main()
     appSettingsRoundTripsAudioSetupPreferences();
     appSettingsCommitFailureRemovesTemporaryFile();
     appSettingsTemporaryWriteFailureKeepsExistingSettings();
+    appSettingsDirectoryCreationFailurePreservesOccupiedParentPath();
     appSettingsLoadsAudioSetupDefaultsFromMinimalJson();
     appSettingsRejectsUnsupportedVersion();
     appSettingsResetClearsAudioSetupPreferences();

@@ -263,7 +263,7 @@ Third-party dependencies remain under their own licenses as recorded in
   playback outside the render callback.
 - Unit tests for transport state, project serialization, tone rendering, audio
   engine generated-tone/generated-clip/prepared-buffer playback, app settings
-  serialization/reset and write-failure behavior, scheduled clip
+  serialization/reset and settings-path failure behavior, scheduled clip
   start offsets, imported clip playback planning/rendering, PCM16 WAV import,
   project-package audio import, imported timeline Play preparation/cache
   behavior, prepared-cache hit/miss/eviction/stale rejection, byte budgeting,
