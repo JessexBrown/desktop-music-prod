@@ -90,8 +90,10 @@ Notes:
   so CMake FetchContent subbuilds cannot collide with Windows MSVC, Linux Core,
   or Linux JUCE App caches.
 - Do not upload a macOS artifact from the first job. Verify configure, build,
-  and smoke tests first; add artifact policy only after signing/notarization and
-  unsigned-debug-package messaging are documented.
+  and smoke tests first; follow
+  `docs/adr/ADR-0106-macos-artifact-signing-policy.md` before adding artifact
+  upload, signing/notarization, installer work, or unsigned-debug-package
+  messaging.
 - The smoke tests should tolerate missing physical audio devices. They should
   prove app launch and safe setup behavior, not depend on runner audio hardware.
 - If a standard `macos-15` arm64 runner exposes a JUCE-specific issue, use the
@@ -100,7 +102,8 @@ Notes:
 
 ## Not In The Current Baseline
 
-Do not add these to macOS CI until a separate task documents the policy:
+Do not add these to macOS CI until a separate task implements the policy in
+`docs/adr/ADR-0106-macos-artifact-signing-policy.md`:
 
 - Apple Developer certificates, provisioning profiles, signing identities, or
   notarization credentials.

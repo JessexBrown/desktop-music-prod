@@ -2,20 +2,7 @@
 
 # Next Issues
 
-## 1. Draft macOS Artifact Signing Policy
-
-Acceptance:
-- Add a focused ADR for macOS app artifact, signing, notarization, and installer
-  policy before any macOS package upload is enabled.
-- Clarify whether unsigned debug `.app` bundles are allowed in CI, what user
-  messaging they require, and what must wait for signed/notarized release
-  packaging.
-- Confirm that the policy does not bundle plugins, presets, samples, commercial
-  sounds, logos, or proprietary assets.
-- Do not upload a macOS artifact, add signing secrets, notarize, or create an
-  installer in the same change.
-
-## 2. Add Save As Retry Symlink Conflict Coverage
+## 1. Add Save As Retry Symlink Conflict Coverage
 
 Acceptance:
 - Add focused retry preflight coverage for `manifest.json` symlink conflicts on
@@ -27,7 +14,7 @@ Acceptance:
 - Preserve the existing regular-file, directory, missing-asset, and stale
   temporary-manifest retry coverage.
 
-## 3. Add Project Manifest Load Directory Failure Coverage
+## 2. Add Project Manifest Load Directory Failure Coverage
 
 Acceptance:
 - Add focused core coverage for loading a project package whose `manifest.json`
@@ -38,7 +25,7 @@ Acceptance:
 - Preserve malformed JSON, unsupported-version, schema, and missing-manifest
   load failure coverage.
 
-## 4. Add Project Save Package Directory Creation Failure Coverage
+## 3. Add Project Save Package Directory Creation Failure Coverage
 
 Acceptance:
 - Add focused core coverage for saving a project package when the package
@@ -50,7 +37,7 @@ Acceptance:
 - Preserve package-path file rejection, asset-folder failure, temporary-manifest
   failure, backup failure, commit failure, and successful save/load tests.
 
-## 5. Add App Settings Load Directory Path Coverage
+## 4. Add App Settings Load Directory Path Coverage
 
 Acceptance:
 - Add focused core coverage for loading app settings when the settings path is
@@ -61,3 +48,15 @@ Acceptance:
   settings are loaded.
 - Preserve missing-file, malformed JSON, unsupported-version, reset, and
   successful load/save coverage.
+
+## 5. Add macOS Artifact Upload Guardrail Check
+
+Acceptance:
+- Add a lightweight repository check that verifies the `macOS JUCE App` CI job
+  remains build/test-only until ADR-0106 artifact rules are implemented.
+- Verify the check allows the existing Windows MSVC and Linux JUCE app artifact
+  uploads while rejecting an accidental macOS `upload-artifact` step.
+- Document how to update or retire the check when macOS artifact staging,
+  checksum generation, unsigned debug messaging, signing, notarization, or
+  installer work is intentionally added.
+- Preserve the existing CI job names and current Windows/Linux artifact tests.

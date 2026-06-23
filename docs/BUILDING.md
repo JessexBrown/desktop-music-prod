@@ -182,8 +182,9 @@ The app artifacts are only present after the matching app job has passed:
 
 GitHub keeps these CI artifacts for 7 days. The `<commit-sha>` suffix is the
 full commit SHA for that workflow run. macOS CI is build/test-only and does not
-upload an app artifact until macOS package, signing, notarization, and installer
-policy are documented.
+upload an app artifact; any future macOS package, signing, notarization, or
+installer implementation must follow
+`docs/adr/ADR-0106-macos-artifact-signing-policy.md`.
 
 With GitHub CLI, find a successful run and download one or both app artifacts:
 
@@ -277,7 +278,9 @@ Install Xcode or Command Line Tools plus CMake, then use `dev-host` for the JUCE
 desktop app build. Audio Unit hosting is not implemented in this first slice.
 Signing/notarization are release tasks, not part of the local prototype build.
 See `docs/MACOS_CI_PREREQUISITES.md` for the current macOS source review,
-minimum JUCE/CMake assumptions, and build/test-only CI shape.
+minimum JUCE/CMake assumptions, and build/test-only CI shape. See
+`docs/adr/ADR-0106-macos-artifact-signing-policy.md` before adding any
+downloadable macOS artifact, signing credentials, notarization, or installer.
 
 ### Linux
 

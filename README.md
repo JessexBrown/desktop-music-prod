@@ -377,7 +377,8 @@ before upload so caches, build intermediates, plugins, presets, samples, and
 proprietary assets fail the package gate. `docs/BUILDING.md` documents where to
 find the successful-run artifacts, their expected names, and launch caveats for
 unsigned debug/smoke packages. The macOS CI job is build/test-only and defers
-artifact upload, signing, notarization, and installer work.
+artifact upload, signing, notarization, and installer work under
+`docs/adr/ADR-0106-macos-artifact-signing-policy.md`.
 
 On Windows machines with MinGW but without a JUCE-supported compiler, the
 fallback launcher can be verified with the non-JUCE fallback preset:
@@ -629,6 +630,8 @@ for a launch smoke check or use `ctest --preset dev --output-on-failure`.
   kept failed Save As targets.
 - `docs/adr/ADR-0105-macos-build-test-ci-job.md` records the enabled
   build/test-only macOS JUCE App CI job.
+- `docs/adr/ADR-0106-macos-artifact-signing-policy.md` records the macOS
+  artifact, signing, notarization, installer, and unsigned debug package policy.
 - `docs/AUDIO_MIDI_SETUP_UX.md` documents the first-run device setup UX states.
 - `docs/CI_ACTION_PIN_REVIEW.md` documents the scheduled review checklist for
   GitHub-maintained CI action major pins.
