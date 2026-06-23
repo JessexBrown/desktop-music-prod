@@ -27,7 +27,9 @@ Stage package writes for the prototype import path:
 - remove the committed audio file if clip attachment or manifest save fails;
 - write project manifests to `manifest.json.tmp` before replacing
   `manifest.json`;
-- remove temporary manifest files after successful saves.
+- remove temporary manifest files after successful saves and after recoverable
+  staged-save failures such as temporary write, backup creation, or manifest
+  commit failures.
 
 The staged copy and manifest write code runs only on non-realtime project
 save/import paths. The audio callback is not involved.

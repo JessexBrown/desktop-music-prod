@@ -1441,6 +1441,50 @@ void projectSaveCreatesPreviousManifestBackup()
     expect(std::filesystem::remove_all(package) > 0, "Temporary backup project package deleted");
 }
 
+void projectSaveBackupFailureKeepsManifestAndRemovesTemporaryManifest()
+{
+    auto project = projectname::ProjectModel::createDefault();
+    project.setName("Before Backup Failure");
+    project.getTransport().setTempoBpm(95.0);
+
+    const auto package = makeTemporaryPackagePath("projectname-save-backup-failure-test");
+
+    std::string error;
+    expect(project.savePackage(package, error), "Initial backup-failure project package save succeeds");
+
+    const auto manifestPath = package / "manifest.json";
+    const auto temporaryManifestPath = package / "manifest.json.tmp";
+    const auto originalManifestText = readTextFile(manifestPath);
+    expect(originalManifestText.find("Before Backup Failure") != std::string::npos,
+           "Backup failure fixture starts with the original manifest state");
+
+    const auto backupPath = package / "backups" / "manifest.previous.json";
+    const auto backupSentinelPath = backupPath / "occupied.txt";
+    writeTextFile(backupSentinelPath, "occupied backup path");
+
+    project.setName("After Backup Failure");
+    project.getTransport().setTempoBpm(150.0);
+
+    expect(!project.savePackage(package, error), "Project save reports manifest backup failure");
+    expect(error.find("Could not create project manifest backup") != std::string::npos,
+           "Manifest backup failure error is human-readable");
+    expect(!std::filesystem::exists(temporaryManifestPath),
+           "Manifest backup failure removes the staged temporary manifest");
+
+    const auto activeManifestText = readTextFile(manifestPath);
+    expect(activeManifestText == originalManifestText,
+           "Manifest backup failure leaves the active manifest unchanged");
+    expect(activeManifestText.find("After Backup Failure") == std::string::npos,
+           "Manifest backup failure does not commit the new project state");
+    expect(std::filesystem::is_directory(backupPath),
+           "Manifest backup failure leaves the occupied backup path unchanged");
+    expect(readTextFile(backupSentinelPath) == "occupied backup path",
+           "Manifest backup failure preserves occupied backup path contents");
+
+    expect(std::filesystem::remove_all(package) > 0,
+           "Temporary backup-failure project package deleted");
+}
+
 void projectSaveFailsBeforeManifestCommitWhenAssetFolderPathIsFile()
 {
     auto project = projectname::ProjectModel::createDefault();
@@ -8889,6 +8933,7 @@ int main()
     projectImportedClipSelectionValidatesAndRoundTrips();
     projectTrackMixStateRoundTripsAndLoadsLegacyDefaults();
     projectSaveCreatesPreviousManifestBackup();
+    projectSaveBackupFailureKeepsManifestAndRemovesTemporaryManifest();
     projectSaveFailsBeforeManifestCommitWhenAssetFolderPathIsFile();
     projectSaveCommitFailureRemovesTemporaryManifest();
     projectManifestLoadsLegacyTrackWithoutDevices();

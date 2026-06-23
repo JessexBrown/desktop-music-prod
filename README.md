@@ -251,7 +251,8 @@ Third-party dependencies remain under their own licenses as recorded in
   prepared sample buffers to sum overlapping mono voices into stereo output with
   deterministic hard clipping.
 - Project save creates `backups/manifest.previous.json` before overwriting an
-  existing manifest and writes the next manifest through `manifest.json.tmp`.
+  existing manifest, writes the next manifest through `manifest.json.tmp`, and
+  removes the staged manifest if previous-backup creation fails.
 - Shared app session that keeps UI playback state tied to the project-backed
   transport.
 - Project menu, Import control, and deterministic initial

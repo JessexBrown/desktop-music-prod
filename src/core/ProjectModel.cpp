@@ -447,7 +447,9 @@ bool ProjectModel::savePackage(const std::filesystem::path& packageDirectory, st
                                    filesystemError);
         if (filesystemError)
         {
-            error = "Could not create project manifest backup: " + filesystemError.message();
+            const auto backupErrorMessage = filesystemError.message();
+            std::filesystem::remove(temporaryManifestPath, filesystemError);
+            error = "Could not create project manifest backup: " + backupErrorMessage;
             return false;
         }
     }

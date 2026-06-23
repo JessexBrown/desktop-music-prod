@@ -2,18 +2,7 @@
 
 # Next Issues
 
-## 1. Add Project Save Backup Failure Coverage
-
-Acceptance:
-- Add focused core coverage for a project save failure while creating
-  `backups/manifest.previous.json`.
-- Verify the active `manifest.json` remains unchanged when backup creation
-  fails.
-- Verify the staged `manifest.json.tmp`, if created, is removed or explicitly
-  documented if the current writer cannot clean it safely.
-- Keep the fixture deterministic on Windows, macOS, and Linux.
-
-## 2. Add App Settings Temporary Write Failure Coverage
+## 1. Add App Settings Temporary Write Failure Coverage
 
 Acceptance:
 - Add focused core coverage for an app settings save failure before
@@ -23,7 +12,7 @@ Acceptance:
   human-readable.
 - Preserve the successful settings save/load, reset, and commit-failure tests.
 
-## 3. Add App Settings Directory Creation Failure Coverage
+## 2. Add App Settings Directory Creation Failure Coverage
 
 Acceptance:
 - Add focused core coverage for an app settings save failure when the configured
@@ -34,7 +23,7 @@ Acceptance:
 - Preserve the successful settings save/load, reset, commit-failure, and
   temporary-write-failure tests.
 
-## 4. Add macOS Build-Test CI Job
+## 3. Add macOS Build-Test CI Job
 
 Acceptance:
 - Add a `macOS JUCE App` GitHub Actions job using the
@@ -45,7 +34,7 @@ Acceptance:
 - Do not upload a macOS artifact, sign, notarize, create an installer, or bundle
   plugins, presets, samples, commercial sounds, or proprietary assets.
 
-## 5. Add Save As Failed Target Retry Command
+## 4. Add Save As Failed Target Retry Command
 
 Acceptance:
 - Add `project.saveAs.retryFailedTargetManifest` using ADR-0104's enablement,
@@ -57,3 +46,14 @@ Acceptance:
   `manifest.json.tmp` behavior.
 - Verify retry does not start a Save As package-copy job and does not touch the
   real-time audio path.
+
+## 5. Add Project Save Temporary Manifest Write Failure Coverage
+
+Acceptance:
+- Add focused core coverage for a project save failure before
+  `manifest.json.tmp` can be opened or written.
+- Verify the existing `manifest.json`, when present, remains unchanged.
+- Verify the occupied temporary path remains unchanged and the error is
+  human-readable.
+- Preserve the successful project save/load, previous-backup success/failure,
+  asset-folder failure, and commit-failure tests.

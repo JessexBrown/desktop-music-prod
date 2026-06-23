@@ -28,8 +28,10 @@ backups/manifest.previous.json
 Then write the new `manifest.json`.
 
 If the previous manifest backup cannot be created, fail the save before
-overwriting the current manifest. Keep this behavior in `projectname_core` so it
-is shared by the JUCE app, fallback verification app, and tests.
+overwriting the current manifest. If a staged `manifest.json.tmp` was already
+created for the attempted save, remove that staged manifest as part of the
+failure path. Keep this behavior in `projectname_core` so it is shared by the
+JUCE app, fallback verification app, and tests.
 
 This is a deterministic last-good-manifest backup, not full autosave.
 
