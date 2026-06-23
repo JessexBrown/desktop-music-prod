@@ -1640,6 +1640,44 @@ void projectTrackMixStateRoundTripsAndLoadsLegacyDefaults()
     expect(std::filesystem::remove_all(legacyPackage) > 0, "Temporary legacy track mix package deleted");
 }
 
+void projectSavePackagePathFileFailureLeavesOccupiedPathUntouched()
+{
+    auto project = projectname::ProjectModel::createDefault();
+    project.setName("Package Path File Failure Test");
+    project.getTransport().setTempoBpm(99.0);
+
+    const auto occupiedPackagePath =
+        makeTemporaryPackagePath("projectname-save-package-file-failure-test");
+    writeTextFile(occupiedPackagePath, "occupied project package path");
+
+    std::string error;
+    expect(!project.savePackage(occupiedPackagePath, error),
+           "Project save reports package path file failure");
+    expect(error.find("Project package path points to a file") != std::string::npos,
+           "Package path file failure error is human-readable");
+    expect(std::filesystem::is_regular_file(occupiedPackagePath),
+           "Package path file failure leaves occupied package path as a file");
+    expect(readTextFile(occupiedPackagePath) == "occupied project package path",
+           "Package path file failure preserves occupied package file contents");
+    expect(!std::filesystem::exists(occupiedPackagePath / "manifest.json"),
+           "Package path file failure does not create a manifest below occupied path");
+    expect(!std::filesystem::exists(occupiedPackagePath / "manifest.json.tmp"),
+           "Package path file failure does not create a temporary manifest below occupied path");
+    expect(!std::filesystem::exists(occupiedPackagePath / "audio"),
+           "Package path file failure does not create an audio asset folder");
+    expect(!std::filesystem::exists(occupiedPackagePath / "samples"),
+           "Package path file failure does not create a samples asset folder");
+    expect(!std::filesystem::exists(occupiedPackagePath / "presets"),
+           "Package path file failure does not create a presets asset folder");
+    expect(!std::filesystem::exists(occupiedPackagePath / "analysis"),
+           "Package path file failure does not create an analysis asset folder");
+    expect(!std::filesystem::exists(occupiedPackagePath / "backups"),
+           "Package path file failure does not create a backups asset folder");
+
+    expect(std::filesystem::remove(occupiedPackagePath),
+           "Temporary occupied project package path file deleted");
+}
+
 void projectSaveCreatesPreviousManifestBackup()
 {
     auto project = projectname::ProjectModel::createDefault();
@@ -9224,6 +9262,7 @@ int main()
     projectLoopRegionValidatesAndRoundTrips();
     projectImportedClipSelectionValidatesAndRoundTrips();
     projectTrackMixStateRoundTripsAndLoadsLegacyDefaults();
+    projectSavePackagePathFileFailureLeavesOccupiedPathUntouched();
     projectSaveCreatesPreviousManifestBackup();
     projectSaveBackupFailureKeepsManifestAndRemovesTemporaryManifest();
     projectSaveTemporaryManifestOpenFailureKeepsManifestAndOccupiedPath();

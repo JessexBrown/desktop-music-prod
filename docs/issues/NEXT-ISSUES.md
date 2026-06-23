@@ -2,18 +2,7 @@
 
 # Next Issues
 
-## 1. Add Project Save Package Path File Failure Coverage
-
-Acceptance:
-- Add focused core coverage for saving a project package to a path already
-  occupied by a regular file.
-- Verify the occupied file remains unchanged and no package asset folders or
-  manifest temp files are created.
-- Verify the error is human-readable.
-- Preserve the successful project save/load and existing project save failure
-  tests.
-
-## 2. Add App Settings Empty Path Failure Coverage
+## 1. Add App Settings Empty Path Failure Coverage
 
 Acceptance:
 - Add focused core coverage for saving app settings with an empty settings path.
@@ -22,7 +11,7 @@ Acceptance:
 - Preserve the successful settings save/load, reset, commit-failure,
   temporary-write-failure, and directory-creation-failure tests.
 
-## 3. Draft macOS Artifact Signing Policy
+## 2. Draft macOS Artifact Signing Policy
 
 Acceptance:
 - Add a focused ADR for macOS app artifact, signing, notarization, and installer
@@ -35,7 +24,7 @@ Acceptance:
 - Do not upload a macOS artifact, add signing secrets, notarize, or create an
   installer in the same change.
 
-## 4. Add Save As Retry Symlink Conflict Coverage
+## 3. Add Save As Retry Symlink Conflict Coverage
 
 Acceptance:
 - Add focused retry preflight coverage for `manifest.json` symlink conflicts on
@@ -47,7 +36,7 @@ Acceptance:
 - Preserve the existing regular-file, directory, missing-asset, and stale
   temporary-manifest retry coverage.
 
-## 5. Add Project Manifest Load Directory Failure Coverage
+## 4. Add Project Manifest Load Directory Failure Coverage
 
 Acceptance:
 - Add focused core coverage for loading a project package whose `manifest.json`
@@ -57,3 +46,15 @@ Acceptance:
   loading.
 - Preserve malformed JSON, unsupported-version, schema, and missing-manifest
   load failure coverage.
+
+## 5. Add Project Save Package Directory Creation Failure Coverage
+
+Acceptance:
+- Add focused core coverage for saving a project package when the package
+  directory cannot be created because an intermediate parent path is occupied by
+  a regular file.
+- Verify the occupied parent file remains unchanged and no package asset folders
+  or manifest temp files are created.
+- Verify the error is human-readable.
+- Preserve package-path file rejection, asset-folder failure, temporary-manifest
+  failure, backup failure, commit failure, and successful save/load tests.
