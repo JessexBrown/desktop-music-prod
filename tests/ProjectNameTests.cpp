@@ -11778,6 +11778,61 @@ void projectLinkedPackageParentSymlinkLoadFailureRejectsBeforeParsingManifest()
            "Temporary linked package-parent load target deleted");
 }
 
+void appSessionLinkedPackageParentSymlinkLoadFailureKeepsSessionProject()
+{
+    projectname::AppSession session;
+    session.getProject().setName("Keep Linked Package Parent Session Baseline");
+    session.setTempoBpm(123.0);
+    const auto originalProject = session.getProject();
+
+    const auto parentSymlink =
+        makeTemporaryPackagePath("projectname-session-linked-package-parent-load-symlink-link-test");
+    const auto linkedParentTarget =
+        makeTemporaryPackagePath("projectname-session-linked-package-parent-load-symlink-target-test");
+    const auto linkedTargetPackage = linkedParentTarget / "Nested Session Load.project";
+    const auto requestedPackage = parentSymlink / "Nested Session Load.project";
+    const auto linkedParentSentinel = linkedParentTarget / "sentinel.txt";
+    const auto linkedManifestText =
+        R"({"manifestVersion":1,"name":"Linked Session Parent Manifest Should Not Load","transport":{"tempoBpm":88.0,"timeSignature":{"numerator":5,"denominator":4},"positionBeats":2.0},"tracks":[]})";
+
+    writeManifestText(linkedTargetPackage, linkedManifestText);
+    writeTextFile(linkedParentSentinel, "linked session parent load sentinel");
+
+    std::error_code symlinkError;
+    std::filesystem::create_directory_symlink(linkedParentTarget, parentSymlink, symlinkError);
+    if (symlinkError)
+    {
+        std::filesystem::remove_all(linkedParentTarget);
+        return;
+    }
+
+    std::string error = "stale session linked package-parent load error";
+    expect(!session.loadProjectPackage(requestedPackage, error),
+           "Session load rejects a package through a linked intermediate parent");
+    expect(error.find("Project package path contains a symlink") != std::string::npos
+               && error.find(parentSymlink.generic_string()) != std::string::npos,
+           "Session linked package-parent load failure error is human-readable");
+    expect(error.find("JSON") == std::string::npos,
+           "Session linked package-parent load failure does not parse JSON through the symlink");
+    expect(session.getProject() == originalProject,
+           "Session linked package-parent load failure keeps current session project");
+    expect(std::filesystem::is_symlink(std::filesystem::symlink_status(parentSymlink)),
+           "Session linked package-parent load failure leaves the parent symlink unchanged");
+    expect(readTextFile(linkedTargetPackage / "manifest.json") == linkedManifestText,
+           "Session linked package-parent load failure preserves the linked target manifest");
+    expect(readTextFile(linkedParentSentinel) == "linked session parent load sentinel",
+           "Session linked package-parent load failure preserves the linked target sentinel");
+    expect(!std::filesystem::exists(requestedPackage / "manifest.json.tmp"),
+           "Session linked package-parent load failure does not create a temporary manifest through the link");
+    expect(!std::filesystem::exists(linkedTargetPackage / "manifest.json.tmp"),
+           "Session linked package-parent load failure does not write target temporary manifest");
+
+    expect(std::filesystem::remove(parentSymlink),
+           "Temporary session linked package-parent load symlink deleted");
+    expect(std::filesystem::remove_all(linkedParentTarget) > 0,
+           "Temporary session linked package-parent load target deleted");
+}
+
 void projectBrokenPackageParentSymlinkLoadFailureRejectsBeforeManifestWork()
 {
     const auto parentSymlink =
@@ -12123,6 +12178,7 @@ int main()
     appSessionLoadFailureKeepsCurrentProject();
     projectManifestDirectoryLoadFailureKeepsSessionProject();
     projectLinkedPackageParentSymlinkLoadFailureRejectsBeforeParsingManifest();
+    appSessionLinkedPackageParentSymlinkLoadFailureKeepsSessionProject();
     projectBrokenPackageParentSymlinkLoadFailureRejectsBeforeManifestWork();
     projectManifestDirectoryLoadFailureLeavesAppSettingsUntouched();
     projectManifestSymlinkLoadFailureKeepsSessionProject();
