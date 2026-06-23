@@ -2,18 +2,7 @@
 
 # Next Issues
 
-## 1. Add Project Save Permission Failure Coverage
-
-Acceptance:
-- Add focused core coverage for a project save failure before manifest commit,
-  such as an unwritable package directory or asset folder creation failure.
-- Verify no stale `manifest.json.tmp` remains when the failure happens after the
-  temporary manifest path is known.
-- Verify the existing manifest and previous-manifest backup behavior remain
-  unchanged for successful saves.
-- Keep the fixture deterministic on Windows, macOS, and Linux.
-
-## 2. Add App Settings Save Commit Failure Coverage
+## 1. Add App Settings Save Commit Failure Coverage
 
 Acceptance:
 - Add focused core coverage for an app settings save failure when the final
@@ -23,7 +12,7 @@ Acceptance:
   human-readable.
 - Preserve the existing successful settings save/load and reset tests.
 
-## 3. Add CI Artifact Package Contents Gate
+## 2. Add CI Artifact Package Contents Gate
 
 Acceptance:
 - Add a CI-side check that the staged Windows MSVC and Linux JUCE app artifacts
@@ -33,7 +22,7 @@ Acceptance:
   data, plugins, presets, samples, or proprietary assets are staged.
 - Preserve the current 7-day artifact retention and checksum verification flow.
 
-## 4. Add macOS CI Prerequisites Note
+## 3. Add macOS CI Prerequisites Note
 
 Acceptance:
 - Document the expected macOS JUCE app build prerequisites and GitHub Actions
@@ -44,7 +33,7 @@ Acceptance:
   notarization, installer, bundled-plugin, preset, sample, or proprietary-asset
   claims.
 
-## 5. Add Save As Failed Target Retry Design
+## 4. Add Save As Failed Target Retry Design
 
 Acceptance:
 - Define the UX and command boundary for retrying a target manifest save after a
@@ -54,3 +43,14 @@ Acceptance:
 - Document overwrite/conflict behavior before adding a visible retry command.
 - Keep retry planning and any future file operations off the real-time audio
   path.
+
+## 5. Add Project Save Backup Failure Coverage
+
+Acceptance:
+- Add focused core coverage for a project save failure while creating
+  `backups/manifest.previous.json`.
+- Verify the active `manifest.json` remains unchanged when backup creation
+  fails.
+- Verify the staged `manifest.json.tmp`, if created, is removed or explicitly
+  documented if the current writer cannot clean it safely.
+- Keep the fixture deterministic on Windows, macOS, and Linux.

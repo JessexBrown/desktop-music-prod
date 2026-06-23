@@ -1408,6 +1408,32 @@ void projectSaveCreatesPreviousManifestBackup()
     expect(std::filesystem::remove_all(package) > 0, "Temporary backup project package deleted");
 }
 
+void projectSaveFailsBeforeManifestCommitWhenAssetFolderPathIsFile()
+{
+    auto project = projectname::ProjectModel::createDefault();
+    project.setName("Asset Folder Conflict Test");
+
+    const auto package = makeTemporaryPackagePath("projectname-save-asset-folder-conflict-test");
+    const auto conflictingAudioPath = package / "audio";
+    writeTextFile(conflictingAudioPath, "occupied audio folder path");
+
+    std::string error;
+    expect(!project.savePackage(package, error), "Project save reports asset folder creation failure");
+    expect(error.find("Could not create asset folder: audio") != std::string::npos,
+           "Asset folder creation failure error is human-readable");
+    expect(!std::filesystem::exists(package / "manifest.json"),
+           "Asset folder creation failure does not write a project manifest");
+    expect(!std::filesystem::exists(package / "manifest.json.tmp"),
+           "Asset folder creation failure does not leave a temporary manifest");
+    expect(std::filesystem::is_regular_file(conflictingAudioPath),
+           "Asset folder creation failure leaves the occupied path unchanged");
+    expect(readTextFile(conflictingAudioPath) == "occupied audio folder path",
+           "Asset folder creation failure preserves occupied path contents");
+
+    expect(std::filesystem::remove_all(package) > 0,
+           "Temporary asset-folder conflict package deleted");
+}
+
 void projectSaveCommitFailureRemovesTemporaryManifest()
 {
     auto project = projectname::ProjectModel::createDefault();
@@ -8829,6 +8855,7 @@ int main()
     projectImportedClipSelectionValidatesAndRoundTrips();
     projectTrackMixStateRoundTripsAndLoadsLegacyDefaults();
     projectSaveCreatesPreviousManifestBackup();
+    projectSaveFailsBeforeManifestCommitWhenAssetFolderPathIsFile();
     projectSaveCommitFailureRemovesTemporaryManifest();
     projectManifestLoadsLegacyTrackWithoutDevices();
     projectManifestFailuresAreRecoverable();
