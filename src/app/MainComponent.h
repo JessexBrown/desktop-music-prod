@@ -209,6 +209,7 @@ private:
     void refreshAfterProjectPackageChange(juce::String status);
     [[nodiscard]] projectname::AppCommandResult undoImportedClipEdit();
     [[nodiscard]] projectname::AppCommandResult redoImportedClipEdit();
+    [[nodiscard]] projectname::AppCommandResult copyFailedSaveAsTargetPackagePath();
     void importAudio();
     void relinkSelectedClipMedia();
     void cancelMediaRelinkPreparation();
@@ -321,8 +322,10 @@ private:
     juce::String audioSetupInitializationError_;
     juce::String appSettingsLoadError_;
     juce::String lastPackageMediaDetailCopiedText_;
+    juce::String lastFailedSaveAsTargetCopiedText_;
     std::filesystem::path appSettingsPath_;
     std::filesystem::path currentProjectPackagePath_;
+    std::filesystem::path failedSaveAsTargetPackagePath_;
     std::unique_ptr<juce::FileChooser> projectNewChooser_;
     std::unique_ptr<juce::FileChooser> projectSaveAsChooser_;
     std::unique_ptr<juce::FileChooser> projectOpenChooser_;

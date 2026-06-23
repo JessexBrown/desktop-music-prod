@@ -218,7 +218,8 @@ void setButtonEnabledFromCommand(juce::Button& button,
         && result.copy.copiedFileCount > 0)
     {
         status += ". Copied assets were kept in the selected target package for retry or manual cleanup; "
-                  "active project stayed on the source package.";
+                  "active project stayed on the source package. Use Project > Copy Failed Save As Target "
+                  "to copy the package path.";
     }
 
     return status;
@@ -1714,6 +1715,27 @@ bool MainComponent::runProjectChooserSmokeTest(const std::filesystem::path& scra
         return fail("Save As manifest-failure smoke did not surface the kept-target recovery status copy.");
     }
 
+    if (!buildAppCommandRegistry().isEnabled(projectname::AppCommandIds::projectCopyFailedSaveAsTarget))
+        return fail("Save As manifest-failure smoke did not enable failed-target path copy.");
+
+    lastFailedSaveAsTargetCopiedText_.clear();
+    const auto copyFailedTargetResult =
+        dispatchAppCommand(projectname::AppCommandIds::projectCopyFailedSaveAsTarget);
+    if (copyFailedTargetResult.status != projectname::AppCommandResultStatus::handledWithStatus)
+        return fail("Save As manifest-failure smoke failed to dispatch failed-target path copy.");
+
+    if (lastFailedSaveAsTargetCopiedText_ != juce::String(manifestFailurePackage.string()))
+        return fail("Save As manifest-failure smoke copied the wrong failed target path.");
+
+    if (!statusText_.contains("Copied failed Save As target package path")
+        || !statusText_.contains(juce::String(manifestFailurePackage.string())))
+    {
+        return fail("Save As manifest-failure smoke did not surface failed-target copy status.");
+    }
+
+    if (saveAsPackageCopyJob_ != nullptr)
+        return fail("Save As manifest-failure failed-target copy started a package copy job.");
+
     if (!packagePathsMatch(getCurrentProjectPackagePath(), packageBeforeFailedSaveAs))
         return fail("Save As manifest-failure smoke changed the active project package.");
 
@@ -1769,6 +1791,9 @@ bool MainComponent::runProjectChooserSmokeTest(const std::filesystem::path& scra
     filesystemError.clear();
     if (!std::filesystem::is_regular_file(copyPackage / "analysis" / "chooser-smoke.waveform.json", filesystemError))
         return fail("Save As package-copy smoke did not copy package analysis.");
+
+    if (buildAppCommandRegistry().isEnabled(projectname::AppCommandIds::projectCopyFailedSaveAsTarget))
+        return fail("Save As package-copy smoke left failed-target path copy enabled after success.");
 
     if (packageMediaMaintenanceScan_.valid())
         packageMediaMaintenanceScan_.wait();
@@ -2515,6 +2540,8 @@ projectname::AppCommandRegistry MainComponent::buildAppCommandRegistry() const
     availability.canSave = !projectChooserOpen && !projectFileWorkActive;
     availability.canSaveAs = projectChooserAvailable;
     availability.canCancelSaveAs = saveAsPackageCopyJob_ != nullptr && canCancelSaveAsPackageCopy_;
+    availability.canCopyFailedSaveAsTarget =
+        !failedSaveAsTargetPackagePath_.empty() && !projectChooserOpen && saveAsPackageCopyJob_ == nullptr;
     availability.canOpen = projectChooserAvailable;
     availability.canUndoImportedClipEdit = session_.canUndoImportedClipEdit();
     availability.canRedoImportedClipEdit = session_.canRedoImportedClipEdit();
@@ -2535,7 +2562,8 @@ void MainComponent::refreshAppCommandEnabledState()
     projectButton_.setEnabled(registry.isEnabled(projectname::AppCommandIds::projectSave)
                               || registry.isEnabled(projectname::AppCommandIds::projectOpen)
                               || registry.isEnabled(projectname::AppCommandIds::projectNew)
-                              || registry.isEnabled(projectname::AppCommandIds::projectSaveAs));
+                              || registry.isEnabled(projectname::AppCommandIds::projectSaveAs)
+                              || registry.isEnabled(projectname::AppCommandIds::projectCopyFailedSaveAsTarget));
     setButtonEnabledFromCommand(importButton_, registry, projectname::AppCommandIds::audioImport);
     setButtonEnabledFromCommand(cancelImportButton_, registry, projectname::AppCommandIds::audioImportCancel);
     setButtonEnabledFromCommand(cancelSaveAsButton_, registry, projectname::AppCommandIds::projectSaveAsCancel);
@@ -2594,6 +2622,11 @@ projectname::AppCommandResult MainComponent::dispatchAppCommand(std::string_view
                     {
                         cancelSaveAsPackageCopy();
                         return projectname::AppCommandResult::handled();
+                    });
+    registerHandler(projectname::AppCommandIds::projectCopyFailedSaveAsTarget,
+                    [this]()
+                    {
+                        return copyFailedSaveAsTargetPackagePath();
                     });
     registerHandler(projectname::AppCommandIds::projectOpen,
                     [this]()
@@ -2809,6 +2842,9 @@ void MainComponent::showProjectMenu()
     menu.addItem(1, "New...", registry.isEnabled(projectname::AppCommandIds::projectNew));
     menu.addItem(2, "Save", registry.isEnabled(projectname::AppCommandIds::projectSave));
     menu.addItem(3, "Save As...", registry.isEnabled(projectname::AppCommandIds::projectSaveAs));
+    menu.addItem(5,
+                 "Copy Failed Save As Target",
+                 registry.isEnabled(projectname::AppCommandIds::projectCopyFailedSaveAsTarget));
     menu.addSeparator();
     menu.addItem(4, "Open...", registry.isEnabled(projectname::AppCommandIds::projectOpen));
 
@@ -2829,6 +2865,10 @@ void MainComponent::showProjectMenu()
                                    break;
                                case 3:
                                    safeThis->dispatchAppCommand(projectname::AppCommandIds::projectSaveAs);
+                                   break;
+                               case 5:
+                                   safeThis->dispatchAppCommand(
+                                       projectname::AppCommandIds::projectCopyFailedSaveAsTarget);
                                    break;
                                case 4:
                                    safeThis->dispatchAppCommand(projectname::AppCommandIds::projectOpen);
@@ -3044,6 +3084,12 @@ bool MainComponent::beginSaveAsFromChooserSelection(juce::File selectedFile,
                                                     std::string& error)
 {
     error.clear();
+
+    if (saveAsPackageCopyJob_ == nullptr)
+    {
+        failedSaveAsTargetPackagePath_.clear();
+        lastFailedSaveAsTargetCopiedText_.clear();
+    }
 
     if (selectedFile == juce::File {})
     {
@@ -3319,6 +3365,8 @@ bool MainComponent::addProjectChooserSmokePackageAsset(std::string& error)
 
 void MainComponent::refreshAfterProjectPackageChange(juce::String status)
 {
+    failedSaveAsTargetPackagePath_.clear();
+    lastFailedSaveAsTargetCopiedText_.clear();
     tempoSlider_.setValue(session_.getTransport().getTempoBpm(), juce::dontSendNotification);
     audioService_.setTestToneEnabled(session_.shouldPlayGeneratedTone());
     hasPackageMediaMaintenanceSnapshot_ = false;
@@ -3505,6 +3553,20 @@ void MainComponent::cancelSaveAsPackageCopy()
     canCancelSaveAsPackageCopy_ = false;
     refreshAppCommandEnabledState();
     setStatus("Cancelling Save As package copy");
+}
+
+projectname::AppCommandResult MainComponent::copyFailedSaveAsTargetPackagePath()
+{
+    if (failedSaveAsTargetPackagePath_.empty())
+        return projectname::AppCommandResult::disabled(
+            "No failed Save As target package path is available.");
+
+    const auto targetPath = juce::String(failedSaveAsTargetPackagePath_.string());
+    juce::SystemClipboard::copyTextToClipboard(targetPath);
+    lastFailedSaveAsTargetCopiedText_ = targetPath;
+
+    return projectname::AppCommandResult::handledWithStatus(
+        "Copied failed Save As target package path: " + targetPath.toStdString());
 }
 
 void MainComponent::cancelMediaRelinkPreparation()
@@ -3722,6 +3784,8 @@ void MainComponent::applyCompletedSaveAsPackageCopy(
 {
     if (result.cancelled)
     {
+        failedSaveAsTargetPackagePath_.clear();
+        lastFailedSaveAsTargetCopiedText_.clear();
         requestPackageMediaMaintenanceRefresh();
         setStatus("Save As cancelled");
         return;
@@ -3729,6 +3793,8 @@ void MainComponent::applyCompletedSaveAsPackageCopy(
 
     if (!saveAsCopyStatusAllowsManifestSave(result.copy.status))
     {
+        failedSaveAsTargetPackagePath_.clear();
+        lastFailedSaveAsTargetCopiedText_.clear();
         const auto message = result.error.empty()
             ? projectname::describeProjectPackageSaveAsPlan(result.copy.plan)
             : result.error;
@@ -3741,6 +3807,8 @@ void MainComponent::applyCompletedSaveAsPackageCopy(
     std::string error;
     if (session_.saveProjectPackage(result.targetPackageDirectory, error))
     {
+        failedSaveAsTargetPackagePath_.clear();
+        lastFailedSaveAsTargetCopiedText_.clear();
         currentProjectPackagePath_ = result.targetPackageDirectory;
         selectedPackageMediaCleanupId_.clear();
         selectedPackageMediaRestoreOriginalPaths_.clear();
@@ -3749,6 +3817,16 @@ void MainComponent::applyCompletedSaveAsPackageCopy(
     }
     else
     {
+        if (result.copy.status == projectname::ProjectPackageSaveAsCopyStatus::completed
+            && result.copy.copiedFileCount > 0)
+        {
+            failedSaveAsTargetPackagePath_ = result.targetPackageDirectory;
+        }
+        else
+        {
+            failedSaveAsTargetPackagePath_.clear();
+        }
+        lastFailedSaveAsTargetCopiedText_.clear();
         requestPackageMediaMaintenanceRefresh();
         setStatus(formatSaveAsManifestFailureStatus(error, result));
         refreshAppCommandEnabledState();

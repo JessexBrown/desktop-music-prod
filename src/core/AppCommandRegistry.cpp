@@ -193,6 +193,13 @@ AppCommandRegistry makePrototypeAppCommandRegistry(AppCommandAvailability availa
                              availability.canCancelSaveAs,
                              "No cancellable Save As is running.");
     registerPrototypeCommand(registry,
+                             AppCommandIds::projectCopyFailedSaveAsTarget,
+                             "Copy Failed Save As Target",
+                             "Copy the kept target package path after a late Save As failure.",
+                             AppCommandScope::project,
+                             availability.canCopyFailedSaveAsTarget,
+                             "No failed Save As target package path is available.");
+    registerPrototypeCommand(registry,
                              AppCommandIds::projectOpen,
                              "Open",
                              "Open a project package with a native chooser.",

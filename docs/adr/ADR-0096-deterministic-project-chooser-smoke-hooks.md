@@ -34,7 +34,8 @@ native `FileChooser` callbacks. The sequence covers:
 - Save As final-manifest failure after a completed package-asset copy, leaving
   the active package and manifest unchanged while copied target assets remain
   recoverable in the selected package and status copy explains that the target
-  assets were kept for retry or manual cleanup;
+  assets were kept for retry or manual cleanup, then dispatching the
+  non-destructive failed-target path copy command;
 - Save As package-asset-copy completion for package-local audio and analysis
   files.
 
@@ -42,7 +43,9 @@ Failure-state steps assert that the active project package remains unchanged,
 that no active manifest is rewritten, that copied target assets are either left
 in a recoverable state or rejected before mutation, that no native chooser
 object is left open, that no Save As package-copy job is left running, and that
-the Cancel Save affordance is disabled after failure results are applied.
+the Cancel Save affordance is disabled after failure results are applied. The
+post-copy manifest failure step also asserts that copying the kept target path
+updates status without starting cleanup or another Save As job.
 
 The smoke path returns a non-zero application exit code when any step fails.
 

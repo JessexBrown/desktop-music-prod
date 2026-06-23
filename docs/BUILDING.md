@@ -98,8 +98,8 @@ ctest --preset dev --output-on-failure
   `PROJECTNAME_BUILD_APP=ON` and `BUILD_TESTING=ON`.
 - `projectname_project_chooser_smoke` runs the hidden JUCE app chooser-flow
   smoke test for New/Open/Save As success, cancellation, occupied-target Save
-  As failure, final-manifest Save As failure, and failed Open states without
-  opening native chooser dialogs.
+  As failure, final-manifest Save As failure with failed-target path copy, and
+  failed Open states without opening native chooser dialogs.
 - `projectname_audio_midi_reset_smoke` runs the hidden JUCE app settings-flow
   smoke test for clearing first-run Audio/MIDI dismissal and preferred output
   intent from an isolated temporary settings file.
@@ -293,7 +293,9 @@ with `--smoke-test` and exits automatically after startup, plus
 `projectname_project_chooser_smoke`, which exercises deterministic chooser
 success, cancellation, duplicate New, occupied-target Save As failure, and
 final-manifest Save As failure after a completed asset copy, and failed Open
-states without opening native dialogs. The run also passed
+states without opening native dialogs. The final-manifest failure path also
+verifies the Project menu copy action for the kept target package path. The run
+also passed
 `projectname_audio_midi_reset_smoke`, which
 seeds an isolated temporary settings file, dispatches the Audio/MIDI reset
 command, and verifies persisted setup preferences are cleared without changing
@@ -363,11 +365,12 @@ Save As copies package-local `audio/`, `analysis/`, `samples/`, and `presets/`
 on a cancellable background job before writing the target manifest, while
 source-package `backups/` are not cloned. If the final manifest write fails
 after copying, the active package remains unchanged and the copied target assets
-remain in the chosen package for recovery or manual cleanup. The project chooser
-smoke test also verifies the visible status copy for that kept-target recovery
-boundary. Import Audio uses a native WAV file chooser and a background import
-job with frame-level decode progress, byte-level staged-copy progress, and
-cancel state.
+remain in the chosen package for recovery or manual cleanup. The Project menu's
+`Copy Failed Save As Target` action copies that kept target package path, and
+the project chooser smoke test verifies the visible status copy plus copy-action
+status without starting cleanup or another Save As job. Import Audio uses a
+native WAV file chooser and a background import job with frame-level decode
+progress, byte-level staged-copy progress, and cancel state.
 The right inspector's selected-clip Relink button uses a native WAV chooser and
 a cancellable background job for staged relink preparation before committing
 current-selection results on the UI thread.

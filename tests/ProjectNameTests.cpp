@@ -6743,7 +6743,7 @@ void workspaceCommandRouterPreservesFocusedWorkspaceShortcuts()
 void appCommandRegistryDescribesPrototypeTopBarCommands()
 {
     const auto registry = projectname::makePrototypeAppCommandRegistry();
-    expect(registry.size() == 14, "App command registry exposes the prototype app actions");
+    expect(registry.size() == 15, "App command registry exposes the prototype app actions");
 
     auto expectCommand = [&registry](std::string_view id,
                                      std::string_view label,
@@ -6795,6 +6795,11 @@ void appCommandRegistryDescribesPrototypeTopBarCommands()
                   projectname::AppCommandScope::project,
                   false,
                   "App command registry contains Cancel Save As");
+    expectCommand(projectname::AppCommandIds::projectCopyFailedSaveAsTarget,
+                  "Copy Failed Save As Target",
+                  projectname::AppCommandScope::project,
+                  false,
+                  "App command registry contains failed Save As target copy");
     expectCommand(projectname::AppCommandIds::projectOpen,
                   "Open",
                   projectname::AppCommandScope::project,
@@ -6846,6 +6851,7 @@ void appCommandRegistryDescribesPrototypeTopBarCommands()
     availability.canSaveAs = false;
     availability.canOpen = false;
     availability.canCancelSaveAs = true;
+    availability.canCopyFailedSaveAsTarget = true;
     availability.canUndoImportedClipEdit = true;
     availability.canRedoImportedClipEdit = true;
     availability.canImportAudio = false;
@@ -6864,6 +6870,8 @@ void appCommandRegistryDescribesPrototypeTopBarCommands()
            "App command registry disables Save As from project availability");
     expect(busyRegistry.isEnabled(projectname::AppCommandIds::projectSaveAsCancel),
            "App command registry enables cancel Save As from availability");
+    expect(busyRegistry.isEnabled(projectname::AppCommandIds::projectCopyFailedSaveAsTarget),
+           "App command registry enables failed Save As target copy from availability");
     expect(!busyRegistry.isEnabled(projectname::AppCommandIds::projectOpen),
            "App command registry disables Open from project availability");
     expect(!busyRegistry.isEnabled(projectname::AppCommandIds::audioImport),
@@ -6894,6 +6902,11 @@ void appCommandRegistryDescribesPrototypeTopBarCommands()
     const auto* enabledSaveAsCancel = busyRegistry.findCommand(projectname::AppCommandIds::projectSaveAsCancel);
     expect(enabledSaveAsCancel != nullptr && enabledSaveAsCancel->disabledReason.empty(),
            "Enabled Save As cancel command clears stale disabled status text");
+
+    const auto* enabledFailedSaveAsTarget =
+        busyRegistry.findCommand(projectname::AppCommandIds::projectCopyFailedSaveAsTarget);
+    expect(enabledFailedSaveAsTarget != nullptr && enabledFailedSaveAsTarget->disabledReason.empty(),
+           "Enabled failed Save As target copy command clears stale disabled status text");
 
     projectname::AppCommandRegistry manualRegistry;
     expect(manualRegistry.registerCommand({ "app.test",

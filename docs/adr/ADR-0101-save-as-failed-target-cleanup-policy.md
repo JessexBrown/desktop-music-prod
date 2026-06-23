@@ -50,5 +50,5 @@ rollback/cancel behavior.
 
 ## Follow-Ups
 
-- Add a non-destructive way to reveal or copy the kept target package path after
-  a post-copy Save As manifest failure.
+- ADR-0102 adds a non-destructive Project menu command to copy the kept target
+  package path after a post-copy Save As manifest failure.
