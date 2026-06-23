@@ -355,7 +355,7 @@ restore-manifest/preflight/file-moving/restore/background-job tests, workspace c
 registry metadata/enablement/dispatch-result tests, timeline viewport indicator
 formatting tests, persisted track mix state/static mix command tests, stereo
 prepared voice summing tests, and previous-manifest backup success/failure
-tests.
+tests, plus app settings write-failure tests.
 It also
 configured, built, launched, audio-smoke-tested,
 project-save/load-smoke-tested, and audio-import-smoke-tested the Windows-only

@@ -809,6 +809,57 @@ void appSettingsCommitFailureRemovesTemporaryFile()
            "Temporary occupied app settings path deleted");
 }
 
+void appSettingsTemporaryWriteFailureKeepsExistingSettings()
+{
+    projectname::AppSettings originalSettings;
+    originalSettings.audioSetup.firstRunPromptDismissed = true;
+    originalSettings.audioSetup.preferredOutput.hasOutputDevice = true;
+    originalSettings.audioSetup.preferredOutput.deviceType = "Windows Audio";
+    originalSettings.audioSetup.preferredOutput.deviceName = "Original Settings Output";
+    originalSettings.audioSetup.preferredOutput.sampleRateHz = 48000.0;
+    originalSettings.audioSetup.preferredOutput.bufferSizeSamples = 256;
+    originalSettings.audioSetup.preferredOutput.outputChannelCount = 2;
+
+    const auto settingsPath = makeTemporarySettingsPath("projectname-app-settings-temp-write-failure-test");
+    auto temporaryPath = settingsPath;
+    temporaryPath += ".tmp";
+
+    std::string error;
+    expect(projectname::saveAppSettings(originalSettings, settingsPath, error),
+           "Initial app settings save succeeds before temp write failure fixture");
+
+    const auto originalSettingsText = readTextFile(settingsPath);
+    expect(originalSettingsText.find("Original Settings Output") != std::string::npos,
+           "Temp write failure fixture starts with original settings file");
+
+    const auto occupiedTemporaryMarkerPath = temporaryPath / "occupied-marker.txt";
+    writeTextFile(occupiedTemporaryMarkerPath, "occupied temporary settings path");
+
+    projectname::AppSettings replacementSettings = originalSettings;
+    replacementSettings.audioSetup.preferredOutput.deviceName = "Replacement Settings Output";
+    replacementSettings.audioSetup.preferredOutput.sampleRateHz = 96000.0;
+
+    expect(!projectname::saveAppSettings(replacementSettings, settingsPath, error),
+           "App settings save reports temporary write failure when temp path is occupied");
+    expect(error.find("Could not open temporary app settings file") != std::string::npos,
+           "App settings temporary write failure error is human-readable");
+    expect(readTextFile(settingsPath) == originalSettingsText,
+           "App settings temporary write failure leaves existing settings unchanged");
+    expect(std::filesystem::is_directory(temporaryPath),
+           "App settings temporary write failure leaves occupied temp path as a directory");
+    expect(readTextFile(occupiedTemporaryMarkerPath) == "occupied temporary settings path",
+           "App settings temporary write failure preserves occupied temp path contents");
+
+    const auto loaded = projectname::loadAppSettings(settingsPath, error);
+    expect(loaded.has_value() && *loaded == originalSettings,
+           "App settings temporary write failure leaves loadable original settings");
+
+    expect(std::filesystem::remove_all(temporaryPath) > 0,
+           "Temporary occupied app settings temp path deleted");
+    expect(std::filesystem::remove(settingsPath),
+           "Temporary original app settings file deleted");
+}
+
 void appSettingsLoadsAudioSetupDefaultsFromMinimalJson()
 {
     std::string error;
@@ -8917,6 +8968,7 @@ int main()
     projectManifestRoundTrips();
     appSettingsRoundTripsAudioSetupPreferences();
     appSettingsCommitFailureRemovesTemporaryFile();
+    appSettingsTemporaryWriteFailureKeepsExistingSettings();
     appSettingsLoadsAudioSetupDefaultsFromMinimalJson();
     appSettingsRejectsUnsupportedVersion();
     appSettingsResetClearsAudioSetupPreferences();

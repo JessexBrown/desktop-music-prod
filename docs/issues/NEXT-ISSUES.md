@@ -2,17 +2,7 @@
 
 # Next Issues
 
-## 1. Add App Settings Temporary Write Failure Coverage
-
-Acceptance:
-- Add focused core coverage for an app settings save failure before
-  `settings.json.tmp` can be opened or written.
-- Verify the existing `settings.json`, when present, remains unchanged.
-- Verify the occupied temporary path remains unchanged and the error is
-  human-readable.
-- Preserve the successful settings save/load, reset, and commit-failure tests.
-
-## 2. Add App Settings Directory Creation Failure Coverage
+## 1. Add App Settings Directory Creation Failure Coverage
 
 Acceptance:
 - Add focused core coverage for an app settings save failure when the configured
@@ -23,7 +13,7 @@ Acceptance:
 - Preserve the successful settings save/load, reset, commit-failure, and
   temporary-write-failure tests.
 
-## 3. Add macOS Build-Test CI Job
+## 2. Add macOS Build-Test CI Job
 
 Acceptance:
 - Add a `macOS JUCE App` GitHub Actions job using the
@@ -34,7 +24,7 @@ Acceptance:
 - Do not upload a macOS artifact, sign, notarize, create an installer, or bundle
   plugins, presets, samples, commercial sounds, or proprietary assets.
 
-## 4. Add Save As Failed Target Retry Command
+## 3. Add Save As Failed Target Retry Command
 
 Acceptance:
 - Add `project.saveAs.retryFailedTargetManifest` using ADR-0104's enablement,
@@ -47,7 +37,7 @@ Acceptance:
 - Verify retry does not start a Save As package-copy job and does not touch the
   real-time audio path.
 
-## 5. Add Project Save Temporary Manifest Write Failure Coverage
+## 4. Add Project Save Temporary Manifest Write Failure Coverage
 
 Acceptance:
 - Add focused core coverage for a project save failure before
@@ -57,3 +47,14 @@ Acceptance:
   human-readable.
 - Preserve the successful project save/load, previous-backup success/failure,
   asset-folder failure, and commit-failure tests.
+
+## 5. Add Project Save Package Path File Failure Coverage
+
+Acceptance:
+- Add focused core coverage for saving a project package to a path already
+  occupied by a regular file.
+- Verify the occupied file remains unchanged and no package asset folders or
+  manifest temp files are created.
+- Verify the error is human-readable.
+- Preserve the successful project save/load and existing project save failure
+  tests.
