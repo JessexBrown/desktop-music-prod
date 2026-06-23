@@ -2,19 +2,7 @@
 
 # Next Issues
 
-## 1. Add Project Load Manifest Directory Settings Isolation Coverage
-
-Acceptance:
-- Add focused session coverage proving project load failures caused by a
-  directory at `manifest.json` do not rewrite app settings.
-- Verify load rejects the package, leaves the active session project unchanged,
-  leaves any isolated app settings file unchanged, and does not create a
-  project temporary manifest.
-- Preserve manifest-directory load rejection, manifest symlink and
-  broken-symlink settings isolation, app settings corruption recovery, and
-  successful project load/save coverage.
-
-## 2. Add Background Save As Broken Source Symlink Failure Coverage
+## 1. Add Background Save As Broken Source Symlink Failure Coverage
 
 Acceptance:
 - Add focused background Save As package-copy job coverage for a broken source
@@ -27,7 +15,7 @@ Acceptance:
   symlink coverage, cancellation progress, and successful background copy
   coverage.
 
-## 3. Add Project Save Broken Later Asset Folder Symlink Coverage
+## 2. Add Project Save Broken Later Asset Folder Symlink Coverage
 
 Acceptance:
 - Add focused core coverage for saving a project package when a later asset
@@ -42,7 +30,7 @@ Acceptance:
   rejection, asset-folder symlink-to-directory rejection, temporary-manifest
   cleanup, manifest-symlink rejection, and successful save/load coverage.
 
-## 4. Add AppSession Save Broken Asset Folder Symlink Failure Coverage
+## 3. Add AppSession Save Broken Asset Folder Symlink Failure Coverage
 
 Acceptance:
 - Add focused `AppSession` coverage for saving a project package whose existing
@@ -56,7 +44,7 @@ Acceptance:
   and broken-symlink save rejection, temporary-manifest cleanup, and successful
   session save/load coverage.
 
-## 5. Add App Settings Load Broken Parent Symlink Failure Coverage
+## 4. Add App Settings Load Broken Parent Symlink Failure Coverage
 
 Acceptance:
 - Add focused core coverage for loading app settings when an intermediate
@@ -69,3 +57,17 @@ Acceptance:
 - Preserve settings-file symlink load rejection, broken settings-file symlink
   load rejection, directory-path fallback, corruption recovery, and successful
   load/save coverage.
+
+## 5. Add App Settings Load Linked Parent Symlink Failure Coverage
+
+Acceptance:
+- Add focused core coverage for loading app settings when an intermediate
+  settings parent directory is a symlink to an existing directory.
+- Fixture-gate cleanly when the host cannot create test symlinks without
+  elevated permissions.
+- Verify load rejects the path, leaves caller fallback settings unchanged,
+  preserves the linked target settings file, and does not create a temporary
+  settings file through the link.
+- Preserve settings-file symlink load rejection, broken settings-file and
+  parent-symlink load rejection, directory-path fallback, corruption recovery,
+  and successful load/save coverage.

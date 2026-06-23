@@ -10885,6 +10885,65 @@ void projectManifestDirectoryLoadFailureKeepsSessionProject()
            "Temporary manifest-directory load package deleted");
 }
 
+void projectManifestDirectoryLoadFailureLeavesAppSettingsUntouched()
+{
+    projectname::AppSettings settings;
+    settings.audioSetup.firstRunPromptDismissed = true;
+    settings.audioSetup.preferredOutput.hasOutputDevice = true;
+    settings.audioSetup.preferredOutput.deviceType = "Windows Audio";
+    settings.audioSetup.preferredOutput.deviceName = "Manifest Directory Isolation Output";
+    settings.audioSetup.preferredOutput.sampleRateHz = 48000.0;
+    settings.audioSetup.preferredOutput.bufferSizeSamples = 256;
+    settings.audioSetup.preferredOutput.outputChannelCount = 2;
+    settings.audioSetup.preferredOutput.juceDeviceStateXml =
+        "<DEVICESETUP deviceType=\"Windows Audio\" audioOutputDeviceName=\"Manifest Directory Isolation Output\"/>";
+
+    const auto settingsPath =
+        makeTemporarySettingsPath("projectname-manifest-directory-load-settings-isolation-test");
+
+    std::string error;
+    expect(projectname::saveAppSettings(settings, settingsPath, error),
+           "Manifest-directory settings-isolation fixture saves app settings");
+    const auto originalSettingsText = readTextFile(settingsPath);
+
+    projectname::AppSession session;
+    session.getProject().setName("Keep Manifest Directory Settings Isolation Baseline");
+    session.setTempoBpm(113.0);
+    const auto originalProject = session.getProject();
+
+    const auto package =
+        makeTemporaryPackagePath("projectname-manifest-directory-load-settings-isolation-test");
+    const auto manifestDirectory = package / "manifest.json";
+    const auto sentinelPath = manifestDirectory / "sentinel.txt";
+    writeTextFile(sentinelPath, "manifest directory settings-isolation sentinel");
+
+    expect(!session.loadProjectPackage(package, error),
+           "Session rejects manifest-directory package during settings-isolation check");
+    expect(error.find("manifest") != std::string::npos
+               && error.find("not a regular file") != std::string::npos,
+           "Manifest-directory settings-isolation load failure error is human-readable");
+    expect(session.getProject() == originalProject,
+           "Manifest-directory settings-isolation load failure keeps current session project");
+    expect(readTextFile(settingsPath) == originalSettingsText,
+           "Manifest-directory settings-isolation load failure leaves app settings unchanged");
+
+    std::string settingsError;
+    const auto reloadedSettings = projectname::loadAppSettings(settingsPath, settingsError);
+    expect(reloadedSettings.has_value() && *reloadedSettings == settings,
+           "Manifest-directory settings-isolation load failure leaves app settings loadable");
+    expect(std::filesystem::is_directory(manifestDirectory),
+           "Manifest-directory settings-isolation load failure leaves manifest directory unchanged");
+    expect(readTextFile(sentinelPath) == "manifest directory settings-isolation sentinel",
+           "Manifest-directory settings-isolation load failure preserves directory contents");
+    expect(!std::filesystem::exists(package / "manifest.json.tmp"),
+           "Manifest-directory settings-isolation load failure does not create a temporary manifest");
+
+    expect(std::filesystem::remove_all(package) > 0,
+           "Temporary manifest-directory settings-isolation package deleted");
+    expect(std::filesystem::remove(settingsPath),
+           "Temporary manifest-directory settings-isolation app settings file deleted");
+}
+
 void projectManifestSymlinkLoadFailureKeepsSessionProject()
 {
     projectname::AppSession session;
@@ -11128,6 +11187,7 @@ int main()
     appSessionImportsAudioWithoutResumingGeneratedTone();
     appSessionLoadFailureKeepsCurrentProject();
     projectManifestDirectoryLoadFailureKeepsSessionProject();
+    projectManifestDirectoryLoadFailureLeavesAppSettingsUntouched();
     projectManifestSymlinkLoadFailureKeepsSessionProject();
     projectManifestBrokenSymlinkLoadFailureKeepsSessionProject();
     projectManifestSymlinkLoadFailuresLeaveAppSettingsUntouched();
