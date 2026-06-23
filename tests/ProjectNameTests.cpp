@@ -2026,6 +2026,10 @@ void projectPackageSaveAsCopyCommandRejectsBrokenSourceSymlinksBeforeCopy()
         std::filesystem::remove(folderSymlinkSourcePackage / "audio");
         std::filesystem::remove_all(folderSymlinkSourcePackage);
         std::filesystem::remove_all(entrySymlinkSourcePackage);
+        std::filesystem::remove_all(folderSymlinkTargetPackage);
+        std::filesystem::remove_all(entrySymlinkTargetPackage);
+        std::filesystem::remove_all(missingAudioFolderTarget);
+        std::filesystem::remove(missingAudioEntryTarget);
         return;
     }
 
@@ -2200,6 +2204,144 @@ void backgroundSaveAsPackageCopyJobCopiesAssetsAndReportsProgress()
            "Temporary background Save As source package deleted");
     expect(std::filesystem::remove_all(targetPackage) > 0,
            "Temporary background Save As target package deleted");
+}
+
+void backgroundSaveAsPackageCopyJobRejectsBrokenSourceSymlinks()
+{
+    auto folderSymlinkProject = projectname::ProjectModel::createDefault();
+
+    projectname::ProjectClip folderSymlinkClip;
+    folderSymlinkClip.id = "save-as-background-broken-source-folder-symlink-imported";
+    folderSymlinkClip.name = "Save As Background Broken Source Folder Symlink Imported";
+    folderSymlinkClip.type = "audio-file";
+    folderSymlinkClip.relativePath = "audio/take.wav";
+    folderSymlinkClip.lengthBeats = 4.0;
+    expect(folderSymlinkProject.addClipToTrack("track-1", folderSymlinkClip),
+           "Background Save As broken source-folder symlink test adds imported clip");
+
+    const auto folderSymlinkSourcePackage =
+        makeTemporaryPackagePath("projectname-save-as-background-broken-source-folder-symlink-source-test");
+    const auto folderSymlinkTargetPackage =
+        makeTemporaryPackagePath("projectname-save-as-background-broken-source-folder-symlink-target-test");
+    const auto missingAudioFolderTarget =
+        makeTemporaryPackagePath("projectname-save-as-background-broken-source-folder-symlink-missing-target-test");
+    std::filesystem::create_directories(folderSymlinkSourcePackage);
+
+    std::error_code symlinkError;
+    std::filesystem::create_directory_symlink(missingAudioFolderTarget,
+                                             folderSymlinkSourcePackage / "audio",
+                                             symlinkError);
+    if (symlinkError)
+    {
+        std::filesystem::remove_all(folderSymlinkSourcePackage);
+        return;
+    }
+
+    projectname::BackgroundSaveAsPackageCopyRequest folderRequest;
+    folderRequest.project = folderSymlinkProject;
+    folderRequest.sourcePackageDirectory = folderSymlinkSourcePackage;
+    folderRequest.targetPackageDirectory = folderSymlinkTargetPackage;
+
+    projectname::BackgroundSaveAsPackageCopyJob folderJob(std::move(folderRequest));
+    folderJob.start();
+    const auto folderResult = folderJob.waitForResult();
+    const auto folderProgress = folderJob.getProgress();
+
+    expect(!folderResult.cancelled,
+           "Background Save As broken source-folder symlink job is not cancelled");
+    expect(folderResult.copy.status == projectname::ProjectPackageSaveAsCopyStatus::unsupportedSourceEntry,
+           "Background Save As copy job rejects a broken source package folder symlink");
+    expect(folderResult.error.find("Source package folder is a symlink") != std::string::npos,
+           "Background Save As broken source-folder symlink failure error is human-readable");
+    expect(folderProgress.phase == projectname::BackgroundSaveAsPackageCopyPhase::failed,
+           "Background Save As broken source-folder symlink progress reports failed");
+    expect(folderProgress.percent == 100,
+           "Background Save As broken source-folder symlink progress reaches failure percent");
+    expect(folderResult.copy.plan.requiresPackageAssetCopy,
+           "Background Save As broken source-folder symlink failure preserves the copy plan");
+    expect(folderResult.copy.createdPaths.empty(),
+           "Background Save As broken source-folder symlink failure creates no target paths");
+    expect(std::filesystem::is_symlink(
+               std::filesystem::symlink_status(folderSymlinkSourcePackage / "audio")),
+           "Background Save As broken source-folder symlink failure leaves the source symlink unchanged");
+    expect(!std::filesystem::exists(missingAudioFolderTarget),
+           "Background Save As broken source-folder symlink failure does not create the missing target");
+    expect(!std::filesystem::exists(folderSymlinkTargetPackage),
+           "Background Save As broken source-folder symlink failure does not mutate the target package");
+
+    auto entrySymlinkProject = projectname::ProjectModel::createDefault();
+
+    projectname::ProjectClip entrySymlinkClip;
+    entrySymlinkClip.id = "save-as-background-broken-source-entry-symlink-imported";
+    entrySymlinkClip.name = "Save As Background Broken Source Entry Symlink Imported";
+    entrySymlinkClip.type = "audio-file";
+    entrySymlinkClip.relativePath = "audio/take.wav";
+    entrySymlinkClip.lengthBeats = 4.0;
+    expect(entrySymlinkProject.addClipToTrack("track-1", entrySymlinkClip),
+           "Background Save As broken source-entry symlink test adds imported clip");
+
+    const auto entrySymlinkSourcePackage =
+        makeTemporaryPackagePath("projectname-save-as-background-broken-source-entry-symlink-source-test");
+    const auto entrySymlinkTargetPackage =
+        makeTemporaryPackagePath("projectname-save-as-background-broken-source-entry-symlink-target-test");
+    const auto missingAudioEntryTarget =
+        makeTemporaryAudioPath("projectname-save-as-background-broken-source-entry-symlink-missing-target-test");
+    const auto sourceEntrySymlink = entrySymlinkSourcePackage / entrySymlinkClip.relativePath;
+    std::filesystem::create_directories(sourceEntrySymlink.parent_path());
+
+    symlinkError.clear();
+    std::filesystem::create_symlink(missingAudioEntryTarget, sourceEntrySymlink, symlinkError);
+    if (symlinkError)
+    {
+        std::filesystem::remove(folderSymlinkSourcePackage / "audio");
+        std::filesystem::remove_all(folderSymlinkSourcePackage);
+        std::filesystem::remove_all(entrySymlinkSourcePackage);
+        return;
+    }
+
+    projectname::BackgroundSaveAsPackageCopyRequest entryRequest;
+    entryRequest.project = entrySymlinkProject;
+    entryRequest.sourcePackageDirectory = entrySymlinkSourcePackage;
+    entryRequest.targetPackageDirectory = entrySymlinkTargetPackage;
+
+    projectname::BackgroundSaveAsPackageCopyJob entryJob(std::move(entryRequest));
+    entryJob.start();
+    const auto entryResult = entryJob.waitForResult();
+    const auto entryProgress = entryJob.getProgress();
+
+    expect(!entryResult.cancelled,
+           "Background Save As broken source-entry symlink job is not cancelled");
+    expect(entryResult.copy.status == projectname::ProjectPackageSaveAsCopyStatus::unsupportedSourceEntry,
+           "Background Save As copy job rejects a broken source package asset entry symlink");
+    expect(entryResult.error.find("Source package entry is a symlink") != std::string::npos,
+           "Background Save As broken source-entry symlink failure error is human-readable");
+    expect(entryProgress.phase == projectname::BackgroundSaveAsPackageCopyPhase::failed,
+           "Background Save As broken source-entry symlink progress reports failed");
+    expect(entryProgress.percent == 100,
+           "Background Save As broken source-entry symlink progress reaches failure percent");
+    expect(entryResult.copy.plan.requiresPackageAssetCopy,
+           "Background Save As broken source-entry symlink failure preserves the copy plan");
+    expect(entryResult.copy.createdPaths.empty(),
+           "Background Save As broken source-entry symlink failure creates no target paths");
+    expect(std::filesystem::is_symlink(std::filesystem::symlink_status(sourceEntrySymlink)),
+           "Background Save As broken source-entry symlink failure leaves the source symlink unchanged");
+    expect(!std::filesystem::exists(missingAudioEntryTarget),
+           "Background Save As broken source-entry symlink failure does not create the missing target");
+    expect(!std::filesystem::exists(entrySymlinkTargetPackage),
+           "Background Save As broken source-entry symlink failure does not mutate the target package");
+
+    expect(std::filesystem::remove(folderSymlinkSourcePackage / "audio"),
+           "Temporary background Save As broken source-folder symlink deleted");
+    expect(std::filesystem::remove(sourceEntrySymlink),
+           "Temporary background Save As broken source-entry symlink deleted");
+    expect(std::filesystem::remove_all(folderSymlinkSourcePackage) > 0,
+           "Temporary background Save As broken source-folder package deleted");
+    expect(std::filesystem::remove_all(entrySymlinkSourcePackage) > 0,
+           "Temporary background Save As broken source-entry package deleted");
+    std::filesystem::remove_all(folderSymlinkTargetPackage);
+    std::filesystem::remove_all(entrySymlinkTargetPackage);
+    std::filesystem::remove_all(missingAudioFolderTarget);
+    std::filesystem::remove(missingAudioEntryTarget);
 }
 
 void backgroundSaveAsPackageCopyJobCancelsBeforeStart()
@@ -11221,6 +11363,7 @@ int main()
     projectPackageSaveAsCopyCommandRejectsTargetInsideSource();
     projectPackageSaveAsCopyCommandCancelsAndRollsBackPartialTarget();
     backgroundSaveAsPackageCopyJobCopiesAssetsAndReportsProgress();
+    backgroundSaveAsPackageCopyJobRejectsBrokenSourceSymlinks();
     backgroundSaveAsPackageCopyJobCancelsBeforeStart();
     projectPackageSaveAsRetryPreflightAllowsManifestOnlyRetryAndStaleTempCleanup();
     projectPackageSaveAsRetryPreflightRejectsTargetManifestConflicts();

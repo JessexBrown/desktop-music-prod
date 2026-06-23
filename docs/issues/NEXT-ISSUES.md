@@ -2,20 +2,7 @@
 
 # Next Issues
 
-## 1. Add Background Save As Broken Source Symlink Failure Coverage
-
-Acceptance:
-- Add focused background Save As package-copy job coverage for a broken source
-  package asset folder or source asset entry symlink.
-- Fixture-gate cleanly when the host cannot create test symlinks without
-  elevated permissions.
-- Verify the background job reports failure, reaches the failed phase, leaves
-  the missing symlink target uncreated, and does not mutate the target package.
-- Preserve plain copy-command broken source symlink coverage, broken target
-  symlink coverage, cancellation progress, and successful background copy
-  coverage.
-
-## 2. Add Project Save Broken Later Asset Folder Symlink Coverage
+## 1. Add Project Save Broken Later Asset Folder Symlink Coverage
 
 Acceptance:
 - Add focused core coverage for saving a project package when a later asset
@@ -30,7 +17,7 @@ Acceptance:
   rejection, asset-folder symlink-to-directory rejection, temporary-manifest
   cleanup, manifest-symlink rejection, and successful save/load coverage.
 
-## 3. Add AppSession Save Broken Asset Folder Symlink Failure Coverage
+## 2. Add AppSession Save Broken Asset Folder Symlink Failure Coverage
 
 Acceptance:
 - Add focused `AppSession` coverage for saving a project package whose existing
@@ -44,7 +31,7 @@ Acceptance:
   and broken-symlink save rejection, temporary-manifest cleanup, and successful
   session save/load coverage.
 
-## 4. Add App Settings Load Broken Parent Symlink Failure Coverage
+## 3. Add App Settings Load Broken Parent Symlink Failure Coverage
 
 Acceptance:
 - Add focused core coverage for loading app settings when an intermediate
@@ -58,7 +45,7 @@ Acceptance:
   load rejection, directory-path fallback, corruption recovery, and successful
   load/save coverage.
 
-## 5. Add App Settings Load Linked Parent Symlink Failure Coverage
+## 4. Add App Settings Load Linked Parent Symlink Failure Coverage
 
 Acceptance:
 - Add focused core coverage for loading app settings when an intermediate
@@ -71,3 +58,17 @@ Acceptance:
 - Preserve settings-file symlink load rejection, broken settings-file and
   parent-symlink load rejection, directory-path fallback, corruption recovery,
   and successful load/save coverage.
+
+## 5. Add Background Save As Broken Target Symlink Failure Coverage
+
+Acceptance:
+- Add focused background Save As package-copy job coverage for a broken target
+  package symlink or broken intermediate target parent symlink.
+- Fixture-gate cleanly when the host cannot create test symlinks without
+  elevated permissions.
+- Verify the background job reports failure, reaches the failed phase, leaves
+  the missing symlink target uncreated, and does not copy package assets through
+  the target link.
+- Preserve plain copy-command broken target symlink coverage, background broken
+  source symlink failure coverage, cancellation progress, and successful
+  background copy coverage.
