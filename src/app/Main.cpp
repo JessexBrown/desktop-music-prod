@@ -11,6 +11,7 @@
 #include <memory>
 #include <string>
 #include <system_error>
+#include <utility>
 
 class RabbingtonStudioApplication final : public juce::JUCEApplication
 {
@@ -98,11 +99,29 @@ public:
     }
 
 private:
+    static std::filesystem::path makeSmokeScratchRoot(const std::string& prefix,
+                                                      std::error_code& filesystemError)
+    {
+        auto tempDirectory = std::filesystem::temp_directory_path(filesystemError);
+        if (filesystemError)
+            return {};
+
+        std::error_code canonicalError;
+        auto canonicalTempDirectory = std::filesystem::weakly_canonical(tempDirectory,
+                                                                        canonicalError);
+        if (!canonicalError && !canonicalTempDirectory.empty())
+            tempDirectory = std::move(canonicalTempDirectory);
+
+        return tempDirectory / (prefix + std::to_string(juce::Time::currentTimeMillis()));
+    }
+
     void runProjectChooserSmokeTestAndQuit()
     {
         std::string error;
         std::error_code filesystemError;
-        const auto tempDirectory = std::filesystem::temp_directory_path(filesystemError);
+        const auto scratchRoot =
+            makeSmokeScratchRoot("rabbington-studio-project-chooser-smoke-",
+                                 filesystemError);
         auto passed = false;
 
         if (filesystemError)
@@ -111,10 +130,6 @@ private:
         }
         else
         {
-            const auto scratchRoot =
-                tempDirectory
-                / ("rabbington-studio-project-chooser-smoke-"
-                   + std::to_string(juce::Time::currentTimeMillis()));
             passed = mainWindow_ != nullptr
                 && mainWindow_->getMainComponent().runProjectChooserSmokeTest(scratchRoot, error);
         }
@@ -132,7 +147,9 @@ private:
     {
         std::string error;
         std::error_code filesystemError;
-        const auto tempDirectory = std::filesystem::temp_directory_path(filesystemError);
+        const auto scratchRoot =
+            makeSmokeScratchRoot("rabbington-studio-app-settings-corruption-smoke-",
+                                 filesystemError);
         auto passed = false;
 
         if (filesystemError)
@@ -141,10 +158,6 @@ private:
         }
         else
         {
-            const auto scratchRoot =
-                tempDirectory
-                / ("rabbington-studio-app-settings-corruption-smoke-"
-                   + std::to_string(juce::Time::currentTimeMillis()));
             passed = mainWindow_ != nullptr
                 && mainWindow_->getMainComponent().runAppSettingsCorruptionSmokeTest(scratchRoot, error);
         }
@@ -162,7 +175,9 @@ private:
     {
         std::string error;
         std::error_code filesystemError;
-        const auto tempDirectory = std::filesystem::temp_directory_path(filesystemError);
+        const auto scratchRoot =
+            makeSmokeScratchRoot("rabbington-studio-restore-detail-smoke-",
+                                 filesystemError);
         auto passed = false;
 
         if (filesystemError)
@@ -171,10 +186,6 @@ private:
         }
         else
         {
-            const auto scratchRoot =
-                tempDirectory
-                / ("rabbington-studio-restore-detail-smoke-"
-                   + std::to_string(juce::Time::currentTimeMillis()));
             passed = mainWindow_ != nullptr
                 && mainWindow_->getMainComponent().runPackageMediaRestoreDetailSmokeTest(scratchRoot, error);
         }
@@ -192,7 +203,9 @@ private:
     {
         std::string error;
         std::error_code filesystemError;
-        const auto tempDirectory = std::filesystem::temp_directory_path(filesystemError);
+        const auto scratchRoot =
+            makeSmokeScratchRoot("rabbington-studio-audio-midi-reset-smoke-",
+                                 filesystemError);
         auto passed = false;
 
         if (filesystemError)
@@ -201,10 +214,6 @@ private:
         }
         else
         {
-            const auto scratchRoot =
-                tempDirectory
-                / ("rabbington-studio-audio-midi-reset-smoke-"
-                   + std::to_string(juce::Time::currentTimeMillis()));
             passed = mainWindow_ != nullptr
                 && mainWindow_->getMainComponent().runAudioMidiResetSmokeTest(scratchRoot, error);
         }

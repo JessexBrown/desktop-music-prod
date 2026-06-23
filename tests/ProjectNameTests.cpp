@@ -82,19 +82,31 @@ std::string makeTemporaryPathSuffix()
     return std::to_string(counter) + "-" + std::to_string(randomValue);
 }
 
+std::filesystem::path makeTemporaryRootPath()
+{
+    auto root = std::filesystem::temp_directory_path();
+
+    std::error_code filesystemError;
+    auto canonicalRoot = std::filesystem::weakly_canonical(root, filesystemError);
+    if (!filesystemError && !canonicalRoot.empty())
+        root = std::move(canonicalRoot);
+
+    return root;
+}
+
 std::filesystem::path makeTemporaryPackagePath(const std::string& prefix)
 {
-    return std::filesystem::temp_directory_path() / (prefix + "-" + makeTemporaryPathSuffix() + ".project");
+    return makeTemporaryRootPath() / (prefix + "-" + makeTemporaryPathSuffix() + ".project");
 }
 
 std::filesystem::path makeTemporaryAudioPath(const std::string& prefix)
 {
-    return std::filesystem::temp_directory_path() / (prefix + "-" + makeTemporaryPathSuffix() + ".wav");
+    return makeTemporaryRootPath() / (prefix + "-" + makeTemporaryPathSuffix() + ".wav");
 }
 
 std::filesystem::path makeTemporarySettingsPath(const std::string& prefix)
 {
-    return std::filesystem::temp_directory_path() / (prefix + "-" + makeTemporaryPathSuffix() + ".json");
+    return makeTemporaryRootPath() / (prefix + "-" + makeTemporaryPathSuffix() + ".json");
 }
 
 void writeManifestText(const std::filesystem::path& package, const std::string& manifestText)
