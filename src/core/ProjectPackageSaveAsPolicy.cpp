@@ -662,6 +662,10 @@ void rollbackCopyResult(ProjectPackageSaveAsCopyResult& result,
 [[nodiscard]] bool folderContainsAnyEntry(const std::filesystem::path& folder)
 {
     std::error_code error;
+    const auto status = std::filesystem::symlink_status(folder, error);
+    if (!error && std::filesystem::is_symlink(status))
+        return true;
+
     if (!std::filesystem::is_directory(folder, error) || error)
         return false;
 

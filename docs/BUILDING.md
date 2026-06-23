@@ -383,7 +383,7 @@ host-supported, manifest symlink and broken-symlink save rejection tests,
 session-level manifest symlink save failure tests when host-supported, staged
 temporary-manifest open/commit failure tests, Save As retry manifest/asset
 symlink conflict tests when host-supported, Save As source and target symlink
-rejection tests, including broken target links, when host-supported, plus
+rejection tests, including broken source and target links, when host-supported, plus
 app settings load-directory, symlink, broken-symlink, empty-path,
 save-symlink, save-broken-symlink, temporary-symlink including broken links,
 path, and write-failure tests.

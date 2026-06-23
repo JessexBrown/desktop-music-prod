@@ -2,21 +2,7 @@
 
 # Next Issues
 
-## 1. Add Save As Copy Broken Source Symlink Failure Coverage
-
-Acceptance:
-- Add focused Save As copy coverage for source package asset folders or asset
-  entries that are broken symlinks.
-- Fixture-gate cleanly when the host cannot create test symlinks without
-  elevated permissions.
-- Verify copy rejects the source link before target package mutation, leaves the
-  missing symlink target uncreated, and reports the existing source
-  folder/entry symlink error.
-- Preserve Save As source-folder symlink rejection, source-entry symlink
-  rejection, broken target symlink rejection, target-conflict, cancellation,
-  progress, and successful copy coverage.
-
-## 2. Add Project Save Broken Asset Folder Symlink Failure Coverage
+## 1. Add Project Save Broken Asset Folder Symlink Failure Coverage
 
 Acceptance:
 - Add focused core coverage for saving a project package when an asset folder
@@ -30,7 +16,7 @@ Acceptance:
   rejection, temporary-manifest cleanup, manifest-symlink rejection, and
   successful save/load coverage.
 
-## 3. Add Project Save Broken Manifest Symlink Session Failure Coverage
+## 2. Add Project Save Broken Manifest Symlink Session Failure Coverage
 
 Acceptance:
 - Add focused `AppSession` coverage for saving a project package whose existing
@@ -44,7 +30,7 @@ Acceptance:
   manifest-symlink save rejection, temporary-manifest cleanup, and successful
   session save/load coverage.
 
-## 4. Add App Settings Save Broken Parent Symlink Failure Coverage
+## 3. Add App Settings Save Broken Parent Symlink Failure Coverage
 
 Acceptance:
 - Add focused core coverage for saving app settings when an intermediate
@@ -58,7 +44,7 @@ Acceptance:
   rejection, temporary-symlink cleanup, temporary-write failure, commit failure,
   and successful load/save coverage.
 
-## 5. Add Project Load Manifest Directory Settings Isolation Coverage
+## 4. Add Project Load Manifest Directory Settings Isolation Coverage
 
 Acceptance:
 - Add focused session coverage proving project load failures caused by a
@@ -69,3 +55,16 @@ Acceptance:
 - Preserve manifest-directory load rejection, manifest symlink and
   broken-symlink settings isolation, app settings corruption recovery, and
   successful project load/save coverage.
+
+## 5. Add Background Save As Broken Source Symlink Failure Coverage
+
+Acceptance:
+- Add focused background Save As package-copy job coverage for a broken source
+  package asset folder or source asset entry symlink.
+- Fixture-gate cleanly when the host cannot create test symlinks without
+  elevated permissions.
+- Verify the background job reports failure, reaches the failed phase, leaves
+  the missing symlink target uncreated, and does not mutate the target package.
+- Preserve plain copy-command broken source symlink coverage, broken target
+  symlink coverage, cancellation progress, and successful background copy
+  coverage.

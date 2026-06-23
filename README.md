@@ -220,10 +220,10 @@ Third-party dependencies remain under their own licenses as recorded in
   copy the kept target package path or run a manifest-only retry after the
   blocking target manifest path is fixed. Copy rejects symlinked source package
   folders, source asset entries, target package paths, or intermediate target
-  parents, including broken target links, before target mutation, and retry
-  refuses existing target manifests, non-regular manifest paths, and missing or
-  symlinked copied assets without recopying, deleting, quarantining, or touching
-  audio playback.
+  parents, including broken source and target links, before target mutation, and
+  retry refuses existing target manifests, non-regular manifest paths, and
+  missing or symlinked copied assets without recopying, deleting, quarantining,
+  or touching audio playback.
 - Save As package asset copying runs on a cancellable background job with
   phase, file-count, and byte-count progress, plus a guarded top-bar Cancel
   Save affordance.
