@@ -11866,6 +11866,49 @@ void appSessionDirectPackageSymlinkLoadFailureKeepsSessionProject()
            "Temporary session direct package load symlink target deleted");
 }
 
+void appSessionBrokenDirectPackageSymlinkLoadFailureKeepsSessionProject()
+{
+    projectname::AppSession session;
+    session.getProject().setName("Keep Broken Direct Package Symlink Session Baseline");
+    session.setTempoBpm(121.0);
+    const auto originalProject = session.getProject();
+
+    const auto packageSymlink =
+        makeTemporaryPackagePath("projectname-session-broken-direct-package-load-symlink-link-test");
+    const auto missingTargetPackage =
+        makeTemporaryPackagePath("projectname-session-broken-direct-package-load-symlink-target-test");
+
+    std::error_code symlinkError;
+    std::filesystem::create_directory_symlink(missingTargetPackage, packageSymlink, symlinkError);
+    if (symlinkError)
+        return;
+
+    std::string error = "stale session broken direct package symlink load error";
+    expect(!session.loadProjectPackage(packageSymlink, error),
+           "Session load rejects a broken direct package directory symlink");
+    expect(error.find("Project package path contains a symlink") != std::string::npos
+               && error.find(packageSymlink.generic_string()) != std::string::npos,
+           "Session broken direct package symlink load failure error is human-readable");
+    expect(error.find("not found") == std::string::npos,
+           "Session broken direct package symlink load failure is not reported as a missing manifest");
+    expect(error.find("JSON") == std::string::npos,
+           "Session broken direct package symlink load failure does not parse JSON through the symlink");
+    expect(session.getProject() == originalProject,
+           "Session broken direct package symlink load failure keeps current session project");
+    expect(std::filesystem::is_symlink(std::filesystem::symlink_status(packageSymlink)),
+           "Session broken direct package symlink load failure leaves the package symlink unchanged");
+    expect(!std::filesystem::exists(missingTargetPackage),
+           "Session broken direct package symlink load failure does not create the missing target");
+    expect(!std::filesystem::exists(packageSymlink / "manifest.json.tmp"),
+           "Session broken direct package symlink load failure does not create a temporary manifest through the link");
+    expect(!std::filesystem::exists(missingTargetPackage / "manifest.json.tmp"),
+           "Session broken direct package symlink load failure does not write target temporary manifest");
+
+    expect(std::filesystem::remove(packageSymlink),
+           "Temporary session broken direct package load symlink deleted");
+    std::filesystem::remove_all(missingTargetPackage);
+}
+
 void projectLinkedPackageParentSymlinkLoadFailureRejectsBeforeParsingManifest()
 {
     const auto parentSymlink =
@@ -12363,6 +12406,7 @@ int main()
     projectDirectPackageSymlinkLoadFailureRejectsBeforeParsingManifest();
     projectBrokenDirectPackageSymlinkLoadFailureRejectsBeforeManifestWork();
     appSessionDirectPackageSymlinkLoadFailureKeepsSessionProject();
+    appSessionBrokenDirectPackageSymlinkLoadFailureKeepsSessionProject();
     projectLinkedPackageParentSymlinkLoadFailureRejectsBeforeParsingManifest();
     appSessionLinkedPackageParentSymlinkLoadFailureKeepsSessionProject();
     appSessionBrokenPackageParentSymlinkLoadFailureKeepsSessionProject();
