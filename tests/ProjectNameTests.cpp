@@ -2779,6 +2779,55 @@ void projectSaveRemovesStaleTemporaryManifestSymlinkWithoutFollowingIt()
            "Temporary manifest-symlink cleanup target deleted");
 }
 
+void projectSaveRemovesStaleBrokenTemporaryManifestSymlinkWithoutFollowingIt()
+{
+    auto project = projectname::ProjectModel::createDefault();
+    project.setName("Broken Temporary Manifest Symlink Cleanup Test");
+    project.getTransport().setTempoBpm(121.0);
+
+    const auto package =
+        makeTemporaryPackagePath("projectname-save-broken-temp-symlink-cleanup-test");
+    const auto temporaryManifestPath = package / "manifest.json.tmp";
+    const auto brokenTemporarySymlinkTargetPath =
+        package / "missing-temporary-manifest-target.json";
+
+    std::filesystem::create_directories(package);
+
+    std::error_code symlinkError;
+    std::filesystem::create_symlink(brokenTemporarySymlinkTargetPath,
+                                    temporaryManifestPath,
+                                    symlinkError);
+    if (symlinkError)
+    {
+        std::filesystem::remove_all(package);
+        return;
+    }
+
+    std::string error = "stale broken temporary manifest symlink cleanup error";
+    expect(project.savePackage(package, error),
+           "Project save succeeds after removing a stale broken temporary manifest symlink");
+    expect(error.empty(),
+           "Project save stale broken temporary manifest symlink cleanup leaves error empty");
+    expect(std::filesystem::is_regular_file(package / "manifest.json"),
+           "Project save stale broken temporary manifest symlink cleanup writes a real manifest");
+    expect(!std::filesystem::is_symlink(std::filesystem::symlink_status(package / "manifest.json")),
+           "Project save stale broken temporary manifest symlink cleanup does not commit a manifest symlink");
+    expect(!std::filesystem::exists(temporaryManifestPath),
+           "Project save stale broken temporary manifest symlink cleanup removes the temporary link");
+    expect(!std::filesystem::exists(brokenTemporarySymlinkTargetPath),
+           "Project save stale broken temporary manifest symlink cleanup does not create the missing target");
+    expect(readTextFile(package / "manifest.json")
+               .find("Broken Temporary Manifest Symlink Cleanup Test") != std::string::npos,
+           "Project save stale broken temporary manifest symlink cleanup commits the requested project");
+
+    auto loaded = projectname::ProjectModel::loadPackage(package, error);
+    expect(loaded.has_value() && *loaded == project,
+           "Project save stale broken temporary manifest symlink cleanup commits loadable project state");
+
+    expect(std::filesystem::remove_all(package) > 0,
+           "Temporary broken manifest-symlink cleanup package deleted");
+}
+
 void projectSaveManifestSymlinkFailureLeavesTargetUntouched()
 {
     auto project = projectname::ProjectModel::createDefault();
@@ -10622,6 +10671,7 @@ int main()
     projectSaveCreatesPreviousManifestBackup();
     projectSaveBackupFailureKeepsManifestAndRemovesTemporaryManifest();
     projectSaveRemovesStaleTemporaryManifestSymlinkWithoutFollowingIt();
+    projectSaveRemovesStaleBrokenTemporaryManifestSymlinkWithoutFollowingIt();
     projectSaveManifestSymlinkFailureLeavesTargetUntouched();
     projectSaveBrokenManifestSymlinkFailureLeavesTargetUntouched();
     projectSaveTemporaryManifestOpenFailureKeepsManifestAndOccupiedPath();

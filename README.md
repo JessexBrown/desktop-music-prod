@@ -262,9 +262,9 @@ Third-party dependencies remain under their own licenses as recorded in
 - Project save creates `backups/manifest.previous.json` before overwriting an
   existing manifest, writes the next manifest through `manifest.json.tmp`, and
   removes the staged manifest if previous-backup creation fails. Stale temporary
-  manifest symlinks are removed before writing, while final manifest symlinks,
-  including broken links, are rejected before backup or commit so the save path
-  does not follow them.
+  manifest symlinks, including broken links, are removed before writing, while
+  final manifest symlinks, including broken links, are rejected before backup or
+  commit so the save path does not follow them.
 - Shared app session that keeps UI playback state tied to the project-backed
   transport.
 - Project menu, Import control, and deterministic initial
