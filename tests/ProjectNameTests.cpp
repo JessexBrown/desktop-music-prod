@@ -11729,6 +11729,53 @@ void projectManifestDirectoryLoadFailureKeepsSessionProject()
            "Temporary manifest-directory load package deleted");
 }
 
+void projectDirectPackageSymlinkLoadFailureRejectsBeforeParsingManifest()
+{
+    const auto packageSymlink =
+        makeTemporaryPackagePath("projectname-direct-package-load-symlink-link-test");
+    const auto linkedTargetPackage =
+        makeTemporaryPackagePath("projectname-direct-package-load-symlink-target-test");
+    const auto linkedTargetSentinel = linkedTargetPackage / "sentinel.txt";
+    const auto linkedManifestText =
+        R"({"manifestVersion":1,"name":"Direct Package Symlink Manifest Should Not Load","transport":{"tempoBpm":88.0,"timeSignature":{"numerator":5,"denominator":4},"positionBeats":2.0},"tracks":[]})";
+
+    writeManifestText(linkedTargetPackage, linkedManifestText);
+    writeTextFile(linkedTargetSentinel, "direct package load sentinel");
+
+    std::error_code symlinkError;
+    std::filesystem::create_directory_symlink(linkedTargetPackage, packageSymlink, symlinkError);
+    if (symlinkError)
+    {
+        std::filesystem::remove_all(linkedTargetPackage);
+        return;
+    }
+
+    std::string error = "stale direct package symlink load error";
+    auto loaded = projectname::ProjectModel::loadPackage(packageSymlink, error);
+    expect(!loaded.has_value(),
+           "Project load rejects a direct package directory symlink");
+    expect(error.find("Project package path contains a symlink") != std::string::npos
+               && error.find(packageSymlink.generic_string()) != std::string::npos,
+           "Direct package symlink load failure error is human-readable");
+    expect(error.find("JSON") == std::string::npos,
+           "Direct package symlink load failure does not parse JSON through the symlink");
+    expect(std::filesystem::is_symlink(std::filesystem::symlink_status(packageSymlink)),
+           "Direct package symlink load failure leaves the package symlink unchanged");
+    expect(readTextFile(linkedTargetPackage / "manifest.json") == linkedManifestText,
+           "Direct package symlink load failure preserves the linked target manifest");
+    expect(readTextFile(linkedTargetSentinel) == "direct package load sentinel",
+           "Direct package symlink load failure preserves the linked target sentinel");
+    expect(!std::filesystem::exists(packageSymlink / "manifest.json.tmp"),
+           "Direct package symlink load failure does not create a temporary manifest through the link");
+    expect(!std::filesystem::exists(linkedTargetPackage / "manifest.json.tmp"),
+           "Direct package symlink load failure does not write target temporary manifest");
+
+    expect(std::filesystem::remove(packageSymlink),
+           "Temporary direct package load symlink deleted");
+    expect(std::filesystem::remove_all(linkedTargetPackage) > 0,
+           "Temporary direct package load symlink target deleted");
+}
+
 void projectLinkedPackageParentSymlinkLoadFailureRejectsBeforeParsingManifest()
 {
     const auto parentSymlink =
@@ -12223,6 +12270,7 @@ int main()
     appSessionImportsAudioWithoutResumingGeneratedTone();
     appSessionLoadFailureKeepsCurrentProject();
     projectManifestDirectoryLoadFailureKeepsSessionProject();
+    projectDirectPackageSymlinkLoadFailureRejectsBeforeParsingManifest();
     projectLinkedPackageParentSymlinkLoadFailureRejectsBeforeParsingManifest();
     appSessionLinkedPackageParentSymlinkLoadFailureKeepsSessionProject();
     appSessionBrokenPackageParentSymlinkLoadFailureKeepsSessionProject();
