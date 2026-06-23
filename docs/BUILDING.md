@@ -119,6 +119,9 @@ ctest --preset dev --output-on-failure
   `CMakePresets.json` vendor metadata for comment-free JSON, rejects missing
   first-party headers, rejects stale exception paths, and fails if a baseline
   exception appears while the production gate expects zero.
+- `projectname_ci_artifact_contents_fixture_check` verifies the CI artifact
+  allowlist checker accepts Windows and Linux app package shapes, rejects staged
+  cache/plugin/preset/sample paths, and rejects checksum drift before upload.
 - `projectname_tests` runs the current unit tests.
 
 ## Continuous Integration
@@ -130,8 +133,8 @@ GitHub Actions currently runs three jobs on pushes and pull requests:
   `projectname_project_chooser_smoke`, `projectname_audio_midi_reset_smoke`,
   `projectname_app_settings_corruption_smoke`,
   `projectname_restore_detail_smoke`, the SPDX check, the SPDX fixture check,
-  and the core unit tests. After tests pass, the job uploads a
-  short-retention artifact named
+  the CI artifact contents fixture check, and the core unit tests. After tests
+  pass, the job uploads a short-retention artifact named
   `rabbington-studio-windows-msvc-app-<commit-sha>` for 7 days.
 - `Linux Core` configures, builds, and tests the `core-dev` preset on
   `ubuntu-latest` for dependency-light second-host coverage.
@@ -152,10 +155,12 @@ sources do not become part of the first-party license-header baseline.
 The Windows MSVC and Linux JUCE app artifacts are staged under each runner's
 temporary directory and contain only the app executable plus `LICENSE`,
 `README.md`, `docs/DEPENDENCIES.md`, an artifact note, and `SHA256SUMS.txt`.
-They intentionally exclude FetchContent caches, dependency checkouts,
-Visual Studio/CMake build intermediates, test scratch directories, plugins,
-presets, samples, and proprietary assets. These CI artifacts are unsigned
-debug/smoke packages, not release installers.
+Before upload, CI runs an exact allowlist check against the staged tree and
+validates that `SHA256SUMS.txt` covers the expected files. The gate fails if
+the package includes FetchContent caches, dependency checkouts, Visual
+Studio/CMake build intermediates, test scratch directories, plugins, presets,
+samples, proprietary assets, extra directories, symlinks, or checksum drift.
+These CI artifacts are unsigned debug/smoke packages, not release installers.
 
 ### Downloading CI App Artifacts
 
@@ -308,11 +313,12 @@ Maintenance review-row copy/activation behavior for conflict and partial-failure
 restore manifests, including distinct package-relative and restore-manifest
 fallback status copy, without starting cleanup or restore jobs. The same run also
 passed `projectname_spdx_check`, `projectname_spdx_fixture_check`, and
-`projectname_tests`, including cached prepared voice-window playback,
-background voice-window preparation, imported clip inspector metadata,
-deterministic imported clip selection, and persisted track mix
-state/static mix command/sample-rate mismatch coverage, plus app command
-registry metadata, enablement, and dispatch-result coverage.
+`projectname_ci_artifact_contents_fixture_check`, plus `projectname_tests`,
+including cached prepared voice-window playback, background voice-window
+preparation, imported clip inspector metadata, deterministic imported clip
+selection, and persisted track mix state/static mix command/sample-rate
+mismatch coverage, plus app command registry metadata, enablement, and
+dispatch-result coverage.
 
 The MinGW toolchain also successfully configured, built, and ran the `core-dev`
 test suite, including generated-tone and generated-clip audio engine tests,

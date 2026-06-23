@@ -346,9 +346,9 @@ The Windows `dev` preset uses Visual Studio 2026, MSVC, and x64. Both
 desktop-app presets fetch JUCE 8.0.13 and nlohmann/json 3.12.0 from their
 official GitHub repositories. Their test suites include the app launch,
 project-chooser, Audio/MIDI reset, app settings corruption, and restore-detail
-smoke tests plus the SPDX fixture check and core unit tests. See
-`docs/BUILDING.md` for platform notes and the local-JUCE option. Linux JUCE app
-CI prerequisites are tracked separately in
+smoke tests plus the SPDX fixture check, CI artifact contents fixture check, and
+core unit tests. See `docs/BUILDING.md` for platform notes and the local-JUCE
+option. Linux JUCE app CI prerequisites are tracked separately in
 `docs/LINUX_JUCE_APP_PREREQUISITES.md`.
 
 To run only the domain tests without building the JUCE desktop app:
@@ -366,9 +366,11 @@ for JUCE and nlohmann/json outside the build tree; generated build outputs
 remain untracked. After the Windows MSVC and Linux JUCE app tests pass, CI
 uploads 7-day artifacts containing only the staged executable and first-party
 license/dependency notes, including `SHA256SUMS.txt` for after-download
-integrity checks. `docs/BUILDING.md` documents where to find the successful-run
-artifacts, their expected names, and launch caveats for unsigned debug/smoke
-packages.
+integrity checks. CI verifies the staged artifact allowlist and checksum file
+before upload so caches, build intermediates, plugins, presets, samples, and
+proprietary assets fail the package gate. `docs/BUILDING.md` documents where to
+find the successful-run artifacts, their expected names, and launch caveats for
+unsigned debug/smoke packages.
 
 On Windows machines with MinGW but without a JUCE-supported compiler, the
 fallback launcher can be verified with the non-JUCE fallback preset:

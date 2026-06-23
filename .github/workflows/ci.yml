@@ -95,6 +95,11 @@ jobs:
               "$hash  $relativePath"
             } | Set-Content -LiteralPath $checksumPath -Encoding ASCII
 
+          cmake `
+            "-DARTIFACT_ROOT=$artifactRoot" `
+            "-DARTIFACT_EXECUTABLE_NAME=Rabbington Studio.exe" `
+            -P tools/check_ci_artifact_contents.cmake
+
           Get-ChildItem -LiteralPath $artifactRoot -Recurse -File | ForEach-Object { $_.FullName }
 
       - name: Upload Windows MSVC app artifact
@@ -236,6 +241,11 @@ jobs:
               sha256sum "${relative_path}"
             done < <(find . -type f ! -name SHA256SUMS.txt -print0 | sort -z)
           ) > "${artifact_root}/SHA256SUMS.txt"
+
+          cmake \
+            "-DARTIFACT_ROOT=${artifact_root}" \
+            "-DARTIFACT_EXECUTABLE_NAME=Rabbington Studio" \
+            -P tools/check_ci_artifact_contents.cmake
 
           find "${artifact_root}" -maxdepth 3 -type f -print
 

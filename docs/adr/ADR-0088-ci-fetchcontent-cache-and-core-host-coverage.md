@@ -84,6 +84,15 @@ after all package files are copied and excludes only `SHA256SUMS.txt` itself,
 so a downloaded artifact can be verified without expanding the artifact scope or
 adding another CI dependency.
 
+On June 23, 2026, add a CMake-based CI artifact contents checker and run it in
+both app artifact jobs before `actions/upload-artifact@v7`. The checker
+requires an exact package shape: the platform executable, `LICENSE`,
+`README.md`, `docs/DEPENDENCIES.md`, `ARTIFACT.txt`, and `SHA256SUMS.txt`, with
+only the `docs/` subdirectory allowed. It also verifies that `SHA256SUMS.txt`
+matches the expected non-checksum files. A fixture CTest covers valid Windows
+and Linux package shapes plus representative cache, plugin, and checksum-drift
+failures.
+
 ## Consequences
 
 - Windows CI continues to verify the desktop app launch smoke test.
@@ -103,6 +112,10 @@ adding another CI dependency.
   artifact after the existing Windows build/test gate passes.
 - Downloaded CI app artifacts can be integrity-checked against the checksum file
   included in the staged package.
+- CI fails before upload if an app artifact staging change introduces
+  dependency caches, build intermediates, test scratch data, plugins, presets,
+  samples, proprietary assets, symlinks, extra files/directories, or checksum
+  drift.
 
 ## Follow-Ups
 

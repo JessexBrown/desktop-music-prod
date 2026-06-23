@@ -223,6 +223,12 @@ if(BUILD_TESTING)
             -P ${CMAKE_CURRENT_SOURCE_DIR}/tools/check_spdx_fixtures.cmake)
     set_tests_properties(projectname_spdx_fixture_check PROPERTIES TIMEOUT 20)
 
+    add_test(NAME projectname_ci_artifact_contents_fixture_check
+        COMMAND ${CMAKE_COMMAND}
+            -DCI_ARTIFACT_FIXTURE_ROOT=${CMAKE_CURRENT_BINARY_DIR}/ci-artifact-fixtures
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/tools/check_ci_artifact_contents_fixtures.cmake)
+    set_tests_properties(projectname_ci_artifact_contents_fixture_check PROPERTIES TIMEOUT 20)
+
     add_executable(projectname_tests
         tests/ProjectNameTests.cpp)
 
