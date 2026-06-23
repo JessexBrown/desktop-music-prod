@@ -9276,6 +9276,72 @@ void appSessionSavesAndLoadsProjectPackages()
     expect(std::filesystem::remove_all(package) > 0, "Temporary session project package deleted");
 }
 
+void appSessionSaveManifestSymlinkFailureKeepsSessionProject()
+{
+    projectname::AppSession session;
+    session.getProject().setName("Before Session Manifest Symlink Failure");
+    session.setTempoBpm(109.0);
+
+    const auto package =
+        makeTemporaryPackagePath("projectname-session-save-manifest-symlink-test");
+
+    std::string error;
+    expect(session.saveProjectPackage(package, error),
+           "Initial session manifest-symlink package save succeeds");
+
+    const auto manifestPath = package / "manifest.json";
+    const auto temporaryManifestPath = package / "manifest.json.tmp";
+    const auto linkedManifestTarget =
+        makeTemporarySettingsPath("projectname-session-save-manifest-symlink-target-test");
+    const auto originalManifestText = readTextFile(manifestPath);
+    expect(originalManifestText.find("Before Session Manifest Symlink Failure") != std::string::npos,
+           "Session manifest-symlink fixture starts with the original manifest state");
+
+    writeTextFile(linkedManifestTarget, originalManifestText);
+    writeTextFile(temporaryManifestPath, "stale temporary manifest before session save failure");
+    expect(std::filesystem::remove(manifestPath),
+           "Session manifest-symlink fixture removes the package manifest before linking");
+
+    std::error_code symlinkError;
+    std::filesystem::create_symlink(linkedManifestTarget, manifestPath, symlinkError);
+    if (symlinkError)
+    {
+        std::filesystem::remove_all(package);
+        std::filesystem::remove(linkedManifestTarget);
+        return;
+    }
+
+    session.getProject().setName("After Session Manifest Symlink Failure");
+    session.setTempoBpm(159.0);
+    const auto attemptedSessionProject = session.getProject();
+
+    error = "stale session manifest symlink save error";
+    expect(!session.saveProjectPackage(package, error),
+           "Session save rejects a symlink manifest path");
+    expect(error.find("manifest") != std::string::npos
+               && error.find("symlink") != std::string::npos,
+           "Session manifest symlink save failure error is human-readable");
+    expect(session.getProject() == attemptedSessionProject,
+           "Session manifest symlink save failure leaves the session project unchanged");
+    expect(std::filesystem::is_symlink(std::filesystem::symlink_status(manifestPath)),
+           "Session manifest symlink save failure leaves the manifest symlink unchanged");
+    expect(readTextFile(linkedManifestTarget) == originalManifestText,
+           "Session manifest symlink save failure preserves the linked manifest target");
+    expect(readTextFile(linkedManifestTarget).find("After Session Manifest Symlink Failure") == std::string::npos,
+           "Session manifest symlink save failure does not write the new project through the symlink");
+    expect(!std::filesystem::exists(temporaryManifestPath),
+           "Session manifest symlink save failure removes stale temporary manifest");
+    expect(!std::filesystem::exists(package / "backups" / "manifest.previous.json"),
+           "Session manifest symlink save failure happens before backup creation");
+
+    expect(std::filesystem::remove(manifestPath),
+           "Temporary session manifest symlink deleted");
+    expect(std::filesystem::remove_all(package) > 0,
+           "Temporary session manifest-symlink package deleted");
+    expect(std::filesystem::remove(linkedManifestTarget),
+           "Temporary session manifest-symlink target deleted");
+}
+
 void appSessionLoopRegionCommandsKeepTransportState()
 {
     projectname::AppSession session;
@@ -10608,6 +10674,7 @@ int main()
     appSessionMediaReplacementUndoInvalidatesPreparedCache();
     appSessionUpdatesStaticTrackMixStateThroughCommand();
     appSessionSavesAndLoadsProjectPackages();
+    appSessionSaveManifestSymlinkFailureKeepsSessionProject();
     appSessionLoopRegionCommandsKeepTransportState();
     appSessionAdvanceWrapsEnabledLoopRegion();
     appSessionPreparesImportedTimelinePlaybackFromPlay();

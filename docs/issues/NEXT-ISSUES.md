@@ -2,21 +2,7 @@
 
 # Next Issues
 
-## 1. Add Project Save Manifest Symlink Session Failure Coverage
-
-Acceptance:
-- Add focused `AppSession` coverage for saving a project package whose existing
-  `manifest.json` path is a symlink.
-- Fixture-gate cleanly when the host cannot create test symlinks without
-  elevated permissions.
-- Verify the session save reports failure, leaves the current project/session
-  package state unchanged, preserves the linked manifest target, and removes
-  any stale temporary manifest.
-- Preserve core project-save manifest symlink rejection, broken-symlink
-  coverage, temporary-manifest cleanup, and successful session save/load
-  coverage.
-
-## 2. Add App Settings Save Broken Temporary Symlink Cleanup Coverage
+## 1. Add App Settings Save Broken Temporary Symlink Cleanup Coverage
 
 Acceptance:
 - Add focused core coverage for saving app settings when a stale
@@ -30,7 +16,7 @@ Acceptance:
   rejection, temporary-symlink-to-file cleanup, temporary-write failure, commit
   failure, and successful load/save coverage.
 
-## 3. Add Project Load Manifest Symlink Settings Isolation Coverage
+## 2. Add Project Load Manifest Symlink Settings Isolation Coverage
 
 Acceptance:
 - Add focused session coverage proving project load failures caused by
@@ -44,7 +30,7 @@ Acceptance:
 - Preserve existing project load symlink rejection, app settings corruption
   recovery, and successful project load/save coverage.
 
-## 4. Add Save As Copy Broken Source Symlink Failure Coverage
+## 3. Add Save As Copy Broken Source Symlink Failure Coverage
 
 Acceptance:
 - Add focused Save As copy coverage for source package asset folders or asset
@@ -58,7 +44,7 @@ Acceptance:
   rejection, broken target symlink rejection, target-conflict, cancellation,
   progress, and successful copy coverage.
 
-## 5. Add Project Save Broken Asset Folder Symlink Failure Coverage
+## 4. Add Project Save Broken Asset Folder Symlink Failure Coverage
 
 Acceptance:
 - Add focused core coverage for saving a project package when an asset folder
@@ -71,3 +57,17 @@ Acceptance:
 - Preserve package-path symlink rejection, asset-folder symlink-to-directory
   rejection, temporary-manifest cleanup, manifest-symlink rejection, and
   successful save/load coverage.
+
+## 5. Add Project Save Broken Manifest Symlink Session Failure Coverage
+
+Acceptance:
+- Add focused `AppSession` coverage for saving a project package whose existing
+  `manifest.json` path is a broken symlink.
+- Fixture-gate cleanly when the host cannot create test symlinks without
+  elevated permissions.
+- Verify the session save reports failure, leaves the current session project
+  unchanged, leaves the missing symlink target uncreated, and removes any stale
+  temporary manifest.
+- Preserve core broken-manifest-symlink save rejection, session
+  manifest-symlink save rejection, temporary-manifest cleanup, and successful
+  session save/load coverage.
