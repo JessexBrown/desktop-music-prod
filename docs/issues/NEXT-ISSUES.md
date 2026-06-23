@@ -2,18 +2,7 @@
 
 # Next Issues
 
-## 1. Add Save As Failed Target Retry Design
-
-Acceptance:
-- Define the UX and command boundary for retrying a target manifest save after a
-  post-copy Save As manifest failure.
-- Preserve the current policy that copied target assets are not automatically
-  deleted or quarantined.
-- Document overwrite/conflict behavior before adding a visible retry command.
-- Keep retry planning and any future file operations off the real-time audio
-  path.
-
-## 2. Add Project Save Backup Failure Coverage
+## 1. Add Project Save Backup Failure Coverage
 
 Acceptance:
 - Add focused core coverage for a project save failure while creating
@@ -24,7 +13,7 @@ Acceptance:
   documented if the current writer cannot clean it safely.
 - Keep the fixture deterministic on Windows, macOS, and Linux.
 
-## 3. Add App Settings Temporary Write Failure Coverage
+## 2. Add App Settings Temporary Write Failure Coverage
 
 Acceptance:
 - Add focused core coverage for an app settings save failure before
@@ -34,7 +23,7 @@ Acceptance:
   human-readable.
 - Preserve the successful settings save/load, reset, and commit-failure tests.
 
-## 4. Add App Settings Directory Creation Failure Coverage
+## 3. Add App Settings Directory Creation Failure Coverage
 
 Acceptance:
 - Add focused core coverage for an app settings save failure when the configured
@@ -45,7 +34,7 @@ Acceptance:
 - Preserve the successful settings save/load, reset, commit-failure, and
   temporary-write-failure tests.
 
-## 5. Add macOS Build-Test CI Job
+## 4. Add macOS Build-Test CI Job
 
 Acceptance:
 - Add a `macOS JUCE App` GitHub Actions job using the
@@ -55,3 +44,16 @@ Acceptance:
 - Run configure, build, and `ctest --preset dev-host --output-on-failure`.
 - Do not upload a macOS artifact, sign, notarize, create an installer, or bundle
   plugins, presets, samples, commercial sounds, or proprietary assets.
+
+## 5. Add Save As Failed Target Retry Command
+
+Acceptance:
+- Add `project.saveAs.retryFailedTargetManifest` using ADR-0104's enablement,
+  manifest-only retry, and overwrite/conflict rules.
+- Expose it near `Copy Failed Save As Target` without deleting, quarantining, or
+  recopying target package assets.
+- Cover successful retry after the blocking manifest path is removed, existing
+  target `manifest.json` conflict, missing copied target assets, and stale
+  `manifest.json.tmp` behavior.
+- Verify retry does not start a Save As package-copy job and does not touch the
+  real-time audio path.

@@ -212,7 +212,9 @@ Third-party dependencies remain under their own licenses as recorded in
   completed copy, the active project stays on the source package and copied
   target assets are left in the chosen package for recovery or manual cleanup;
   the app status makes that recovery boundary visible, and the Project menu can
-  copy the kept target package path.
+  copy the kept target package path. ADR-0104 defines the future manifest-only
+  retry command boundary and conflict policy before that command becomes
+  visible.
 - Save As package asset copying runs on a cancellable background job with
   phase, file-count, and byte-count progress, plus a guarded top-bar Cancel
   Save affordance.
@@ -618,6 +620,9 @@ for a launch smoke check or use `ctest --preset dev --output-on-failure`.
   post-copy Save As manifest-failure cleanup/recovery policy.
 - `docs/adr/ADR-0102-save-as-failed-target-copy-action.md` records the
   non-destructive Project menu copy action for kept failed Save As targets.
+- `docs/adr/ADR-0104-save-as-failed-target-retry-design.md` records the
+  future manifest-only retry command boundary and overwrite/conflict policy for
+  kept failed Save As targets.
 - `docs/AUDIO_MIDI_SETUP_UX.md` documents the first-run device setup UX states.
 - `docs/CI_ACTION_PIN_REVIEW.md` documents the scheduled review checklist for
   GitHub-maintained CI action major pins.

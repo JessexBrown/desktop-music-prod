@@ -47,5 +47,6 @@ opening native choosers.
 
 ## Follow-Ups
 
-- Add an explicit retry-manifest-save workflow for a kept failed target once the
-  recovery UX can explain overwrite/conflict behavior clearly.
+- ADR-0104 documents the retry-manifest-save workflow and overwrite/conflict
+  behavior for a kept failed Save As target before a visible retry command is
+  added.
