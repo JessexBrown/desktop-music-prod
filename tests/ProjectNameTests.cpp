@@ -908,6 +908,92 @@ void appSettingsDirectoryCreationFailurePreservesOccupiedParentPath()
            "Temporary occupied app settings parent path deleted");
 }
 
+void appSettingsSaveSymlinkPathFailureLeavesTargetsUntouched()
+{
+    projectname::AppSettings settings;
+    settings.audioSetup.firstRunPromptDismissed = true;
+    settings.audioSetup.preferredOutput.hasOutputDevice = true;
+    settings.audioSetup.preferredOutput.deviceType = "Windows Audio";
+    settings.audioSetup.preferredOutput.deviceName = "Symlink Save Output";
+    settings.audioSetup.preferredOutput.sampleRateHz = 48000.0;
+    settings.audioSetup.preferredOutput.bufferSizeSamples = 256;
+    settings.audioSetup.preferredOutput.outputChannelCount = 2;
+
+    const auto settingsSymlinkPath =
+        makeTemporarySettingsPath("projectname-app-settings-save-symlink-link-test");
+    auto settingsSymlinkTemporaryPath = settingsSymlinkPath;
+    settingsSymlinkTemporaryPath += ".tmp";
+    const auto settingsSymlinkTargetPath =
+        makeTemporarySettingsPath("projectname-app-settings-save-symlink-target-test");
+    writeTextFile(settingsSymlinkTargetPath, "linked settings target");
+
+    const auto linkedParentTarget =
+        makeTemporaryPackagePath("projectname-app-settings-save-parent-symlink-target-test");
+    const auto parentSymlink =
+        makeTemporaryPackagePath("projectname-app-settings-save-parent-symlink-link-test");
+    const auto linkedParentSentinelPath = linkedParentTarget / "sentinel.txt";
+    const auto linkedParentSettingsPath = parentSymlink / projectname::appSettingsFileName;
+    const auto linkedParentTargetSettingsPath = linkedParentTarget / projectname::appSettingsFileName;
+    const auto linkedParentTargetTemporaryPath = linkedParentTarget / "settings.json.tmp";
+    writeTextFile(linkedParentSentinelPath, "linked settings parent target");
+
+    std::error_code symlinkError;
+    std::filesystem::create_symlink(settingsSymlinkTargetPath, settingsSymlinkPath, symlinkError);
+    if (symlinkError)
+    {
+        std::filesystem::remove(settingsSymlinkTargetPath);
+        std::filesystem::remove_all(linkedParentTarget);
+        return;
+    }
+
+    symlinkError.clear();
+    std::filesystem::create_directory_symlink(linkedParentTarget, parentSymlink, symlinkError);
+    if (symlinkError)
+    {
+        std::filesystem::remove(settingsSymlinkPath);
+        std::filesystem::remove(settingsSymlinkTargetPath);
+        std::filesystem::remove_all(linkedParentTarget);
+        return;
+    }
+
+    std::string error;
+    expect(!projectname::saveAppSettings(settings, settingsSymlinkPath, error),
+           "App settings save rejects a symlink settings file path");
+    expect(error.find("App settings path") != std::string::npos
+               && error.find("symlink") != std::string::npos,
+           "App settings save symlink file failure error is human-readable");
+    expect(std::filesystem::is_symlink(std::filesystem::symlink_status(settingsSymlinkPath)),
+           "App settings save symlink file failure leaves the symlink unchanged");
+    expect(readTextFile(settingsSymlinkTargetPath) == "linked settings target",
+           "App settings save symlink file failure preserves the linked target contents");
+    expect(!std::filesystem::exists(settingsSymlinkTemporaryPath),
+           "App settings save symlink file failure does not create a temporary settings file");
+
+    error.clear();
+    expect(!projectname::saveAppSettings(settings, linkedParentSettingsPath, error),
+           "App settings save rejects an intermediate parent symlink");
+    expect(error.find("App settings path") != std::string::npos
+               && error.find("symlink") != std::string::npos,
+           "App settings save parent symlink failure error is human-readable");
+    expect(std::filesystem::is_symlink(std::filesystem::symlink_status(parentSymlink)),
+           "App settings save parent symlink failure leaves the parent symlink unchanged");
+    expect(readTextFile(linkedParentSentinelPath) == "linked settings parent target",
+           "App settings save parent symlink failure preserves the linked target sentinel");
+    expect(!std::filesystem::exists(linkedParentTargetSettingsPath),
+           "App settings save parent symlink failure does not write settings through the symlink");
+    expect(!std::filesystem::exists(linkedParentTargetTemporaryPath),
+           "App settings save parent symlink failure does not write temporary settings through the symlink");
+
+    expect(std::filesystem::remove(settingsSymlinkPath),
+           "Temporary app settings save symlink deleted");
+    expect(std::filesystem::remove(parentSymlink),
+           "Temporary app settings save parent symlink deleted");
+    expect(std::filesystem::remove(settingsSymlinkTargetPath),
+           "Temporary app settings save symlink target deleted");
+    expect(std::filesystem::remove_all(linkedParentTarget) > 0,
+           "Temporary app settings save parent symlink target deleted");
+}
+
 void appSettingsEmptyPathFailsBeforeFilesystemWork()
 {
     projectname::AppSettings settings;
@@ -9754,6 +9840,7 @@ int main()
     appSettingsCommitFailureRemovesTemporaryFile();
     appSettingsTemporaryWriteFailureKeepsExistingSettings();
     appSettingsDirectoryCreationFailurePreservesOccupiedParentPath();
+    appSettingsSaveSymlinkPathFailureLeavesTargetsUntouched();
     appSettingsEmptyPathFailsBeforeFilesystemWork();
     appSettingsLoadDirectoryPathKeepsCallerFallbackSettings();
     appSettingsLoadSymlinkPathKeepsCallerFallbackSettings();

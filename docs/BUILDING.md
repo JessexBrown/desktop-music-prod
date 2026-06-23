@@ -379,7 +379,7 @@ package-path file rejection tests, package directory creation failure tests,
 package symlink path failure tests when host-supported, staged
 temporary-manifest open/commit failure tests, Save As retry manifest/asset
 symlink conflict tests when host-supported, plus
-app settings load-directory/symlink/empty-path/path/write-failure tests.
+app settings load-directory/symlink/empty-path/save-symlink/path/write-failure tests.
 It also
 configured, built, launched, audio-smoke-tested,
 project-save/load-smoke-tested, and audio-import-smoke-tested the Windows-only
@@ -402,8 +402,8 @@ defaults, surfaces the ignored-settings warning in the Device Panel, and clears
 that warning after a successful settings rewrite. The hidden app reset and
 corruption-recovery smoke tests verify the fallback/rewrite behavior against
 temporary settings files, including malformed JSON and unsupported future
-settings versions; core tests cover symlinked settings-file rejection when
-host-supported.
+settings versions; core tests cover symlinked settings-file load/save rejection
+when host-supported.
 Save As copies package-local `audio/`, `analysis/`, `samples/`, and `presets/`
 on a cancellable background job before writing the target manifest, while
 source-package `backups/` are not cloned. If the final manifest write fails

@@ -80,6 +80,47 @@ namespace
     preference.juceDeviceStateXml = readStringOrDefault(preferenceJson, "juceDeviceStateXml");
     return preference;
 }
+
+[[nodiscard]] bool isMissingPathError(const std::error_code& error) noexcept
+{
+    return error == std::errc::no_such_file_or_directory
+        || error == std::errc::not_a_directory;
+}
+
+[[nodiscard]] bool rejectSymlinkedAppSettingsSavePath(const std::filesystem::path& settingsPath,
+                                                      std::string& error)
+{
+    auto current = settingsPath;
+
+    while (!current.empty())
+    {
+        std::error_code filesystemError;
+        const auto currentStatus = std::filesystem::symlink_status(current, filesystemError);
+        if (filesystemError)
+        {
+            if (!isMissingPathError(filesystemError))
+            {
+                error = "Could not inspect app settings path: "
+                    + current.generic_string() + ": " + filesystemError.message() + ".";
+                return false;
+            }
+        }
+        else if (std::filesystem::is_symlink(currentStatus))
+        {
+            error = "App settings path contains a symlink: "
+                + current.generic_string() + ".";
+            return false;
+        }
+
+        const auto parent = current.parent_path();
+        if (parent == current)
+            break;
+
+        current = parent;
+    }
+
+    return true;
+}
 } // namespace
 
 nlohmann::json makeAppSettingsJson(const AppSettings& settings)
@@ -207,6 +248,9 @@ bool saveAppSettings(const AppSettings& settings,
         error = "App settings path is empty.";
         return false;
     }
+
+    if (!rejectSymlinkedAppSettingsSavePath(settingsPath, error))
+        return false;
 
     std::error_code filesystemError;
     if (settingsPath.has_parent_path())
