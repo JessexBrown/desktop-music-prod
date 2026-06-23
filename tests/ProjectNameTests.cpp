@@ -1446,6 +1446,79 @@ void appSettingsLoadBrokenParentSymlinkPathKeepsCallerFallbackSettings()
            "Temporary broken app settings load parent symlink deleted");
 }
 
+void appSettingsLoadLinkedParentSymlinkPathKeepsCallerFallbackSettings()
+{
+    projectname::AppSettings fallbackSettings;
+    fallbackSettings.audioSetup.firstRunPromptDismissed = true;
+    fallbackSettings.audioSetup.preferredOutput.hasOutputDevice = true;
+    fallbackSettings.audioSetup.preferredOutput.deviceType = "Windows Audio";
+    fallbackSettings.audioSetup.preferredOutput.deviceName = "Fallback Linked Parent Output";
+    fallbackSettings.audioSetup.preferredOutput.sampleRateHz = 44100.0;
+    fallbackSettings.audioSetup.preferredOutput.bufferSizeSamples = 512;
+    fallbackSettings.audioSetup.preferredOutput.outputChannelCount = 2;
+    fallbackSettings.audioSetup.preferredOutput.juceDeviceStateXml =
+        R"(<DEVICESETUP deviceType="Windows Audio" audioOutputDeviceName="Fallback Linked Parent Output"/>)";
+    const auto originalFallbackSettings = fallbackSettings;
+
+    projectname::AppSettings linkedSettings;
+    linkedSettings.audioSetup.firstRunPromptDismissed = true;
+    linkedSettings.audioSetup.preferredOutput.hasOutputDevice = true;
+    linkedSettings.audioSetup.preferredOutput.deviceType = "Linked Parent Audio";
+    linkedSettings.audioSetup.preferredOutput.deviceName = "Linked Parent Output";
+    linkedSettings.audioSetup.preferredOutput.sampleRateHz = 96000.0;
+    linkedSettings.audioSetup.preferredOutput.bufferSizeSamples = 128;
+    linkedSettings.audioSetup.preferredOutput.outputChannelCount = 8;
+
+    const auto linkedParentTarget =
+        makeTemporaryPackagePath("projectname-app-settings-load-parent-symlink-target-test");
+    const auto parentSymlink =
+        makeTemporaryPackagePath("projectname-app-settings-load-parent-symlink-link-test");
+    const auto settingsPath = parentSymlink / projectname::appSettingsFileName;
+    const auto temporaryPath = parentSymlink / "settings.json.tmp";
+    const auto targetSettingsPath = linkedParentTarget / projectname::appSettingsFileName;
+    const auto targetTemporaryPath = linkedParentTarget / "settings.json.tmp";
+    const auto linkedSettingsText = projectname::makeAppSettingsJson(linkedSettings).dump();
+    writeTextFile(targetSettingsPath, linkedSettingsText);
+
+    std::error_code symlinkError;
+    std::filesystem::create_directory_symlink(linkedParentTarget, parentSymlink, symlinkError);
+    if (symlinkError)
+    {
+        std::filesystem::remove_all(linkedParentTarget);
+        return;
+    }
+
+    std::string error = "stale linked parent symlink settings load error";
+    const auto loaded = projectname::loadAppSettings(settingsPath, error);
+    expect(!loaded.has_value(),
+           "App settings load rejects a linked intermediate parent symlink");
+    expect(error.find("App settings path") != std::string::npos
+               && error.find("symlink") != std::string::npos,
+           "App settings linked parent-symlink load failure error is human-readable");
+    expect(error.find("parse") == std::string::npos
+               && error.find("Unsupported app settings version") == std::string::npos,
+           "App settings linked parent-symlink load failure does not parse JSON through the symlink");
+
+    if (loaded.has_value())
+        fallbackSettings = *loaded;
+
+    expect(fallbackSettings == originalFallbackSettings,
+           "App settings linked parent-symlink load leaves caller fallback settings unchanged");
+    expect(std::filesystem::is_symlink(std::filesystem::symlink_status(parentSymlink)),
+           "App settings linked parent-symlink load leaves the parent symlink unchanged");
+    expect(readTextFile(targetSettingsPath) == linkedSettingsText,
+           "App settings linked parent-symlink load preserves the linked target settings");
+    expect(!std::filesystem::exists(temporaryPath),
+           "App settings linked parent-symlink load does not create a temporary settings file through the link");
+    expect(!std::filesystem::exists(targetTemporaryPath),
+           "App settings linked parent-symlink load does not write target temporary settings");
+
+    expect(std::filesystem::remove(parentSymlink),
+           "Temporary linked app settings load parent symlink deleted");
+    expect(std::filesystem::remove_all(linkedParentTarget) > 0,
+           "Temporary linked app settings load parent target deleted");
+}
+
 void appSettingsLoadsAudioSetupDefaultsFromMinimalJson()
 {
     std::string error;
@@ -11564,6 +11637,7 @@ int main()
     appSettingsLoadSymlinkPathKeepsCallerFallbackSettings();
     appSettingsLoadBrokenSymlinkPathKeepsCallerFallbackSettings();
     appSettingsLoadBrokenParentSymlinkPathKeepsCallerFallbackSettings();
+    appSettingsLoadLinkedParentSymlinkPathKeepsCallerFallbackSettings();
     appSettingsLoadsAudioSetupDefaultsFromMinimalJson();
     appSettingsRejectsUnsupportedVersion();
     appSettingsResetClearsAudioSetupPreferences();
