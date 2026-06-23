@@ -1719,6 +1719,46 @@ void projectSaveBackupFailureKeepsManifestAndRemovesTemporaryManifest()
            "Temporary backup-failure project package deleted");
 }
 
+void projectSaveTemporaryManifestOpenFailureKeepsManifestAndOccupiedPath()
+{
+    auto project = projectname::ProjectModel::createDefault();
+    project.setName("Before Temporary Manifest Failure");
+    project.getTransport().setTempoBpm(96.0);
+
+    const auto package = makeTemporaryPackagePath("projectname-save-temp-open-failure-test");
+
+    std::string error;
+    expect(project.savePackage(package, error), "Initial temporary-manifest failure project save succeeds");
+    const auto manifestBeforeFailure = readTextFile(package / "manifest.json");
+
+    const auto temporaryManifestPath = package / "manifest.json.tmp";
+    const auto temporarySentinelPath = temporaryManifestPath / "occupied.txt";
+    writeTextFile(temporarySentinelPath, "occupied temporary manifest path");
+
+    project.setName("After Temporary Manifest Failure");
+    project.getTransport().setTempoBpm(140.0);
+
+    expect(!project.savePackage(package, error),
+           "Project save reports temporary manifest open failure");
+    expect(error.find("Could not write temporary project manifest") != std::string::npos,
+           "Temporary manifest open failure error is human-readable");
+    expect(readTextFile(package / "manifest.json") == manifestBeforeFailure,
+           "Temporary manifest open failure leaves the active manifest unchanged");
+    expect(manifestBeforeFailure.find("Before Temporary Manifest Failure") != std::string::npos,
+           "Temporary manifest open failure baseline contains old project name");
+    expect(readTextFile(package / "manifest.json").find("After Temporary Manifest Failure") == std::string::npos,
+           "Temporary manifest open failure does not commit the new project state");
+    expect(std::filesystem::is_directory(temporaryManifestPath),
+           "Temporary manifest open failure leaves the occupied temporary path unchanged");
+    expect(readTextFile(temporarySentinelPath) == "occupied temporary manifest path",
+           "Temporary manifest open failure preserves occupied temporary path contents");
+    expect(!std::filesystem::exists(package / "backups" / "manifest.previous.json"),
+           "Temporary manifest open failure happens before previous-manifest backup creation");
+
+    expect(std::filesystem::remove_all(package) > 0,
+           "Temporary manifest-open-failure project package deleted");
+}
+
 void projectSaveFailsBeforeManifestCommitWhenAssetFolderPathIsFile()
 {
     auto project = projectname::ProjectModel::createDefault();
@@ -9186,6 +9226,7 @@ int main()
     projectTrackMixStateRoundTripsAndLoadsLegacyDefaults();
     projectSaveCreatesPreviousManifestBackup();
     projectSaveBackupFailureKeepsManifestAndRemovesTemporaryManifest();
+    projectSaveTemporaryManifestOpenFailureKeepsManifestAndOccupiedPath();
     projectSaveFailsBeforeManifestCommitWhenAssetFolderPathIsFile();
     projectSaveCommitFailureRemovesTemporaryManifest();
     projectManifestLoadsLegacyTrackWithoutDevices();
