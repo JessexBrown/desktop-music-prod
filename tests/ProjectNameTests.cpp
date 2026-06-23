@@ -1508,6 +1508,106 @@ void projectPackageSaveAsCopyCommandRejectsTargetConflictsBeforeCopy()
            "Temporary Save As conflict target package deleted");
 }
 
+void projectPackageSaveAsCopyCommandRejectsTargetSymlinksBeforeCopy()
+{
+    auto project = projectname::ProjectModel::createDefault();
+
+    projectname::ProjectClip imported;
+    imported.id = "save-as-target-symlink-imported";
+    imported.name = "Save As Target Symlink Imported";
+    imported.type = "audio-file";
+    imported.relativePath = "audio/take.wav";
+    imported.lengthBeats = 4.0;
+    expect(project.addClipToTrack("track-1", imported),
+           "Save As target symlink test adds imported clip");
+
+    const auto sourcePackage = makeTemporaryPackagePath("projectname-save-as-target-symlink-source-test");
+    const auto targetPackageSymlink =
+        makeTemporaryPackagePath("projectname-save-as-target-package-symlink-link-test");
+    const auto linkedTargetPackage =
+        makeTemporaryPackagePath("projectname-save-as-target-package-symlink-target-test");
+    const auto linkedTargetSentinel = linkedTargetPackage / "sentinel.txt";
+    const auto parentSymlink =
+        makeTemporaryPackagePath("projectname-save-as-target-parent-symlink-link-test");
+    const auto linkedParentTarget =
+        makeTemporaryPackagePath("projectname-save-as-target-parent-symlink-target-test");
+    const auto linkedParentSentinel = linkedParentTarget / "sentinel.txt";
+    const auto nestedTargetPackage = parentSymlink / "Nested Target.project";
+
+    writeTextFile(sourcePackage / imported.relativePath, "new audio");
+    writeTextFile(sourcePackage / "samples" / "one-shot.wav", "sample");
+    writeTextFile(linkedTargetSentinel, "target package sentinel");
+    writeTextFile(linkedParentSentinel, "target parent sentinel");
+
+    std::error_code symlinkError;
+    std::filesystem::create_directory_symlink(linkedTargetPackage, targetPackageSymlink, symlinkError);
+    if (symlinkError)
+    {
+        std::filesystem::remove_all(sourcePackage);
+        std::filesystem::remove_all(linkedTargetPackage);
+        std::filesystem::remove_all(linkedParentTarget);
+        return;
+    }
+
+    symlinkError.clear();
+    std::filesystem::create_directory_symlink(linkedParentTarget, parentSymlink, symlinkError);
+    if (symlinkError)
+    {
+        std::filesystem::remove(targetPackageSymlink);
+        std::filesystem::remove_all(sourcePackage);
+        std::filesystem::remove_all(linkedTargetPackage);
+        std::filesystem::remove_all(linkedParentTarget);
+        return;
+    }
+
+    const auto targetPackageResult =
+        projectname::copyProjectPackageAssetsForSaveAs({ project, sourcePackage, targetPackageSymlink });
+
+    expect(targetPackageResult.status == projectname::ProjectPackageSaveAsCopyStatus::copyFailed,
+           "Save As copy command rejects a symlink target package");
+    expect(targetPackageResult.error.find("Target directory path is a symlink") != std::string::npos,
+           "Save As target-package symlink failure error is human-readable");
+    expect(targetPackageResult.plan.requiresPackageAssetCopy,
+           "Save As target-package symlink failure preserves the copy plan");
+    expect(std::filesystem::is_symlink(std::filesystem::symlink_status(targetPackageSymlink)),
+           "Save As target-package symlink failure leaves the target package symlink unchanged");
+    expect(readTextFile(linkedTargetSentinel) == "target package sentinel",
+           "Save As target-package symlink failure preserves the linked target sentinel");
+    expect(!std::filesystem::exists(linkedTargetPackage / imported.relativePath),
+           "Save As target-package symlink failure does not copy audio through the symlink");
+    expect(!std::filesystem::exists(linkedTargetPackage / "samples" / "one-shot.wav"),
+           "Save As target-package symlink failure does not copy samples through the symlink");
+
+    const auto parentSymlinkResult =
+        projectname::copyProjectPackageAssetsForSaveAs({ project, sourcePackage, nestedTargetPackage });
+
+    expect(parentSymlinkResult.status == projectname::ProjectPackageSaveAsCopyStatus::copyFailed,
+           "Save As copy command rejects a symlink target parent");
+    expect(parentSymlinkResult.error.find("Target directory path is a symlink") != std::string::npos,
+           "Save As target-parent symlink failure error is human-readable");
+    expect(parentSymlinkResult.plan.requiresPackageAssetCopy,
+           "Save As target-parent symlink failure preserves the copy plan");
+    expect(std::filesystem::is_symlink(std::filesystem::symlink_status(parentSymlink)),
+           "Save As target-parent symlink failure leaves the parent symlink unchanged");
+    expect(readTextFile(linkedParentSentinel) == "target parent sentinel",
+           "Save As target-parent symlink failure preserves the linked parent sentinel");
+    expect(!std::filesystem::exists(linkedParentTarget / "Nested Target.project"),
+           "Save As target-parent symlink failure does not create a package through the symlink");
+    expect(!std::filesystem::exists(linkedParentTarget / "Nested Target.project" / imported.relativePath),
+           "Save As target-parent symlink failure does not copy audio through the symlink");
+
+    expect(std::filesystem::remove(targetPackageSymlink),
+           "Temporary Save As target-package symlink deleted");
+    expect(std::filesystem::remove(parentSymlink),
+           "Temporary Save As target-parent symlink deleted");
+    expect(std::filesystem::remove_all(sourcePackage) > 0,
+           "Temporary Save As target-symlink source package deleted");
+    expect(std::filesystem::remove_all(linkedTargetPackage) > 0,
+           "Temporary Save As target-package symlink target deleted");
+    expect(std::filesystem::remove_all(linkedParentTarget) > 0,
+           "Temporary Save As target-parent symlink target deleted");
+}
+
 void projectPackageSaveAsCopyCommandRejectsSourceSymlinksBeforeCopy()
 {
     auto folderSymlinkProject = projectname::ProjectModel::createDefault();
@@ -10176,6 +10276,7 @@ int main()
     projectPackageSaveAsPolicyPreservesExternalReferences();
     projectPackageSaveAsCopyCommandCopiesPackageAssetsAndStartsFreshBackups();
     projectPackageSaveAsCopyCommandRejectsTargetConflictsBeforeCopy();
+    projectPackageSaveAsCopyCommandRejectsTargetSymlinksBeforeCopy();
     projectPackageSaveAsCopyCommandRejectsSourceSymlinksBeforeCopy();
     projectPackageSaveAsCopyCommandRejectsTargetInsideSource();
     projectPackageSaveAsCopyCommandCancelsAndRollsBackPartialTarget();
