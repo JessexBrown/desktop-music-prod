@@ -1385,6 +1385,67 @@ void appSettingsLoadBrokenSymlinkPathKeepsCallerFallbackSettings()
            "Temporary broken app settings symlink deleted");
 }
 
+void appSettingsLoadBrokenParentSymlinkPathKeepsCallerFallbackSettings()
+{
+    projectname::AppSettings fallbackSettings;
+    fallbackSettings.audioSetup.firstRunPromptDismissed = true;
+    fallbackSettings.audioSetup.preferredOutput.hasOutputDevice = true;
+    fallbackSettings.audioSetup.preferredOutput.deviceType = "Windows Audio";
+    fallbackSettings.audioSetup.preferredOutput.deviceName = "Fallback Broken Parent Link Output";
+    fallbackSettings.audioSetup.preferredOutput.sampleRateHz = 48000.0;
+    fallbackSettings.audioSetup.preferredOutput.bufferSizeSamples = 256;
+    fallbackSettings.audioSetup.preferredOutput.outputChannelCount = 2;
+    fallbackSettings.audioSetup.preferredOutput.juceDeviceStateXml =
+        R"(<DEVICESETUP deviceType="Windows Audio" audioOutputDeviceName="Fallback Broken Parent Link Output"/>)";
+    const auto originalFallbackSettings = fallbackSettings;
+
+    const auto parentSymlink =
+        makeTemporaryPackagePath("projectname-app-settings-load-broken-parent-symlink-link-test");
+    const auto missingParentTarget =
+        makeTemporaryPackagePath("projectname-app-settings-load-broken-parent-symlink-target-test");
+    const auto settingsPath = parentSymlink / projectname::appSettingsFileName;
+    const auto temporaryPath = parentSymlink / "settings.json.tmp";
+    const auto targetSettingsPath = missingParentTarget / projectname::appSettingsFileName;
+    const auto targetTemporaryPath = missingParentTarget / "settings.json.tmp";
+
+    std::error_code symlinkError;
+    std::filesystem::create_directory_symlink(missingParentTarget, parentSymlink, symlinkError);
+    if (symlinkError)
+        return;
+
+    std::string error = "stale broken parent symlink settings load error";
+    const auto loaded = projectname::loadAppSettings(settingsPath, error);
+    expect(!loaded.has_value(),
+           "App settings load rejects a broken intermediate parent symlink");
+    expect(error.find("App settings path") != std::string::npos
+               && error.find("symlink") != std::string::npos,
+           "App settings broken parent-symlink load failure error is human-readable");
+    expect(error.find("No such") == std::string::npos
+               && error.find("not found") == std::string::npos,
+           "App settings broken parent-symlink load failure is not reported as missing settings");
+
+    if (loaded.has_value())
+        fallbackSettings = *loaded;
+
+    expect(fallbackSettings == originalFallbackSettings,
+           "App settings broken parent-symlink load leaves caller fallback settings unchanged");
+    expect(std::filesystem::is_symlink(std::filesystem::symlink_status(parentSymlink)),
+           "App settings broken parent-symlink load leaves the parent symlink unchanged");
+    expect(!std::filesystem::exists(missingParentTarget),
+           "App settings broken parent-symlink load does not create the missing target");
+    expect(!std::filesystem::exists(settingsPath),
+           "App settings broken parent-symlink load does not create settings through the link");
+    expect(!std::filesystem::exists(temporaryPath),
+           "App settings broken parent-symlink load does not create temporary settings through the link");
+    expect(!std::filesystem::exists(targetSettingsPath),
+           "App settings broken parent-symlink load does not write target settings");
+    expect(!std::filesystem::exists(targetTemporaryPath),
+           "App settings broken parent-symlink load does not write target temporary settings");
+
+    expect(std::filesystem::remove(parentSymlink),
+           "Temporary broken app settings load parent symlink deleted");
+}
+
 void appSettingsLoadsAudioSetupDefaultsFromMinimalJson()
 {
     std::string error;
@@ -11502,6 +11563,7 @@ int main()
     appSettingsLoadDirectoryPathKeepsCallerFallbackSettings();
     appSettingsLoadSymlinkPathKeepsCallerFallbackSettings();
     appSettingsLoadBrokenSymlinkPathKeepsCallerFallbackSettings();
+    appSettingsLoadBrokenParentSymlinkPathKeepsCallerFallbackSettings();
     appSettingsLoadsAudioSetupDefaultsFromMinimalJson();
     appSettingsRejectsUnsupportedVersion();
     appSettingsResetClearsAudioSetupPreferences();

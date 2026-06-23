@@ -87,8 +87,8 @@ namespace
         || error == std::errc::not_a_directory;
 }
 
-[[nodiscard]] bool rejectSymlinkedAppSettingsSavePath(const std::filesystem::path& settingsPath,
-                                                      std::string& error)
+[[nodiscard]] bool rejectSymlinkedAppSettingsPath(const std::filesystem::path& settingsPath,
+                                                  std::string& error)
 {
     auto current = settingsPath;
 
@@ -198,10 +198,16 @@ std::optional<AppSettings> loadAppSettings(const std::filesystem::path& settings
 {
     error.clear();
 
+    if (!rejectSymlinkedAppSettingsPath(settingsPath, error))
+        return std::nullopt;
+
     std::error_code filesystemError;
     const auto settingsStatus = std::filesystem::symlink_status(settingsPath, filesystemError);
     if (filesystemError)
     {
+        if (isMissingPathError(filesystemError))
+            return std::nullopt;
+
         error = "Could not inspect app settings file: " + filesystemError.message();
         return std::nullopt;
     }
@@ -249,7 +255,7 @@ bool saveAppSettings(const AppSettings& settings,
         return false;
     }
 
-    if (!rejectSymlinkedAppSettingsSavePath(settingsPath, error))
+    if (!rejectSymlinkedAppSettingsPath(settingsPath, error))
         return false;
 
     std::error_code filesystemError;
