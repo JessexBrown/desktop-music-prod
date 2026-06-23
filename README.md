@@ -229,9 +229,9 @@ Third-party dependencies remain under their own licenses as recorded in
   missing or symlinked copied assets without recopying, deleting, quarantining,
   or touching audio playback.
 - Save As package asset copying runs on a cancellable background job with
-  phase, file-count, and byte-count progress, reports broken source symlink
-  failures as failed jobs without mutating the target package, and has a guarded
-  top-bar Cancel Save affordance.
+  phase, file-count, and byte-count progress, reports broken source and target
+  symlink failures as failed jobs without mutating the target package, and has a
+  guarded top-bar Cancel Save affordance.
 - The Package Maintenance browser surface has a guarded Restore affordance for
   selected restorable cleanup batches. Restore runs through the background
   package media cleanup job and stays disabled with visible reasons for

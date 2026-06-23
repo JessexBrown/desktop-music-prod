@@ -2340,6 +2340,129 @@ void backgroundSaveAsPackageCopyJobCopiesAssetsAndReportsProgress()
            "Temporary background Save As target package deleted");
 }
 
+void backgroundSaveAsPackageCopyJobRejectsBrokenTargetSymlinks()
+{
+    auto project = projectname::ProjectModel::createDefault();
+
+    projectname::ProjectClip imported;
+    imported.id = "save-as-background-broken-target-symlink-imported";
+    imported.name = "Save As Background Broken Target Symlink Imported";
+    imported.type = "audio-file";
+    imported.relativePath = "audio/take.wav";
+    imported.lengthBeats = 4.0;
+    expect(project.addClipToTrack("track-1", imported),
+           "Background Save As broken target symlink test adds imported clip");
+
+    const auto sourcePackage =
+        makeTemporaryPackagePath("projectname-save-as-background-broken-target-symlink-source-test");
+    const auto targetPackageSymlink =
+        makeTemporaryPackagePath("projectname-save-as-background-broken-target-package-symlink-link-test");
+    const auto missingTargetPackage =
+        makeTemporaryPackagePath("projectname-save-as-background-broken-target-package-symlink-target-test");
+    const auto parentSymlink =
+        makeTemporaryPackagePath("projectname-save-as-background-broken-target-parent-symlink-link-test");
+    const auto missingParentTarget =
+        makeTemporaryPackagePath("projectname-save-as-background-broken-target-parent-symlink-target-test");
+    const auto nestedTargetPackage = parentSymlink / "Nested Target.project";
+
+    writeTextFile(sourcePackage / imported.relativePath, "new audio");
+    writeTextFile(sourcePackage / "samples" / "one-shot.wav", "sample");
+
+    std::error_code symlinkError;
+    std::filesystem::create_directory_symlink(missingTargetPackage,
+                                             targetPackageSymlink,
+                                             symlinkError);
+    if (symlinkError)
+    {
+        std::filesystem::remove_all(sourcePackage);
+        return;
+    }
+
+    symlinkError.clear();
+    std::filesystem::create_directory_symlink(missingParentTarget, parentSymlink, symlinkError);
+    if (symlinkError)
+    {
+        std::filesystem::remove(targetPackageSymlink);
+        std::filesystem::remove_all(sourcePackage);
+        return;
+    }
+
+    projectname::BackgroundSaveAsPackageCopyRequest targetPackageRequest;
+    targetPackageRequest.project = project;
+    targetPackageRequest.sourcePackageDirectory = sourcePackage;
+    targetPackageRequest.targetPackageDirectory = targetPackageSymlink;
+
+    projectname::BackgroundSaveAsPackageCopyJob targetPackageJob(std::move(targetPackageRequest));
+    targetPackageJob.start();
+    const auto targetPackageResult = targetPackageJob.waitForResult();
+    const auto targetPackageProgress = targetPackageJob.getProgress();
+
+    expect(!targetPackageResult.cancelled,
+           "Background Save As broken target-package symlink job is not cancelled");
+    expect(targetPackageResult.copy.status == projectname::ProjectPackageSaveAsCopyStatus::copyFailed,
+           "Background Save As copy job rejects a broken symlink target package");
+    expect(targetPackageResult.error.find("Target directory path is a symlink") != std::string::npos,
+           "Background Save As broken target-package symlink failure error is human-readable");
+    expect(targetPackageProgress.phase == projectname::BackgroundSaveAsPackageCopyPhase::failed,
+           "Background Save As broken target-package symlink progress reports failed");
+    expect(targetPackageProgress.percent == 100,
+           "Background Save As broken target-package symlink progress reaches failure percent");
+    expect(targetPackageResult.copy.plan.requiresPackageAssetCopy,
+           "Background Save As broken target-package symlink failure preserves the copy plan");
+    expect(targetPackageResult.copy.createdPaths.empty(),
+           "Background Save As broken target-package symlink failure creates no target paths");
+    expect(std::filesystem::is_symlink(std::filesystem::symlink_status(targetPackageSymlink)),
+           "Background Save As broken target-package symlink failure leaves the symlink unchanged");
+    expect(!std::filesystem::exists(missingTargetPackage),
+           "Background Save As broken target-package symlink failure does not create the missing target");
+    expect(!std::filesystem::exists(missingTargetPackage / imported.relativePath),
+           "Background Save As broken target-package symlink failure does not copy audio through the broken link");
+    expect(!std::filesystem::exists(missingTargetPackage / "samples" / "one-shot.wav"),
+           "Background Save As broken target-package symlink failure does not copy samples through the broken link");
+
+    projectname::BackgroundSaveAsPackageCopyRequest parentRequest;
+    parentRequest.project = project;
+    parentRequest.sourcePackageDirectory = sourcePackage;
+    parentRequest.targetPackageDirectory = nestedTargetPackage;
+
+    projectname::BackgroundSaveAsPackageCopyJob parentJob(std::move(parentRequest));
+    parentJob.start();
+    const auto parentResult = parentJob.waitForResult();
+    const auto parentProgress = parentJob.getProgress();
+
+    expect(!parentResult.cancelled,
+           "Background Save As broken target-parent symlink job is not cancelled");
+    expect(parentResult.copy.status == projectname::ProjectPackageSaveAsCopyStatus::copyFailed,
+           "Background Save As copy job rejects a broken symlink target parent");
+    expect(parentResult.error.find("Target directory path is a symlink") != std::string::npos,
+           "Background Save As broken target-parent symlink failure error is human-readable");
+    expect(parentProgress.phase == projectname::BackgroundSaveAsPackageCopyPhase::failed,
+           "Background Save As broken target-parent symlink progress reports failed");
+    expect(parentProgress.percent == 100,
+           "Background Save As broken target-parent symlink progress reaches failure percent");
+    expect(parentResult.copy.plan.requiresPackageAssetCopy,
+           "Background Save As broken target-parent symlink failure preserves the copy plan");
+    expect(parentResult.copy.createdPaths.empty(),
+           "Background Save As broken target-parent symlink failure creates no target paths");
+    expect(std::filesystem::is_symlink(std::filesystem::symlink_status(parentSymlink)),
+           "Background Save As broken target-parent symlink failure leaves the parent symlink unchanged");
+    expect(!std::filesystem::exists(missingParentTarget),
+           "Background Save As broken target-parent symlink failure does not create the missing parent target");
+    expect(!std::filesystem::exists(missingParentTarget / "Nested Target.project"),
+           "Background Save As broken target-parent symlink failure does not create a package through the broken link");
+    expect(!std::filesystem::exists(missingParentTarget / "Nested Target.project" / imported.relativePath),
+           "Background Save As broken target-parent symlink failure does not copy audio through the broken link");
+
+    expect(std::filesystem::remove(targetPackageSymlink),
+           "Temporary background Save As broken target-package symlink deleted");
+    expect(std::filesystem::remove(parentSymlink),
+           "Temporary background Save As broken target-parent symlink deleted");
+    expect(std::filesystem::remove_all(sourcePackage) > 0,
+           "Temporary background Save As broken target-symlink source package deleted");
+    std::filesystem::remove_all(missingTargetPackage);
+    std::filesystem::remove_all(missingParentTarget);
+}
+
 void backgroundSaveAsPackageCopyJobRejectsBrokenSourceSymlinks()
 {
     auto folderSymlinkProject = projectname::ProjectModel::createDefault();
@@ -11653,6 +11776,7 @@ int main()
     projectPackageSaveAsCopyCommandRejectsTargetInsideSource();
     projectPackageSaveAsCopyCommandCancelsAndRollsBackPartialTarget();
     backgroundSaveAsPackageCopyJobCopiesAssetsAndReportsProgress();
+    backgroundSaveAsPackageCopyJobRejectsBrokenTargetSymlinks();
     backgroundSaveAsPackageCopyJobRejectsBrokenSourceSymlinks();
     backgroundSaveAsPackageCopyJobCancelsBeforeStart();
     projectPackageSaveAsRetryPreflightAllowsManifestOnlyRetryAndStaleTempCleanup();

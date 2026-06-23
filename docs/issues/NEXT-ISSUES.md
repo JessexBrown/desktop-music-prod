@@ -2,21 +2,7 @@
 
 # Next Issues
 
-## 1. Add Background Save As Broken Target Symlink Failure Coverage
-
-Acceptance:
-- Add focused background Save As package-copy job coverage for a broken target
-  package symlink or broken intermediate target parent symlink.
-- Fixture-gate cleanly when the host cannot create test symlinks without
-  elevated permissions.
-- Verify the background job reports failure, reaches the failed phase, leaves
-  the missing symlink target uncreated, and does not copy package assets through
-  the target link.
-- Preserve plain copy-command broken target symlink coverage, background broken
-  source symlink failure coverage, cancellation progress, and successful
-  background copy coverage.
-
-## 2. Add Project Save Linked Later Asset Folder Symlink Coverage
+## 1. Add Project Save Linked Later Asset Folder Symlink Coverage
 
 Acceptance:
 - Add focused core coverage for saving a project package when a later asset
@@ -32,7 +18,7 @@ Acceptance:
   temporary-manifest cleanup, manifest-symlink rejection, and successful
   save/load coverage.
 
-## 3. Add AppSession Save Linked Asset Folder Symlink Failure Coverage
+## 2. Add AppSession Save Linked Asset Folder Symlink Failure Coverage
 
 Acceptance:
 - Add focused `AppSession` coverage for saving a project package whose existing
@@ -46,7 +32,7 @@ Acceptance:
   asset-folder symlink rejection, session manifest symlink rejection, and
   successful session save/load coverage.
 
-## 4. Add Background Save As Linked Target Symlink Failure Coverage
+## 3. Add Background Save As Linked Target Symlink Failure Coverage
 
 Acceptance:
 - Add focused background Save As package-copy job coverage for a target package
@@ -59,7 +45,7 @@ Acceptance:
   and source symlink coverage, cancellation progress, and successful background
   copy coverage.
 
-## 5. Add Project Load Linked Package Parent Symlink Failure Coverage
+## 4. Add Project Load Linked Package Parent Symlink Failure Coverage
 
 Acceptance:
 - Add focused core coverage for loading a project package through an
@@ -72,3 +58,17 @@ Acceptance:
 - Preserve manifest symlink and broken-symlink load rejection, manifest
   directory rejection, package save parent symlink rejection, and successful
   save/load coverage.
+
+## 5. Add Project Load Broken Package Parent Symlink Failure Coverage
+
+Acceptance:
+- Add focused core coverage for loading a project package through a broken
+  intermediate package parent symlink.
+- Fixture-gate cleanly when the host cannot create test symlinks without
+  elevated permissions.
+- Verify load rejects the path, leaves the missing symlink target uncreated,
+  leaves the current session project unchanged, and does not create a temporary
+  manifest through the link.
+- Preserve manifest symlink and broken-symlink load rejection, manifest
+  directory rejection, linked package-parent load rejection, package save parent
+  symlink rejection, and successful save/load coverage.
