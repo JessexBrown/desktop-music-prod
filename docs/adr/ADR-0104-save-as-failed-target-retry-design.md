@@ -22,17 +22,17 @@ Save As succeeds.
 
 ## Decision
 
-Define a future project-scoped command:
+Define and implement a project-scoped command:
 
 - id: `project.saveAs.retryFailedTargetManifest`
 - label: `Retry Failed Save As`
 - scope: project
 
-The command is not implemented in this slice. When implemented, it should appear
-near `Copy Failed Save As Target` in the Project menu and later in the command
-palette. Its status copy must make clear that retry writes only the target
-manifest for the kept target package; it does not recopy package assets, delete
-assets, quarantine assets, scan plugins, or create a release package.
+The command appears near `Copy Failed Save As Target` in the Project menu and
+can later be surfaced in the command palette. Its status copy must make clear
+that retry writes only the target manifest for the kept target package; it does
+not recopy package assets, delete assets, quarantine assets, scan plugins, or
+create a release package.
 
 ### Enablement
 
@@ -112,7 +112,7 @@ separate from retry.
 
 ## Consequences
 
-- The future retry workflow has a small, reviewable boundary: manifest-only
+- The retry workflow has a small, reviewable boundary: manifest-only
   recovery for a known kept target.
 - Users avoid surprise overwrites if the target package has changed since the
   late Save As failure.
@@ -123,10 +123,7 @@ separate from retry.
 
 ## Follow-Ups
 
-- Add `project.saveAs.retryFailedTargetManifest` to the app command registry and
-  Project menu using the enablement rules above.
-- Add deterministic chooser smoke coverage for successful retry after the
-  blocking manifest path is removed.
-- Add focused core/app coverage for regular-file, directory, symlink or
-  non-regular manifest conflicts, missing copied target assets, and stale
-  `manifest.json.tmp` cleanup.
+- Surface `project.saveAs.retryFailedTargetManifest` in the future command
+  palette after shortcut and command-discovery policy is documented.
+- Add symlink-specific retry conflict coverage on platforms where creating test
+  symlinks is available without elevated permissions.

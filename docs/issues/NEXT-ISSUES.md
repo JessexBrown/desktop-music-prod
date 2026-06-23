@@ -2,20 +2,7 @@
 
 # Next Issues
 
-## 1. Add Save As Failed Target Retry Command
-
-Acceptance:
-- Add `project.saveAs.retryFailedTargetManifest` using ADR-0104's enablement,
-  manifest-only retry, and overwrite/conflict rules.
-- Expose it near `Copy Failed Save As Target` without deleting, quarantining, or
-  recopying target package assets.
-- Cover successful retry after the blocking manifest path is removed, existing
-  target `manifest.json` conflict, missing copied target assets, and stale
-  `manifest.json.tmp` behavior.
-- Verify retry does not start a Save As package-copy job and does not touch the
-  real-time audio path.
-
-## 2. Add Project Save Temporary Manifest Write Failure Coverage
+## 1. Add Project Save Temporary Manifest Write Failure Coverage
 
 Acceptance:
 - Add focused core coverage for a project save failure before
@@ -26,7 +13,7 @@ Acceptance:
 - Preserve the successful project save/load, previous-backup success/failure,
   asset-folder failure, and commit-failure tests.
 
-## 3. Add Project Save Package Path File Failure Coverage
+## 2. Add Project Save Package Path File Failure Coverage
 
 Acceptance:
 - Add focused core coverage for saving a project package to a path already
@@ -37,7 +24,7 @@ Acceptance:
 - Preserve the successful project save/load and existing project save failure
   tests.
 
-## 4. Add App Settings Empty Path Failure Coverage
+## 3. Add App Settings Empty Path Failure Coverage
 
 Acceptance:
 - Add focused core coverage for saving app settings with an empty settings path.
@@ -46,7 +33,7 @@ Acceptance:
 - Preserve the successful settings save/load, reset, commit-failure,
   temporary-write-failure, and directory-creation-failure tests.
 
-## 5. Draft macOS Artifact Signing Policy
+## 4. Draft macOS Artifact Signing Policy
 
 Acceptance:
 - Add a focused ADR for macOS app artifact, signing, notarization, and installer
@@ -58,3 +45,15 @@ Acceptance:
   sounds, logos, or proprietary assets.
 - Do not upload a macOS artifact, add signing secrets, notarize, or create an
   installer in the same change.
+
+## 5. Add Save As Retry Symlink Conflict Coverage
+
+Acceptance:
+- Add focused retry preflight coverage for `manifest.json` symlink conflicts on
+  platforms where symlink creation is available without elevated permissions.
+- Skip or fixture-gate the symlink case cleanly when the host cannot create test
+  symlinks.
+- Verify the symlink target is not overwritten or removed, retry remains
+  manifest-only, and the error is human-readable.
+- Preserve the existing regular-file, directory, missing-asset, and stale
+  temporary-manifest retry coverage.

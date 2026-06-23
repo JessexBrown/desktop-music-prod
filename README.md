@@ -212,9 +212,10 @@ Third-party dependencies remain under their own licenses as recorded in
   completed copy, the active project stays on the source package and copied
   target assets are left in the chosen package for recovery or manual cleanup;
   the app status makes that recovery boundary visible, and the Project menu can
-  copy the kept target package path. ADR-0104 defines the future manifest-only
-  retry command boundary and conflict policy before that command becomes
-  visible.
+  copy the kept target package path or run a manifest-only retry after the
+  blocking target manifest path is fixed. Retry refuses existing target
+  manifests, non-regular manifest paths, and missing copied assets without
+  recopying, deleting, quarantining, or touching audio playback.
 - Save As package asset copying runs on a cancellable background job with
   phase, file-count, and byte-count progress, plus a guarded top-bar Cancel
   Save affordance.
@@ -624,7 +625,7 @@ for a launch smoke check or use `ctest --preset dev --output-on-failure`.
 - `docs/adr/ADR-0103-macos-ci-prerequisites-and-deferral.md` records the macOS
   CI prerequisites and build/test-only first-job boundary.
 - `docs/adr/ADR-0104-save-as-failed-target-retry-design.md` records the
-  future manifest-only retry command boundary and overwrite/conflict policy for
+  manifest-only retry command boundary and overwrite/conflict policy for
   kept failed Save As targets.
 - `docs/adr/ADR-0105-macos-build-test-ci-job.md` records the enabled
   build/test-only macOS JUCE App CI job.

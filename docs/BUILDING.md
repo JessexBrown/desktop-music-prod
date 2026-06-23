@@ -385,10 +385,13 @@ source-package `backups/` are not cloned. If the final manifest write fails
 after copying, the active package remains unchanged and the copied target assets
 remain in the chosen package for recovery or manual cleanup. The Project menu's
 `Copy Failed Save As Target` action copies that kept target package path, and
-the project chooser smoke test verifies the visible status copy plus copy-action
-status without starting cleanup or another Save As job. ADR-0104 documents the
-future `Retry Failed Save As` command as a manifest-only recovery path with
-explicit overwrite/conflict checks before it becomes visible. Import Audio uses a
+the `Retry Failed Save As` action writes only the kept target manifest after the
+blocking manifest path is fixed. Retry refuses existing target manifests,
+non-regular manifest paths, and missing copied target assets without starting
+cleanup, recopying assets, or touching the audio callback. The project chooser
+smoke test verifies the copy action plus retry conflict, missing-asset, stale
+temporary-manifest, and successful recovery paths without starting another Save
+As job. Import Audio uses a
 native WAV file chooser and a background import job with frame-level decode
 progress, byte-level staged-copy progress, and cancel state.
 The right inspector's selected-clip Relink button uses a native WAV chooser and

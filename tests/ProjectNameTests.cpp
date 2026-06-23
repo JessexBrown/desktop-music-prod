@@ -27,6 +27,7 @@
 #include "core/ProjectAudioImport.h"
 #include "core/ProjectModel.h"
 #include "core/ProjectPackageSaveAsPolicy.h"
+#include "core/ProjectPackageSaveAsRetry.h"
 #include "core/TimelineClipLane.h"
 #include "core/TimelinePlaybackPlan.h"
 #include "core/TimelinePlaybackPreparationCompletion.h"
@@ -1326,6 +1327,153 @@ void backgroundSaveAsPackageCopyJobCancelsBeforeStart()
 
     expect(std::filesystem::remove_all(sourcePackage) > 0,
            "Temporary background Save As cancel source package deleted");
+}
+
+void projectPackageSaveAsRetryPreflightAllowsManifestOnlyRetryAndStaleTempCleanup()
+{
+    auto project = projectname::ProjectModel::createDefault();
+
+    projectname::ProjectClip imported;
+    imported.id = "save-as-retry-imported";
+    imported.name = "Save As Retry Imported";
+    imported.type = "audio-file";
+    imported.relativePath = "audio/retry.wav";
+    imported.analysisPath = "analysis/retry.waveform.json";
+    imported.lengthBeats = 4.0;
+    expect(project.addClipToTrack("track-1", imported), "Save As retry test adds imported clip");
+
+    const auto sourcePackage = makeTemporaryPackagePath("projectname-save-as-retry-source-test");
+    const auto targetPackage = makeTemporaryPackagePath("projectname-save-as-retry-target-test");
+    writeTextFile(targetPackage / imported.relativePath, "copied audio");
+    writeTextFile(targetPackage / imported.analysisPath, "{}");
+    writeTextFile(targetPackage / "manifest.json.tmp", "stale temporary manifest");
+
+    projectname::ProjectPackageSaveAsRetryState recovery;
+    recovery.sourcePackageDirectory = sourcePackage;
+    recovery.targetPackageDirectory = targetPackage;
+    recovery.projectSnapshot = project;
+    recovery.copiedFileCount = 2;
+    recovery.copiedBytes = 16;
+
+    const auto preflight = projectname::preflightProjectPackageSaveAsRetry(&recovery,
+                                                                           project,
+                                                                           sourcePackage);
+    expect(preflight.status == projectname::ProjectPackageSaveAsRetryPreflightStatus::ready,
+           "Save As retry preflight allows missing final manifest with copied target assets: "
+               + preflight.message);
+    expect(std::filesystem::exists(targetPackage / "manifest.json.tmp"),
+           "Save As retry preflight leaves stale temporary manifest for staged writer cleanup");
+
+    std::string error;
+    expect(project.savePackage(targetPackage, error),
+           "Save As retry manifest-only staged save succeeds");
+    expect(std::filesystem::is_regular_file(targetPackage / "manifest.json"),
+           "Save As retry manifest-only staged save writes final manifest");
+    expect(!std::filesystem::exists(targetPackage / "manifest.json.tmp"),
+           "Save As retry staged writer removes stale temporary manifest");
+
+    expect(std::filesystem::remove_all(targetPackage) > 0,
+           "Temporary Save As retry target package deleted");
+}
+
+void projectPackageSaveAsRetryPreflightRejectsTargetManifestConflicts()
+{
+    auto project = projectname::ProjectModel::createDefault();
+
+    projectname::ProjectClip imported;
+    imported.id = "save-as-retry-conflict-imported";
+    imported.name = "Save As Retry Conflict Imported";
+    imported.type = "audio-file";
+    imported.relativePath = "audio/conflict.wav";
+    imported.lengthBeats = 4.0;
+    expect(project.addClipToTrack("track-1", imported),
+           "Save As retry conflict test adds imported clip");
+
+    const auto sourcePackage = makeTemporaryPackagePath("projectname-save-as-retry-conflict-source-test");
+    const auto targetPackage = makeTemporaryPackagePath("projectname-save-as-retry-conflict-target-test");
+    writeTextFile(targetPackage / imported.relativePath, "copied audio");
+    writeTextFile(targetPackage / "manifest.json", "existing manifest");
+
+    projectname::ProjectPackageSaveAsRetryState recovery;
+    recovery.sourcePackageDirectory = sourcePackage;
+    recovery.targetPackageDirectory = targetPackage;
+    recovery.projectSnapshot = project;
+    recovery.copiedFileCount = 1;
+
+    const auto regularConflict = projectname::preflightProjectPackageSaveAsRetry(&recovery,
+                                                                                 project,
+                                                                                 sourcePackage);
+    expect(regularConflict.status
+               == projectname::ProjectPackageSaveAsRetryPreflightStatus::targetManifestExists,
+           "Save As retry preflight rejects existing regular manifests");
+    expect(readTextFile(targetPackage / "manifest.json") == "existing manifest",
+           "Save As retry preflight leaves existing target manifest unchanged");
+
+    const auto directoryTarget = makeTemporaryPackagePath("projectname-save-as-retry-directory-test");
+    writeTextFile(directoryTarget / imported.relativePath, "copied audio");
+    std::filesystem::create_directories(directoryTarget / "manifest.json");
+    recovery.targetPackageDirectory = directoryTarget;
+
+    const auto directoryConflict = projectname::preflightProjectPackageSaveAsRetry(&recovery,
+                                                                                   project,
+                                                                                   sourcePackage);
+    expect(directoryConflict.status
+               == projectname::ProjectPackageSaveAsRetryPreflightStatus::targetManifestConflict,
+           "Save As retry preflight rejects non-regular manifest path conflicts");
+
+    std::filesystem::remove_all(targetPackage);
+    std::filesystem::remove_all(directoryTarget);
+}
+
+void projectPackageSaveAsRetryPreflightRejectsMissingCopiedAssetsAndStaleState()
+{
+    auto project = projectname::ProjectModel::createDefault();
+
+    projectname::ProjectClip imported;
+    imported.id = "save-as-retry-missing-imported";
+    imported.name = "Save As Retry Missing Imported";
+    imported.type = "audio-file";
+    imported.relativePath = "audio/missing.wav";
+    imported.analysisPath = "analysis/missing.waveform.json";
+    imported.lengthBeats = 4.0;
+    expect(project.addClipToTrack("track-1", imported),
+           "Save As retry missing test adds imported clip");
+
+    const auto sourcePackage = makeTemporaryPackagePath("projectname-save-as-retry-missing-source-test");
+    const auto targetPackage = makeTemporaryPackagePath("projectname-save-as-retry-missing-target-test");
+    writeTextFile(targetPackage / imported.analysisPath, "{}");
+
+    projectname::ProjectPackageSaveAsRetryState recovery;
+    recovery.sourcePackageDirectory = sourcePackage;
+    recovery.targetPackageDirectory = targetPackage;
+    recovery.projectSnapshot = project;
+    recovery.copiedFileCount = 2;
+
+    const auto missingAsset = projectname::preflightProjectPackageSaveAsRetry(&recovery,
+                                                                              project,
+                                                                              sourcePackage);
+    expect(missingAsset.status == projectname::ProjectPackageSaveAsRetryPreflightStatus::missingPackageAsset,
+           "Save As retry preflight rejects missing copied target assets: "
+               + missingAsset.message);
+    expect(!std::filesystem::exists(targetPackage / "manifest.json"),
+           "Save As retry preflight does not write a manifest when copied assets are missing");
+
+    auto changedProject = project;
+    changedProject.setName("Changed After Failed Save As");
+    const auto changedState = projectname::preflightProjectPackageSaveAsRetry(&recovery,
+                                                                              changedProject,
+                                                                              sourcePackage);
+    expect(changedState.status == projectname::ProjectPackageSaveAsRetryPreflightStatus::projectChanged,
+           "Save As retry preflight rejects mutated project state");
+
+    recovery.copiedFileCount = 0;
+    const auto noCopiedAssets = projectname::preflightProjectPackageSaveAsRetry(&recovery,
+                                                                                project,
+                                                                                sourcePackage);
+    expect(noCopiedAssets.status == projectname::ProjectPackageSaveAsRetryPreflightStatus::noCopiedAssets,
+           "Save As retry preflight rejects failed Save As state without copied assets");
+
+    std::filesystem::remove_all(targetPackage);
 }
 
 void projectLoopRegionValidatesAndRoundTrips()
@@ -6932,7 +7080,7 @@ void workspaceCommandRouterPreservesFocusedWorkspaceShortcuts()
 void appCommandRegistryDescribesPrototypeTopBarCommands()
 {
     const auto registry = projectname::makePrototypeAppCommandRegistry();
-    expect(registry.size() == 15, "App command registry exposes the prototype app actions");
+    expect(registry.size() == 16, "App command registry exposes the prototype app actions");
 
     auto expectCommand = [&registry](std::string_view id,
                                      std::string_view label,
@@ -6989,6 +7137,11 @@ void appCommandRegistryDescribesPrototypeTopBarCommands()
                   projectname::AppCommandScope::project,
                   false,
                   "App command registry contains failed Save As target copy");
+    expectCommand(projectname::AppCommandIds::projectRetryFailedSaveAsTargetManifest,
+                  "Retry Failed Save As",
+                  projectname::AppCommandScope::project,
+                  false,
+                  "App command registry contains failed Save As manifest retry");
     expectCommand(projectname::AppCommandIds::projectOpen,
                   "Open",
                   projectname::AppCommandScope::project,
@@ -7041,6 +7194,7 @@ void appCommandRegistryDescribesPrototypeTopBarCommands()
     availability.canOpen = false;
     availability.canCancelSaveAs = true;
     availability.canCopyFailedSaveAsTarget = true;
+    availability.canRetryFailedSaveAsTargetManifest = true;
     availability.canUndoImportedClipEdit = true;
     availability.canRedoImportedClipEdit = true;
     availability.canImportAudio = false;
@@ -7061,6 +7215,8 @@ void appCommandRegistryDescribesPrototypeTopBarCommands()
            "App command registry enables cancel Save As from availability");
     expect(busyRegistry.isEnabled(projectname::AppCommandIds::projectCopyFailedSaveAsTarget),
            "App command registry enables failed Save As target copy from availability");
+    expect(busyRegistry.isEnabled(projectname::AppCommandIds::projectRetryFailedSaveAsTargetManifest),
+           "App command registry enables failed Save As manifest retry from availability");
     expect(!busyRegistry.isEnabled(projectname::AppCommandIds::projectOpen),
            "App command registry disables Open from project availability");
     expect(!busyRegistry.isEnabled(projectname::AppCommandIds::audioImport),
@@ -7096,6 +7252,11 @@ void appCommandRegistryDescribesPrototypeTopBarCommands()
         busyRegistry.findCommand(projectname::AppCommandIds::projectCopyFailedSaveAsTarget);
     expect(enabledFailedSaveAsTarget != nullptr && enabledFailedSaveAsTarget->disabledReason.empty(),
            "Enabled failed Save As target copy command clears stale disabled status text");
+
+    const auto* enabledFailedSaveAsRetry =
+        busyRegistry.findCommand(projectname::AppCommandIds::projectRetryFailedSaveAsTargetManifest);
+    expect(enabledFailedSaveAsRetry != nullptr && enabledFailedSaveAsRetry->disabledReason.empty(),
+           "Enabled failed Save As manifest retry command clears stale disabled status text");
 
     projectname::AppCommandRegistry manualRegistry;
     expect(manualRegistry.registerCommand({ "app.test",
@@ -9017,6 +9178,9 @@ int main()
     projectPackageSaveAsCopyCommandCancelsAndRollsBackPartialTarget();
     backgroundSaveAsPackageCopyJobCopiesAssetsAndReportsProgress();
     backgroundSaveAsPackageCopyJobCancelsBeforeStart();
+    projectPackageSaveAsRetryPreflightAllowsManifestOnlyRetryAndStaleTempCleanup();
+    projectPackageSaveAsRetryPreflightRejectsTargetManifestConflicts();
+    projectPackageSaveAsRetryPreflightRejectsMissingCopiedAssetsAndStaleState();
     projectLoopRegionValidatesAndRoundTrips();
     projectImportedClipSelectionValidatesAndRoundTrips();
     projectTrackMixStateRoundTripsAndLoadsLegacyDefaults();

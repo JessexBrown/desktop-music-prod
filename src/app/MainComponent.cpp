@@ -218,8 +218,8 @@ void setButtonEnabledFromCommand(juce::Button& button,
         && result.copy.copiedFileCount > 0)
     {
         status += ". Copied assets were kept in the selected target package for retry or manual cleanup; "
-                  "active project stayed on the source package. Use Project > Copy Failed Save As Target "
-                  "to copy the package path.";
+                  "active project stayed on the source package. Use Project > Retry Failed Save As "
+                  "after fixing the target manifest path, or Copy Failed Save As Target to copy the package path.";
     }
 
     return status;
@@ -1771,6 +1771,135 @@ bool MainComponent::runProjectChooserSmokeTest(const std::filesystem::path& scra
     if (temporaryManifestExists)
         return fail("Save As manifest-failure smoke left a temporary manifest in the target.");
 
+    if (!buildAppCommandRegistry().isEnabled(
+            projectname::AppCommandIds::projectRetryFailedSaveAsTargetManifest))
+    {
+        return fail("Save As manifest-failure smoke did not enable failed-target manifest retry.");
+    }
+
+    const auto blockedRetryResult =
+        dispatchAppCommand(projectname::AppCommandIds::projectRetryFailedSaveAsTargetManifest);
+    if (blockedRetryResult.status != projectname::AppCommandResultStatus::failed)
+        return fail("Save As retry smoke unexpectedly accepted a non-regular target manifest path.");
+
+    if (!statusText_.contains("non-regular"))
+        return fail("Save As retry smoke did not report the non-regular manifest conflict.");
+
+    if (saveAsPackageCopyJob_ != nullptr)
+        return fail("Save As retry conflict smoke started a package copy job.");
+
+    if (!packagePathsMatch(getCurrentProjectPackagePath(), packageBeforeFailedSaveAs))
+        return fail("Save As retry conflict smoke changed the active project package.");
+
+    filesystemError.clear();
+    std::filesystem::remove_all(manifestFailurePackage / "manifest.json", filesystemError);
+    if (filesystemError)
+        return fail("Could not remove Save As retry blocking manifest fixture: "
+                    + filesystemError.message());
+
+    if (!writeSmokeFile(manifestFailurePackage / "manifest.json", "occupied manifest", error))
+        return false;
+
+    const auto occupiedManifestRetryResult =
+        dispatchAppCommand(projectname::AppCommandIds::projectRetryFailedSaveAsTargetManifest);
+    if (occupiedManifestRetryResult.status != projectname::AppCommandResultStatus::failed)
+        return fail("Save As retry smoke unexpectedly overwrote an existing target manifest.");
+
+    if (!statusText_.contains("already contains manifest.json"))
+        return fail("Save As retry smoke did not report the occupied manifest conflict.");
+
+    std::string occupiedTargetManifest;
+    if (!readSmokeFile(manifestFailurePackage / "manifest.json", occupiedTargetManifest, error))
+        return false;
+
+    if (occupiedTargetManifest != "occupied manifest")
+        return fail("Save As retry smoke changed an existing target manifest.");
+
+    if (saveAsPackageCopyJob_ != nullptr)
+        return fail("Save As occupied-manifest retry smoke started a package copy job.");
+
+    if (!packagePathsMatch(getCurrentProjectPackagePath(), packageBeforeFailedSaveAs))
+        return fail("Save As occupied-manifest retry smoke changed the active project package.");
+
+    filesystemError.clear();
+    if (!std::filesystem::remove(manifestFailurePackage / "manifest.json", filesystemError)
+        || filesystemError)
+    {
+        return fail("Could not remove Save As retry occupied manifest fixture: "
+                    + filesystemError.message());
+    }
+
+    filesystemError.clear();
+    if (!std::filesystem::remove(manifestFailurePackage / "audio" / "chooser-smoke.wav", filesystemError)
+        || filesystemError)
+    {
+        return fail("Could not remove Save As retry copied-audio fixture: "
+                    + filesystemError.message());
+    }
+
+    const auto missingAssetRetryResult =
+        dispatchAppCommand(projectname::AppCommandIds::projectRetryFailedSaveAsTargetManifest);
+    if (missingAssetRetryResult.status != projectname::AppCommandResultStatus::failed)
+        return fail("Save As retry smoke unexpectedly succeeded with a missing copied asset.");
+
+    if (!statusText_.contains("missing required asset audio/chooser-smoke.wav"))
+        return fail("Save As retry smoke did not report the missing copied asset.");
+
+    if (projectManifestExists(manifestFailurePackage))
+        return fail("Save As missing-asset retry smoke wrote a target manifest.");
+
+    if (saveAsPackageCopyJob_ != nullptr)
+        return fail("Save As missing-asset retry smoke started a package copy job.");
+
+    if (!packagePathsMatch(getCurrentProjectPackagePath(), packageBeforeFailedSaveAs))
+        return fail("Save As missing-asset retry smoke changed the active project package.");
+
+    if (!writeSmokeFile(manifestFailurePackage / "audio" / "chooser-smoke.wav", "restored copied audio", error))
+        return false;
+
+    if (!writeSmokeFile(manifestFailurePackage / "manifest.json.tmp", "stale temporary manifest", error))
+        return false;
+
+    const auto successfulRetryResult =
+        dispatchAppCommand(projectname::AppCommandIds::projectRetryFailedSaveAsTargetManifest);
+    if (successfulRetryResult.status != projectname::AppCommandResultStatus::handled)
+        return fail("Save As retry smoke did not dispatch a successful manifest retry.");
+
+    if (!statusText_.contains("Recovered failed Save As target package"))
+        return fail("Save As retry smoke did not report recovery success.");
+
+    if (saveAsPackageCopyJob_ != nullptr)
+        return fail("Save As successful retry smoke started a package copy job.");
+
+    if (!packagePathsMatch(getCurrentProjectPackagePath(), manifestFailurePackage))
+        return fail("Save As successful retry smoke did not switch to the recovered target package.");
+
+    if (!projectManifestExists(manifestFailurePackage))
+        return fail("Save As successful retry smoke did not write the target manifest.");
+
+    filesystemError.clear();
+    if (std::filesystem::exists(manifestFailurePackage / "manifest.json.tmp", filesystemError))
+        return fail("Save As successful retry smoke left a stale temporary manifest.");
+
+    if (filesystemError)
+        return fail("Could not inspect Save As retry temporary manifest cleanup: "
+                    + filesystemError.message());
+
+    if (!readSmokeFile(packageBeforeFailedSaveAs / "manifest.json", manifestAfterFailedSaveAs, error))
+        return false;
+
+    if (manifestAfterFailedSaveAs != manifestBeforeFailedSaveAs)
+        return fail("Save As retry smoke changed the original source package manifest.");
+
+    if (buildAppCommandRegistry().isEnabled(projectname::AppCommandIds::projectCopyFailedSaveAsTarget))
+        return fail("Save As retry smoke left failed-target path copy enabled after success.");
+
+    if (buildAppCommandRegistry().isEnabled(
+            projectname::AppCommandIds::projectRetryFailedSaveAsTargetManifest))
+    {
+        return fail("Save As retry smoke left failed-target manifest retry enabled after success.");
+    }
+
     const auto copySelection = toJuceFile(scratchRoot / "Chooser Save Copy");
     if (!beginSaveAsFromChooserSelection(copySelection, error))
         return false;
@@ -2541,7 +2670,11 @@ projectname::AppCommandRegistry MainComponent::buildAppCommandRegistry() const
     availability.canSaveAs = projectChooserAvailable;
     availability.canCancelSaveAs = saveAsPackageCopyJob_ != nullptr && canCancelSaveAsPackageCopy_;
     availability.canCopyFailedSaveAsTarget =
-        !failedSaveAsTargetPackagePath_.empty() && !projectChooserOpen && saveAsPackageCopyJob_ == nullptr;
+        failedSaveAsRetryState_.has_value() && !projectChooserOpen && saveAsPackageCopyJob_ == nullptr;
+    availability.canRetryFailedSaveAsTargetManifest =
+        canRetryFailedSaveAsTargetManifest()
+        && !projectChooserOpen
+        && !projectFileWorkActive;
     availability.canOpen = projectChooserAvailable;
     availability.canUndoImportedClipEdit = session_.canUndoImportedClipEdit();
     availability.canRedoImportedClipEdit = session_.canRedoImportedClipEdit();
@@ -2563,7 +2696,9 @@ void MainComponent::refreshAppCommandEnabledState()
                               || registry.isEnabled(projectname::AppCommandIds::projectOpen)
                               || registry.isEnabled(projectname::AppCommandIds::projectNew)
                               || registry.isEnabled(projectname::AppCommandIds::projectSaveAs)
-                              || registry.isEnabled(projectname::AppCommandIds::projectCopyFailedSaveAsTarget));
+                              || registry.isEnabled(projectname::AppCommandIds::projectCopyFailedSaveAsTarget)
+                              || registry.isEnabled(
+                                  projectname::AppCommandIds::projectRetryFailedSaveAsTargetManifest));
     setButtonEnabledFromCommand(importButton_, registry, projectname::AppCommandIds::audioImport);
     setButtonEnabledFromCommand(cancelImportButton_, registry, projectname::AppCommandIds::audioImportCancel);
     setButtonEnabledFromCommand(cancelSaveAsButton_, registry, projectname::AppCommandIds::projectSaveAsCancel);
@@ -2627,6 +2762,11 @@ projectname::AppCommandResult MainComponent::dispatchAppCommand(std::string_view
                     [this]()
                     {
                         return copyFailedSaveAsTargetPackagePath();
+                    });
+    registerHandler(projectname::AppCommandIds::projectRetryFailedSaveAsTargetManifest,
+                    [this]()
+                    {
+                        return retryFailedSaveAsTargetManifest();
                     });
     registerHandler(projectname::AppCommandIds::projectOpen,
                     [this]()
@@ -2845,6 +2985,9 @@ void MainComponent::showProjectMenu()
     menu.addItem(5,
                  "Copy Failed Save As Target",
                  registry.isEnabled(projectname::AppCommandIds::projectCopyFailedSaveAsTarget));
+    menu.addItem(6,
+                 "Retry Failed Save As",
+                 registry.isEnabled(projectname::AppCommandIds::projectRetryFailedSaveAsTargetManifest));
     menu.addSeparator();
     menu.addItem(4, "Open...", registry.isEnabled(projectname::AppCommandIds::projectOpen));
 
@@ -2869,6 +3012,10 @@ void MainComponent::showProjectMenu()
                                case 5:
                                    safeThis->dispatchAppCommand(
                                        projectname::AppCommandIds::projectCopyFailedSaveAsTarget);
+                                   break;
+                               case 6:
+                                   safeThis->dispatchAppCommand(
+                                       projectname::AppCommandIds::projectRetryFailedSaveAsTargetManifest);
                                    break;
                                case 4:
                                    safeThis->dispatchAppCommand(projectname::AppCommandIds::projectOpen);
@@ -3086,10 +3233,7 @@ bool MainComponent::beginSaveAsFromChooserSelection(juce::File selectedFile,
     error.clear();
 
     if (saveAsPackageCopyJob_ == nullptr)
-    {
-        failedSaveAsTargetPackagePath_.clear();
-        lastFailedSaveAsTargetCopiedText_.clear();
-    }
+        clearFailedSaveAsRecoveryState();
 
     if (selectedFile == juce::File {})
     {
@@ -3365,8 +3509,7 @@ bool MainComponent::addProjectChooserSmokePackageAsset(std::string& error)
 
 void MainComponent::refreshAfterProjectPackageChange(juce::String status)
 {
-    failedSaveAsTargetPackagePath_.clear();
-    lastFailedSaveAsTargetCopiedText_.clear();
+    clearFailedSaveAsRecoveryState();
     tempoSlider_.setValue(session_.getTransport().getTempoBpm(), juce::dontSendNotification);
     audioService_.setTestToneEnabled(session_.shouldPlayGeneratedTone());
     hasPackageMediaMaintenanceSnapshot_ = false;
@@ -3378,6 +3521,23 @@ void MainComponent::refreshAfterProjectPackageChange(juce::String status)
     refreshAppCommandEnabledState();
     setStatus(std::move(status));
     updateTransportLabels();
+}
+
+void MainComponent::clearFailedSaveAsRecoveryState()
+{
+    failedSaveAsRetryState_.reset();
+    lastFailedSaveAsTargetCopiedText_.clear();
+}
+
+bool MainComponent::canRetryFailedSaveAsTargetManifest() const
+{
+    if (!failedSaveAsRetryState_.has_value())
+        return false;
+
+    const auto& recoveryState = *failedSaveAsRetryState_;
+    return recoveryState.copiedFileCount > 0
+        && packagePathsMatch(getCurrentProjectPackagePath(), recoveryState.sourcePackageDirectory)
+        && session_.getProject() == recoveryState.projectSnapshot;
 }
 
 projectname::AppCommandResult MainComponent::undoImportedClipEdit()
@@ -3557,16 +3717,50 @@ void MainComponent::cancelSaveAsPackageCopy()
 
 projectname::AppCommandResult MainComponent::copyFailedSaveAsTargetPackagePath()
 {
-    if (failedSaveAsTargetPackagePath_.empty())
+    if (!failedSaveAsRetryState_.has_value())
         return projectname::AppCommandResult::disabled(
             "No failed Save As target package path is available.");
 
-    const auto targetPath = juce::String(failedSaveAsTargetPackagePath_.string());
+    const auto targetPath = juce::String(failedSaveAsRetryState_->targetPackageDirectory.string());
     juce::SystemClipboard::copyTextToClipboard(targetPath);
     lastFailedSaveAsTargetCopiedText_ = targetPath;
 
     return projectname::AppCommandResult::handledWithStatus(
         "Copied failed Save As target package path: " + targetPath.toStdString());
+}
+
+projectname::AppCommandResult MainComponent::retryFailedSaveAsTargetManifest()
+{
+    const auto* recoveryState = failedSaveAsRetryState_.has_value()
+        ? &*failedSaveAsRetryState_
+        : nullptr;
+    const auto preflight = projectname::preflightProjectPackageSaveAsRetry(recoveryState,
+                                                                           session_.getProject(),
+                                                                           getCurrentProjectPackagePath());
+    if (preflight.status != projectname::ProjectPackageSaveAsRetryPreflightStatus::ready)
+    {
+        refreshAppCommandEnabledState();
+        return projectname::AppCommandResult::failed(preflight.message);
+    }
+
+    const auto targetPackage = recoveryState->targetPackageDirectory;
+
+    std::string error;
+    if (!session_.saveProjectPackage(targetPackage, error))
+    {
+        requestPackageMediaMaintenanceRefresh();
+        refreshAppCommandEnabledState();
+        updateTransportLabels();
+        return projectname::AppCommandResult::failed(
+            "Retry failed: " + error + ". Active project stayed on the source package.");
+    }
+
+    currentProjectPackagePath_ = targetPackage;
+    selectedPackageMediaCleanupId_.clear();
+    selectedPackageMediaRestoreOriginalPaths_.clear();
+    refreshAfterProjectPackageChange(
+        "Recovered failed Save As target package: " + juce::String(targetPackage.string()));
+    return projectname::AppCommandResult::handled();
 }
 
 void MainComponent::cancelMediaRelinkPreparation()
@@ -3784,8 +3978,7 @@ void MainComponent::applyCompletedSaveAsPackageCopy(
 {
     if (result.cancelled)
     {
-        failedSaveAsTargetPackagePath_.clear();
-        lastFailedSaveAsTargetCopiedText_.clear();
+        clearFailedSaveAsRecoveryState();
         requestPackageMediaMaintenanceRefresh();
         setStatus("Save As cancelled");
         return;
@@ -3793,8 +3986,7 @@ void MainComponent::applyCompletedSaveAsPackageCopy(
 
     if (!saveAsCopyStatusAllowsManifestSave(result.copy.status))
     {
-        failedSaveAsTargetPackagePath_.clear();
-        lastFailedSaveAsTargetCopiedText_.clear();
+        clearFailedSaveAsRecoveryState();
         const auto message = result.error.empty()
             ? projectname::describeProjectPackageSaveAsPlan(result.copy.plan)
             : result.error;
@@ -3807,8 +3999,7 @@ void MainComponent::applyCompletedSaveAsPackageCopy(
     std::string error;
     if (session_.saveProjectPackage(result.targetPackageDirectory, error))
     {
-        failedSaveAsTargetPackagePath_.clear();
-        lastFailedSaveAsTargetCopiedText_.clear();
+        clearFailedSaveAsRecoveryState();
         currentProjectPackagePath_ = result.targetPackageDirectory;
         selectedPackageMediaCleanupId_.clear();
         selectedPackageMediaRestoreOriginalPaths_.clear();
@@ -3820,11 +4011,17 @@ void MainComponent::applyCompletedSaveAsPackageCopy(
         if (result.copy.status == projectname::ProjectPackageSaveAsCopyStatus::completed
             && result.copy.copiedFileCount > 0)
         {
-            failedSaveAsTargetPackagePath_ = result.targetPackageDirectory;
+            projectname::ProjectPackageSaveAsRetryState retryState;
+            retryState.sourcePackageDirectory = result.sourcePackageDirectory;
+            retryState.targetPackageDirectory = result.targetPackageDirectory;
+            retryState.projectSnapshot = session_.getProject();
+            retryState.copiedFileCount = result.copy.copiedFileCount;
+            retryState.copiedBytes = result.copy.copiedBytes;
+            failedSaveAsRetryState_ = std::move(retryState);
         }
         else
         {
-            failedSaveAsTargetPackagePath_.clear();
+            failedSaveAsRetryState_.reset();
         }
         lastFailedSaveAsTargetCopiedText_.clear();
         requestPackageMediaMaintenanceRefresh();

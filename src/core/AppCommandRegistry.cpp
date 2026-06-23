@@ -200,6 +200,13 @@ AppCommandRegistry makePrototypeAppCommandRegistry(AppCommandAvailability availa
                              availability.canCopyFailedSaveAsTarget,
                              "No failed Save As target package path is available.");
     registerPrototypeCommand(registry,
+                             AppCommandIds::projectRetryFailedSaveAsTargetManifest,
+                             "Retry Failed Save As",
+                             "Write only the target manifest for a kept failed Save As package.",
+                             AppCommandScope::project,
+                             availability.canRetryFailedSaveAsTargetManifest,
+                             "No failed Save As target manifest retry is available.");
+    registerPrototypeCommand(registry,
                              AppCommandIds::projectOpen,
                              "Open",
                              "Open a project package with a native chooser.",

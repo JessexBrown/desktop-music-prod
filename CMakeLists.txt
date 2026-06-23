@@ -100,6 +100,8 @@ add_library(projectname_core
     src/core/ProjectModel.h
     src/core/ProjectPackageSaveAsPolicy.cpp
     src/core/ProjectPackageSaveAsPolicy.h
+    src/core/ProjectPackageSaveAsRetry.cpp
+    src/core/ProjectPackageSaveAsRetry.h
     src/core/TimelineClipLane.cpp
     src/core/TimelineClipLane.h
     src/core/TimelinePlaybackPlan.cpp

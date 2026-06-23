@@ -20,6 +20,8 @@ inline constexpr std::string_view projectSaveAs = "project.saveAs";
 inline constexpr std::string_view projectSaveAsCancel = "project.saveAs.cancel";
 inline constexpr std::string_view projectCopyFailedSaveAsTarget =
     "project.saveAs.copyFailedTarget";
+inline constexpr std::string_view projectRetryFailedSaveAsTargetManifest =
+    "project.saveAs.retryFailedTargetManifest";
 inline constexpr std::string_view projectOpen = "project.open";
 inline constexpr std::string_view editUndo = "edit.undo";
 inline constexpr std::string_view editRedo = "edit.redo";
@@ -63,6 +65,7 @@ struct AppCommandAvailability
     bool canSaveAs = true;
     bool canCancelSaveAs = false;
     bool canCopyFailedSaveAsTarget = false;
+    bool canRetryFailedSaveAsTargetManifest = false;
     bool canOpen = true;
     bool canUndoImportedClipEdit = false;
     bool canRedoImportedClipEdit = false;

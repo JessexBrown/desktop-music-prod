@@ -18,6 +18,7 @@
 #include "core/ImportedClipInspectorEditDraft.h"
 #include "core/PackageMediaMaintenanceBrowserRows.h"
 #include "core/PackageMediaMaintenanceViewModel.h"
+#include "core/ProjectPackageSaveAsRetry.h"
 #include "core/TimelineClipLane.h"
 #include "core/TimelinePlaybackPreparationCompletion.h"
 
@@ -207,9 +208,12 @@ private:
         std::string& error);
     [[nodiscard]] bool addProjectChooserSmokePackageAsset(std::string& error);
     void refreshAfterProjectPackageChange(juce::String status);
+    void clearFailedSaveAsRecoveryState();
+    [[nodiscard]] bool canRetryFailedSaveAsTargetManifest() const;
     [[nodiscard]] projectname::AppCommandResult undoImportedClipEdit();
     [[nodiscard]] projectname::AppCommandResult redoImportedClipEdit();
     [[nodiscard]] projectname::AppCommandResult copyFailedSaveAsTargetPackagePath();
+    [[nodiscard]] projectname::AppCommandResult retryFailedSaveAsTargetManifest();
     void importAudio();
     void relinkSelectedClipMedia();
     void cancelMediaRelinkPreparation();
@@ -325,7 +329,7 @@ private:
     juce::String lastFailedSaveAsTargetCopiedText_;
     std::filesystem::path appSettingsPath_;
     std::filesystem::path currentProjectPackagePath_;
-    std::filesystem::path failedSaveAsTargetPackagePath_;
+    std::optional<projectname::ProjectPackageSaveAsRetryState> failedSaveAsRetryState_;
     std::unique_ptr<juce::FileChooser> projectNewChooser_;
     std::unique_ptr<juce::FileChooser> projectSaveAsChooser_;
     std::unique_ptr<juce::FileChooser> projectOpenChooser_;
