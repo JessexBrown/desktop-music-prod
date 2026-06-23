@@ -131,6 +131,16 @@ const std::array<const char*, 4> packageAssetFolders {
                           targetAssetPath);
     }
 
+    if (std::filesystem::is_symlink(status))
+    {
+        return makeResult(ProjectPackageSaveAsRetryPreflightStatus::missingPackageAsset,
+                          "Retry failed: copied target package asset is a symlink instead of a "
+                          "regular file: "
+                              + relativePath.generic_string()
+                              + ". Use Save As again so package assets can be copied fresh.",
+                          targetAssetPath);
+    }
+
     if (std::filesystem::is_regular_file(status))
         return makeResult(ProjectPackageSaveAsRetryPreflightStatus::ready, {});
 

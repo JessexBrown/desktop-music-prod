@@ -1561,6 +1561,73 @@ void projectPackageSaveAsRetryPreflightRejectsTargetManifestSymlinkConflicts()
     std::filesystem::remove_all(targetPackage);
 }
 
+void projectPackageSaveAsRetryPreflightRejectsCopiedAssetSymlinks()
+{
+    auto project = projectname::ProjectModel::createDefault();
+
+    projectname::ProjectClip imported;
+    imported.id = "save-as-retry-asset-symlink-imported";
+    imported.name = "Save As Retry Asset Symlink Imported";
+    imported.type = "audio-file";
+    imported.relativePath = "audio/linked-asset.wav";
+    imported.analysisPath = "analysis/linked-asset.waveform.json";
+    imported.lengthBeats = 4.0;
+    expect(project.addClipToTrack("track-1", imported),
+           "Save As retry asset symlink test adds imported clip");
+
+    const auto sourcePackage =
+        makeTemporaryPackagePath("projectname-save-as-retry-asset-symlink-source-test");
+    const auto targetPackage =
+        makeTemporaryPackagePath("projectname-save-as-retry-asset-symlink-target-test");
+    const auto assetSymlinkPath = targetPackage / imported.relativePath;
+    const auto symlinkTargetPath = targetPackage / "linked-audio-target.wav";
+    writeTextFile(sourcePackage / imported.relativePath, "source audio should not be recopied");
+    writeTextFile(targetPackage / imported.analysisPath, "{}");
+    writeTextFile(symlinkTargetPath, "external audio target");
+    std::filesystem::create_directories(assetSymlinkPath.parent_path());
+
+    std::error_code symlinkError;
+    std::filesystem::create_symlink(symlinkTargetPath, assetSymlinkPath, symlinkError);
+    if (symlinkError)
+    {
+        std::filesystem::remove_all(sourcePackage);
+        std::filesystem::remove_all(targetPackage);
+        return;
+    }
+
+    projectname::ProjectPackageSaveAsRetryState recovery;
+    recovery.sourcePackageDirectory = sourcePackage;
+    recovery.targetPackageDirectory = targetPackage;
+    recovery.projectSnapshot = project;
+    recovery.copiedFileCount = 2;
+    recovery.copiedBytes = 18;
+
+    const auto symlinkAsset = projectname::preflightProjectPackageSaveAsRetry(&recovery,
+                                                                              project,
+                                                                              sourcePackage);
+    expect(symlinkAsset.status
+               == projectname::ProjectPackageSaveAsRetryPreflightStatus::missingPackageAsset,
+           "Save As retry preflight rejects copied asset symlink conflicts");
+    expect(symlinkAsset.message.find("copied target package asset is a symlink")
+               != std::string::npos,
+           "Save As retry asset symlink failure error is human-readable");
+    expect(symlinkAsset.path == assetSymlinkPath,
+           "Save As retry asset symlink failure reports the symlink path");
+    expect(std::filesystem::is_symlink(std::filesystem::symlink_status(assetSymlinkPath)),
+           "Save As retry preflight leaves the copied asset symlink unchanged");
+    expect(readTextFile(symlinkTargetPath) == "external audio target",
+           "Save As retry preflight does not overwrite or remove the asset symlink target");
+    expect(readTextFile(targetPackage / imported.analysisPath) == "{}",
+           "Save As retry preflight does not recopy or mutate other copied target assets");
+    expect(!std::filesystem::exists(targetPackage / "manifest.json"),
+           "Save As retry asset symlink failure does not write a final manifest");
+    expect(!std::filesystem::exists(targetPackage / "manifest.json.tmp"),
+           "Save As retry asset symlink failure does not create a temporary manifest");
+
+    std::filesystem::remove_all(sourcePackage);
+    std::filesystem::remove_all(targetPackage);
+}
+
 void projectPackageSaveAsRetryPreflightRejectsMissingCopiedAssetsAndStaleState()
 {
     auto project = projectname::ProjectModel::createDefault();
@@ -9475,6 +9542,7 @@ int main()
     projectPackageSaveAsRetryPreflightAllowsManifestOnlyRetryAndStaleTempCleanup();
     projectPackageSaveAsRetryPreflightRejectsTargetManifestConflicts();
     projectPackageSaveAsRetryPreflightRejectsTargetManifestSymlinkConflicts();
+    projectPackageSaveAsRetryPreflightRejectsCopiedAssetSymlinks();
     projectPackageSaveAsRetryPreflightRejectsMissingCopiedAssetsAndStaleState();
     projectLoopRegionValidatesAndRoundTrips();
     projectImportedClipSelectionValidatesAndRoundTrips();

@@ -376,7 +376,8 @@ formatting tests, persisted track mix state/static mix command tests, stereo
 prepared voice summing tests, previous-manifest backup success/failure tests,
 manifest-directory load failure tests, package-path file rejection tests,
 package directory creation failure tests, staged temporary-manifest open/commit
-failure tests, Save As retry symlink conflict tests when host-supported, plus
+failure tests, Save As retry manifest/asset symlink conflict tests when
+host-supported, plus
 app settings load-directory/empty-path/path/write-failure tests.
 It also
 configured, built, launched, audio-smoke-tested,
@@ -408,9 +409,10 @@ remain in the chosen package for recovery or manual cleanup. The Project menu's
 `Copy Failed Save As Target` action copies that kept target package path, and
 the `Retry Failed Save As` action writes only the kept target manifest after the
 blocking manifest path is fixed. Retry refuses existing target manifests,
-non-regular manifest paths, and missing copied target assets without starting
-cleanup, recopying assets, or touching the audio callback. The project chooser
-smoke test verifies the copy action plus retry conflict, missing-asset, stale
+non-regular manifest paths, and missing or symlinked copied target assets
+without starting cleanup, recopying assets, or touching the audio callback. The
+project chooser smoke test verifies the copy action plus retry conflict,
+missing-asset, stale
 temporary-manifest, and successful recovery paths without starting another Save
 As job. Import Audio uses a
 native WAV file chooser and a background import job with frame-level decode
