@@ -1922,6 +1922,109 @@ void projectSavePackageDirectoryCreationFailureLeavesOccupiedParentUntouched()
            "Temporary occupied package parent path file deleted");
 }
 
+void projectSavePackageSymlinkPathFailureLeavesTargetUntouched()
+{
+    auto project = projectname::ProjectModel::createDefault();
+    project.setName("Package Symlink Failure Test");
+    project.getTransport().setTempoBpm(108.0);
+
+    const auto linkedPackageTarget =
+        makeTemporaryPackagePath("projectname-save-package-symlink-target-test");
+    const auto packageSymlink =
+        makeTemporaryPackagePath("projectname-save-package-symlink-link-test");
+    const auto linkedPackageSentinel = linkedPackageTarget / "sentinel.txt";
+    writeTextFile(linkedPackageSentinel, "linked package target sentinel");
+
+    const auto linkedParentTarget =
+        makeTemporaryPackagePath("projectname-save-package-parent-symlink-target-test");
+    const auto parentSymlink =
+        makeTemporaryPackagePath("projectname-save-package-parent-symlink-link-test");
+    const auto linkedParentSentinel = linkedParentTarget / "sentinel.txt";
+    const auto nestedTargetPackage = parentSymlink / "Nested Target.project";
+    const auto nestedTargetThroughLink = linkedParentTarget / "Nested Target.project";
+    writeTextFile(linkedParentSentinel, "linked parent target sentinel");
+
+    std::error_code symlinkError;
+    std::filesystem::create_directory_symlink(linkedPackageTarget, packageSymlink, symlinkError);
+    if (symlinkError)
+    {
+        std::filesystem::remove_all(linkedPackageTarget);
+        std::filesystem::remove_all(linkedParentTarget);
+        return;
+    }
+
+    symlinkError.clear();
+    std::filesystem::create_directory_symlink(linkedParentTarget, parentSymlink, symlinkError);
+    if (symlinkError)
+    {
+        std::filesystem::remove(packageSymlink);
+        std::filesystem::remove_all(linkedPackageTarget);
+        std::filesystem::remove_all(linkedParentTarget);
+        return;
+    }
+
+    std::string error;
+    expect(!project.savePackage(packageSymlink, error),
+           "Project save rejects a package path that is a directory symlink");
+    expect(error.find("Project package path") != std::string::npos
+               && error.find("symlink") != std::string::npos,
+           "Package symlink failure error is human-readable");
+    expect(std::filesystem::is_symlink(std::filesystem::symlink_status(packageSymlink)),
+           "Package symlink failure leaves the package symlink unchanged");
+    expect(readTextFile(linkedPackageSentinel) == "linked package target sentinel",
+           "Package symlink failure preserves the target sentinel");
+    expect(!std::filesystem::exists(linkedPackageTarget / "manifest.json"),
+           "Package symlink failure does not write a manifest through the symlink");
+    expect(!std::filesystem::exists(linkedPackageTarget / "manifest.json.tmp"),
+           "Package symlink failure does not write a temporary manifest through the symlink");
+    expect(!std::filesystem::exists(linkedPackageTarget / "audio"),
+           "Package symlink failure does not create an audio folder through the symlink");
+    expect(!std::filesystem::exists(linkedPackageTarget / "samples"),
+           "Package symlink failure does not create a samples folder through the symlink");
+    expect(!std::filesystem::exists(linkedPackageTarget / "presets"),
+           "Package symlink failure does not create a presets folder through the symlink");
+    expect(!std::filesystem::exists(linkedPackageTarget / "analysis"),
+           "Package symlink failure does not create an analysis folder through the symlink");
+    expect(!std::filesystem::exists(linkedPackageTarget / "backups"),
+           "Package symlink failure does not create a backups folder through the symlink");
+
+    error.clear();
+    expect(!project.savePackage(nestedTargetPackage, error),
+           "Project save rejects an intermediate package parent symlink");
+    expect(error.find("Project package path") != std::string::npos
+               && error.find("symlink") != std::string::npos,
+           "Package parent symlink failure error is human-readable");
+    expect(std::filesystem::is_symlink(std::filesystem::symlink_status(parentSymlink)),
+           "Package parent symlink failure leaves the parent symlink unchanged");
+    expect(readTextFile(linkedParentSentinel) == "linked parent target sentinel",
+           "Package parent symlink failure preserves the target sentinel");
+    expect(!std::filesystem::exists(nestedTargetThroughLink),
+           "Package parent symlink failure does not create the nested package target");
+    expect(!std::filesystem::exists(nestedTargetThroughLink / "manifest.json"),
+           "Package parent symlink failure does not write a manifest through the symlink");
+    expect(!std::filesystem::exists(nestedTargetThroughLink / "manifest.json.tmp"),
+           "Package parent symlink failure does not write a temporary manifest through the symlink");
+    expect(!std::filesystem::exists(nestedTargetThroughLink / "audio"),
+           "Package parent symlink failure does not create an audio folder through the symlink");
+    expect(!std::filesystem::exists(nestedTargetThroughLink / "samples"),
+           "Package parent symlink failure does not create a samples folder through the symlink");
+    expect(!std::filesystem::exists(nestedTargetThroughLink / "presets"),
+           "Package parent symlink failure does not create a presets folder through the symlink");
+    expect(!std::filesystem::exists(nestedTargetThroughLink / "analysis"),
+           "Package parent symlink failure does not create an analysis folder through the symlink");
+    expect(!std::filesystem::exists(nestedTargetThroughLink / "backups"),
+           "Package parent symlink failure does not create a backups folder through the symlink");
+
+    expect(std::filesystem::remove(packageSymlink),
+           "Temporary package path symlink deleted");
+    expect(std::filesystem::remove(parentSymlink),
+           "Temporary package parent symlink deleted");
+    expect(std::filesystem::remove_all(linkedPackageTarget) > 0,
+           "Temporary package symlink target deleted");
+    expect(std::filesystem::remove_all(linkedParentTarget) > 0,
+           "Temporary package parent symlink target deleted");
+}
+
 void projectSaveCreatesPreviousManifestBackup()
 {
     auto project = projectname::ProjectModel::createDefault();
@@ -9596,6 +9699,7 @@ int main()
     projectTrackMixStateRoundTripsAndLoadsLegacyDefaults();
     projectSavePackagePathFileFailureLeavesOccupiedPathUntouched();
     projectSavePackageDirectoryCreationFailureLeavesOccupiedParentUntouched();
+    projectSavePackageSymlinkPathFailureLeavesTargetUntouched();
     projectSaveCreatesPreviousManifestBackup();
     projectSaveBackupFailureKeepsManifestAndRemovesTemporaryManifest();
     projectSaveTemporaryManifestOpenFailureKeepsManifestAndOccupiedPath();

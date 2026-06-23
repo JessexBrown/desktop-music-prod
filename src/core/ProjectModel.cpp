@@ -21,6 +21,47 @@ const std::array<const char*, 5> assetFolders { "audio", "samples", "presets", "
 constexpr const char* manifestFileName = "manifest.json";
 constexpr const char* previousManifestBackupFileName = "manifest.previous.json";
 
+[[nodiscard]] bool isMissingPathError(const std::error_code& error) noexcept
+{
+    return error == std::errc::no_such_file_or_directory
+        || error == std::errc::not_a_directory;
+}
+
+[[nodiscard]] bool rejectSymlinkedProjectPackagePath(const std::filesystem::path& packageDirectory,
+                                                     std::string& error)
+{
+    auto current = packageDirectory;
+
+    while (!current.empty())
+    {
+        std::error_code filesystemError;
+        const auto currentStatus = std::filesystem::symlink_status(current, filesystemError);
+        if (filesystemError)
+        {
+            if (!isMissingPathError(filesystemError))
+            {
+                error = "Could not inspect project package path: "
+                    + current.generic_string() + ": " + filesystemError.message() + ".";
+                return false;
+            }
+        }
+        else if (std::filesystem::is_symlink(currentStatus))
+        {
+            error = "Project package path contains a symlink: "
+                + current.generic_string() + ".";
+            return false;
+        }
+
+        const auto parent = current.parent_path();
+        if (parent == current)
+            break;
+
+        current = parent;
+    }
+
+    return true;
+}
+
 [[nodiscard]] nlohmann::json makeTimeSignatureJson(TimeSignature timeSignature)
 {
     return {
@@ -413,13 +454,26 @@ std::optional<ProjectModel> ProjectModel::loadPackage(const std::filesystem::pat
 
 bool ProjectModel::savePackage(const std::filesystem::path& packageDirectory, std::string& error) const
 {
-    if (std::filesystem::is_regular_file(packageDirectory))
+    if (!rejectSymlinkedProjectPackagePath(packageDirectory, error))
+        return false;
+
+    std::error_code filesystemError;
+    const auto packageStatus = std::filesystem::symlink_status(packageDirectory, filesystemError);
+    if (filesystemError)
+    {
+        if (!isMissingPathError(filesystemError))
+        {
+            error = "Could not inspect project package path: " + filesystemError.message();
+            return false;
+        }
+    }
+    else if (std::filesystem::is_regular_file(packageStatus))
     {
         error = "Project package path points to a file.";
         return false;
     }
 
-    std::error_code filesystemError;
+    filesystemError.clear();
     std::filesystem::create_directories(packageDirectory, filesystemError);
     if (filesystemError)
     {

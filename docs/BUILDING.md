@@ -376,8 +376,9 @@ formatting tests, persisted track mix state/static mix command tests, stereo
 prepared voice summing tests, previous-manifest backup success/failure tests,
 manifest-directory and symlink load failure tests when host-supported,
 package-path file rejection tests, package directory creation failure tests,
-staged temporary-manifest open/commit failure tests, Save As retry
-manifest/asset symlink conflict tests when host-supported, plus
+package symlink path failure tests when host-supported, staged
+temporary-manifest open/commit failure tests, Save As retry manifest/asset
+symlink conflict tests when host-supported, plus
 app settings load-directory/empty-path/path/write-failure tests.
 It also
 configured, built, launched, audio-smoke-tested,
