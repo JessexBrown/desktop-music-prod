@@ -256,3 +256,35 @@ jobs:
           path: ${{ runner.temp }}/rabbington-studio-linux-juce-app
           if-no-files-found: error
           retention-days: 7
+
+  macos-juce-app:
+    name: macOS JUCE App
+    runs-on: macos-15
+    env:
+      FETCHCONTENT_BASE_DIR: ${{ github.workspace }}/.cache/fetchcontent/macos-juce-app
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Select Xcode 16.4
+        run: |
+          sudo xcode-select -s /Applications/Xcode_16.4.app/Contents/Developer
+          xcodebuild -version
+
+      - name: Cache FetchContent downloads
+        uses: actions/cache@v5
+        with:
+          path: .cache/fetchcontent/macos-juce-app
+          key: macos-juce-app-fetchcontent-${{ hashFiles('CMakeLists.txt', 'CMakePresets.json') }}
+          restore-keys: |
+            macos-juce-app-fetchcontent-
+
+      - name: Configure app
+        run: cmake --preset dev-host -DFETCHCONTENT_BASE_DIR="${FETCHCONTENT_BASE_DIR}"
+
+      - name: Build app
+        run: cmake --build --preset dev-host
+
+      - name: Test app
+        run: ctest --preset dev-host --output-on-failure

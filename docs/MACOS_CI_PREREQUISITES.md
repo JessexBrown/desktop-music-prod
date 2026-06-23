@@ -47,10 +47,10 @@ documented macOS path until a macOS-specific preset is justified.
 
 ## GitHub Actions Runner Assumptions
 
-When a macOS app CI job is added, start with a build/test-only job and pin the
-runner image explicitly instead of using `macos-latest`.
+The macOS app CI job is build/test-only and pins the runner image explicitly
+instead of using `macos-latest`.
 
-Recommended first job shape:
+Current job shape:
 
 ```yaml
 macos-juce-app:
@@ -61,7 +61,9 @@ macos-juce-app:
   steps:
     - uses: actions/checkout@v7
     - name: Select Xcode 16.4
-      run: sudo xcode-select -s /Applications/Xcode_16.4.app
+      run: |
+        sudo xcode-select -s /Applications/Xcode_16.4.app/Contents/Developer
+        xcodebuild -version
     - name: Cache FetchContent downloads
       uses: actions/cache@v5
       with:

@@ -364,7 +364,8 @@ ctest --preset core-dev --output-on-failure
 ```
 
 GitHub Actions runs the Windows MSVC desktop app build, the Linux JUCE app
-build/test smoke gate under Xvfb, and a Linux `core-dev` build/test job for
+build/test smoke gate under Xvfb, the macOS JUCE app build/test gate on
+`macos-15` with Xcode 16.4, and a Linux `core-dev` build/test job for
 dependency-light second-host coverage. CI caches CMake FetchContent downloads
 for JUCE and nlohmann/json outside the build tree; generated build outputs
 remain untracked. After the Windows MSVC and Linux JUCE app tests pass, CI
@@ -374,9 +375,8 @@ integrity checks. CI verifies the staged artifact allowlist and checksum file
 before upload so caches, build intermediates, plugins, presets, samples, and
 proprietary assets fail the package gate. `docs/BUILDING.md` documents where to
 find the successful-run artifacts, their expected names, and launch caveats for
-unsigned debug/smoke packages. macOS CI is documented but not enabled yet;
-ADR-0103 keeps the first macOS job build/test-only and defers artifact upload,
-signing, notarization, and installer work.
+unsigned debug/smoke packages. The macOS CI job is build/test-only and defers
+artifact upload, signing, notarization, and installer work.
 
 On Windows machines with MinGW but without a JUCE-supported compiler, the
 fallback launcher can be verified with the non-JUCE fallback preset:
@@ -621,9 +621,13 @@ for a launch smoke check or use `ctest --preset dev --output-on-failure`.
   post-copy Save As manifest-failure cleanup/recovery policy.
 - `docs/adr/ADR-0102-save-as-failed-target-copy-action.md` records the
   non-destructive Project menu copy action for kept failed Save As targets.
+- `docs/adr/ADR-0103-macos-ci-prerequisites-and-deferral.md` records the macOS
+  CI prerequisites and build/test-only first-job boundary.
 - `docs/adr/ADR-0104-save-as-failed-target-retry-design.md` records the
   future manifest-only retry command boundary and overwrite/conflict policy for
   kept failed Save As targets.
+- `docs/adr/ADR-0105-macos-build-test-ci-job.md` records the enabled
+  build/test-only macOS JUCE App CI job.
 - `docs/AUDIO_MIDI_SETUP_UX.md` documents the first-run device setup UX states.
 - `docs/CI_ACTION_PIN_REVIEW.md` documents the scheduled review checklist for
   GitHub-maintained CI action major pins.

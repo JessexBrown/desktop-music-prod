@@ -2,18 +2,7 @@
 
 # Next Issues
 
-## 1. Add macOS Build-Test CI Job
-
-Acceptance:
-- Add a `macOS JUCE App` GitHub Actions job using the
-  `docs/MACOS_CI_PREREQUISITES.md` assumptions.
-- Pin the runner to `macos-15`, select Xcode 16.4 explicitly, use the existing
-  `dev-host` preset, and give the job a dedicated FetchContent cache path.
-- Run configure, build, and `ctest --preset dev-host --output-on-failure`.
-- Do not upload a macOS artifact, sign, notarize, create an installer, or bundle
-  plugins, presets, samples, commercial sounds, or proprietary assets.
-
-## 2. Add Save As Failed Target Retry Command
+## 1. Add Save As Failed Target Retry Command
 
 Acceptance:
 - Add `project.saveAs.retryFailedTargetManifest` using ADR-0104's enablement,
@@ -26,7 +15,7 @@ Acceptance:
 - Verify retry does not start a Save As package-copy job and does not touch the
   real-time audio path.
 
-## 3. Add Project Save Temporary Manifest Write Failure Coverage
+## 2. Add Project Save Temporary Manifest Write Failure Coverage
 
 Acceptance:
 - Add focused core coverage for a project save failure before
@@ -37,7 +26,7 @@ Acceptance:
 - Preserve the successful project save/load, previous-backup success/failure,
   asset-folder failure, and commit-failure tests.
 
-## 4. Add Project Save Package Path File Failure Coverage
+## 3. Add Project Save Package Path File Failure Coverage
 
 Acceptance:
 - Add focused core coverage for saving a project package to a path already
@@ -48,7 +37,7 @@ Acceptance:
 - Preserve the successful project save/load and existing project save failure
   tests.
 
-## 5. Add App Settings Empty Path Failure Coverage
+## 4. Add App Settings Empty Path Failure Coverage
 
 Acceptance:
 - Add focused core coverage for saving app settings with an empty settings path.
@@ -56,3 +45,16 @@ Acceptance:
 - Verify the error is human-readable and no settings model state is mutated.
 - Preserve the successful settings save/load, reset, commit-failure,
   temporary-write-failure, and directory-creation-failure tests.
+
+## 5. Draft macOS Artifact Signing Policy
+
+Acceptance:
+- Add a focused ADR for macOS app artifact, signing, notarization, and installer
+  policy before any macOS package upload is enabled.
+- Clarify whether unsigned debug `.app` bundles are allowed in CI, what user
+  messaging they require, and what must wait for signed/notarized release
+  packaging.
+- Confirm that the policy does not bundle plugins, presets, samples, commercial
+  sounds, logos, or proprietary assets.
+- Do not upload a macOS artifact, add signing secrets, notarize, or create an
+  installer in the same change.

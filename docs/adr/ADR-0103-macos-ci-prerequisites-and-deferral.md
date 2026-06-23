@@ -4,7 +4,7 @@
 
 ## Status
 
-Accepted.
+Accepted; build/test follow-up implemented by ADR-0105.
 
 ## Context
 
@@ -23,7 +23,8 @@ or downloadable `.app` artifact packaging to prove the v0.1 vertical slice.
 ## Decision
 
 Add `docs/MACOS_CI_PREREQUISITES.md` to document the macOS build assumptions,
-official source review, and future GitHub Actions job shape.
+official source review, and future GitHub Actions job shape. ADR-0105 later
+implements that build/test-only job.
 
 Defer adding a macOS GitHub Actions app job in this slice. Once the documented
 runner/toolchain assumptions have been reviewed, the next macOS CI step should
@@ -47,17 +48,16 @@ assets as part of macOS CI.
   --preset dev-host`, and `ctest --preset dev-host --output-on-failure`.
 - The project avoids a floating `macos-latest` CI dependency while GitHub's
   hosted runner defaults are changing.
-- The first future macOS CI task is small and reviewable: build/test only,
+- The follow-up macOS CI task remained small and reviewable: build/test only,
   pinned runner, no artifact.
-- The project still lacks macOS CI coverage until that follow-up task is
-  implemented.
+- The project lacked macOS CI coverage until ADR-0105 implemented that
+  follow-up task.
 - macOS release packaging remains intentionally unclaimed: no signing,
   notarization, installer, bundled-plugin, preset, sample, or proprietary-asset
   promises are made.
 
 ## Follow-Ups
 
-- Add a build/test-only `macOS JUCE App` CI job using the documented pinned
-  runner/toolchain assumptions.
+- Build/test-only `macOS JUCE App` CI job implemented by ADR-0105.
 - Draft macOS artifact/signing/notarization policy before uploading any
   downloadable macOS CI or release package.

@@ -130,7 +130,7 @@ ctest --preset dev --output-on-failure
 
 ## Continuous Integration
 
-GitHub Actions currently runs three jobs on pushes and pull requests:
+GitHub Actions currently runs four jobs on pushes and pull requests:
 
 - `Windows MSVC App` configures, builds, and tests the `dev` preset on
   `windows-latest`. Its CTest run includes `projectname_app_smoke`,
@@ -147,19 +147,20 @@ GitHub Actions currently runs three jobs on pushes and pull requests:
   runs `ctest --preset dev-host --output-on-failure` under `xvfb-run -a`.
   After tests pass, the job uploads a short-retention artifact named
   `rabbington-studio-linux-juce-app-<commit-sha>` for 7 days.
-- macOS app CI is documented in `docs/MACOS_CI_PREREQUISITES.md` but is not
-  enabled yet. ADR-0103 defers the workflow job in this slice; the first future
-  macOS job should be build/test-only, pin `macos-15`, select Xcode 16.4
-  explicitly, use `dev-host`, and upload no app artifact.
+- `macOS JUCE App` pins `macos-15`, selects Xcode 16.4 explicitly, configures
+  and builds `dev-host`, and runs
+  `ctest --preset dev-host --output-on-failure`. It intentionally uploads no
+  app artifact.
 
 All CI jobs set `FETCHCONTENT_BASE_DIR` to a job-specific directory under
 `.cache/fetchcontent` and cache that directory with `actions/cache`. This
 reuses JUCE and nlohmann/json FetchContent downloads without committing
 dependency sources, build trees, or generated artifacts. Keeping separate
-cache directories for Windows MSVC, Linux Core, and Linux JUCE App builds avoids
-CMake subbuild generator collisions. The SPDX check ignores local/generated
-roots such as `.cache/`, `out/`, and `build/` so restored third-party dependency
-sources do not become part of the first-party license-header baseline.
+cache directories for Windows MSVC, Linux Core, Linux JUCE App, and macOS JUCE
+App builds helps avoid CMake subbuild generator collisions. The SPDX check
+ignores local/generated roots such as `.cache/`, `out/`, and `build/` so
+restored third-party dependency sources do not become part of the first-party
+license-header baseline.
 The Windows MSVC and Linux JUCE app artifacts are staged under each runner's
 temporary directory and contain only the app executable plus `LICENSE`,
 `README.md`, `docs/DEPENDENCIES.md`, an artifact note, and `SHA256SUMS.txt`.
@@ -180,9 +181,9 @@ The app artifacts are only present after the matching app job has passed:
 - Linux: `rabbington-studio-linux-juce-app-<commit-sha>`
 
 GitHub keeps these CI artifacts for 7 days. The `<commit-sha>` suffix is the
-full commit SHA for that workflow run. macOS does not have a CI app artifact
-yet; build it locally with the `dev-host` preset until macOS build/test CI and
-package policy are added.
+full commit SHA for that workflow run. macOS CI is build/test-only and does not
+upload an app artifact until macOS package, signing, notarization, and installer
+policy are documented.
 
 With GitHub CLI, find a successful run and download one or both app artifacts:
 
@@ -276,7 +277,7 @@ Install Xcode or Command Line Tools plus CMake, then use `dev-host` for the JUCE
 desktop app build. Audio Unit hosting is not implemented in this first slice.
 Signing/notarization are release tasks, not part of the local prototype build.
 See `docs/MACOS_CI_PREREQUISITES.md` for the current macOS source review,
-minimum JUCE/CMake assumptions, and future build/test-only CI shape.
+minimum JUCE/CMake assumptions, and build/test-only CI shape.
 
 ### Linux
 
