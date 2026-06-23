@@ -896,6 +896,42 @@ void appSettingsDirectoryCreationFailurePreservesOccupiedParentPath()
            "Temporary occupied app settings parent path deleted");
 }
 
+void appSettingsEmptyPathFailsBeforeFilesystemWork()
+{
+    projectname::AppSettings settings;
+    settings.audioSetup.firstRunPromptDismissed = true;
+    settings.audioSetup.preferredOutput.hasOutputDevice = true;
+    settings.audioSetup.preferredOutput.deviceType = "Windows Audio";
+    settings.audioSetup.preferredOutput.deviceName = "Empty Path Output";
+    settings.audioSetup.preferredOutput.sampleRateHz = 48000.0;
+    settings.audioSetup.preferredOutput.bufferSizeSamples = 256;
+    settings.audioSetup.preferredOutput.outputChannelCount = 2;
+    const auto originalSettings = settings;
+
+    const auto previousCurrentPath = std::filesystem::current_path();
+    const auto scratchDirectory =
+        makeTemporaryPackagePath("projectname-app-settings-empty-path-cwd-test");
+    std::filesystem::create_directories(scratchDirectory);
+    std::filesystem::current_path(scratchDirectory);
+
+    const auto unexpectedTemporaryPath = scratchDirectory / ".tmp";
+    std::string error;
+    expect(!projectname::saveAppSettings(settings, {}, error),
+           "App settings save rejects an empty settings path");
+    expect(error.find("App settings path is empty") != std::string::npos,
+           "Empty app settings path failure error is human-readable");
+    expect(settings == originalSettings,
+           "Empty app settings path failure does not mutate the settings model");
+    expect(!std::filesystem::exists(unexpectedTemporaryPath),
+           "Empty app settings path failure does not create a cwd temporary settings file");
+    expect(std::filesystem::is_empty(scratchDirectory),
+           "Empty app settings path failure does not create directories or files in the scratch cwd");
+
+    std::filesystem::current_path(previousCurrentPath);
+    expect(std::filesystem::remove_all(scratchDirectory) > 0,
+           "Temporary empty-path app settings cwd deleted");
+}
+
 void appSettingsLoadsAudioSetupDefaultsFromMinimalJson()
 {
     std::string error;
@@ -9244,6 +9280,7 @@ int main()
     appSettingsCommitFailureRemovesTemporaryFile();
     appSettingsTemporaryWriteFailureKeepsExistingSettings();
     appSettingsDirectoryCreationFailurePreservesOccupiedParentPath();
+    appSettingsEmptyPathFailsBeforeFilesystemWork();
     appSettingsLoadsAudioSetupDefaultsFromMinimalJson();
     appSettingsRejectsUnsupportedVersion();
     appSettingsResetClearsAudioSetupPreferences();

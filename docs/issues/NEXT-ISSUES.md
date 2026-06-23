@@ -2,16 +2,7 @@
 
 # Next Issues
 
-## 1. Add App Settings Empty Path Failure Coverage
-
-Acceptance:
-- Add focused core coverage for saving app settings with an empty settings path.
-- Verify the save fails before directory creation or temporary-write work.
-- Verify the error is human-readable and no settings model state is mutated.
-- Preserve the successful settings save/load, reset, commit-failure,
-  temporary-write-failure, and directory-creation-failure tests.
-
-## 2. Draft macOS Artifact Signing Policy
+## 1. Draft macOS Artifact Signing Policy
 
 Acceptance:
 - Add a focused ADR for macOS app artifact, signing, notarization, and installer
@@ -24,7 +15,7 @@ Acceptance:
 - Do not upload a macOS artifact, add signing secrets, notarize, or create an
   installer in the same change.
 
-## 3. Add Save As Retry Symlink Conflict Coverage
+## 2. Add Save As Retry Symlink Conflict Coverage
 
 Acceptance:
 - Add focused retry preflight coverage for `manifest.json` symlink conflicts on
@@ -36,7 +27,7 @@ Acceptance:
 - Preserve the existing regular-file, directory, missing-asset, and stale
   temporary-manifest retry coverage.
 
-## 4. Add Project Manifest Load Directory Failure Coverage
+## 3. Add Project Manifest Load Directory Failure Coverage
 
 Acceptance:
 - Add focused core coverage for loading a project package whose `manifest.json`
@@ -47,7 +38,7 @@ Acceptance:
 - Preserve malformed JSON, unsupported-version, schema, and missing-manifest
   load failure coverage.
 
-## 5. Add Project Save Package Directory Creation Failure Coverage
+## 4. Add Project Save Package Directory Creation Failure Coverage
 
 Acceptance:
 - Add focused core coverage for saving a project package when the package
@@ -58,3 +49,15 @@ Acceptance:
 - Verify the error is human-readable.
 - Preserve package-path file rejection, asset-folder failure, temporary-manifest
   failure, backup failure, commit failure, and successful save/load tests.
+
+## 5. Add App Settings Load Directory Path Coverage
+
+Acceptance:
+- Add focused core coverage for loading app settings when the settings path is
+  occupied by a directory.
+- Verify load returns no settings without parsing JSON or mutating caller-owned
+  default settings.
+- Verify the app fallback path remains explicit in tests when no persisted
+  settings are loaded.
+- Preserve missing-file, malformed JSON, unsupported-version, reset, and
+  successful load/save coverage.
