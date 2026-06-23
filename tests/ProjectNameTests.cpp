@@ -1461,6 +1461,63 @@ void projectPackageSaveAsRetryPreflightRejectsTargetManifestConflicts()
     std::filesystem::remove_all(directoryTarget);
 }
 
+void projectPackageSaveAsRetryPreflightRejectsTargetManifestSymlinkConflicts()
+{
+    auto project = projectname::ProjectModel::createDefault();
+
+    projectname::ProjectClip imported;
+    imported.id = "save-as-retry-symlink-imported";
+    imported.name = "Save As Retry Symlink Imported";
+    imported.type = "audio-file";
+    imported.relativePath = "audio/symlink.wav";
+    imported.lengthBeats = 4.0;
+    expect(project.addClipToTrack("track-1", imported),
+           "Save As retry symlink conflict test adds imported clip");
+
+    const auto sourcePackage = makeTemporaryPackagePath("projectname-save-as-retry-symlink-source-test");
+    const auto targetPackage = makeTemporaryPackagePath("projectname-save-as-retry-symlink-target-test");
+    const auto manifestSymlinkPath = targetPackage / "manifest.json";
+    const auto symlinkTargetPath = targetPackage / "linked-manifest-target.json";
+    writeTextFile(targetPackage / imported.relativePath, "copied audio");
+    writeTextFile(symlinkTargetPath, "external manifest target");
+
+    std::error_code symlinkError;
+    std::filesystem::create_symlink(symlinkTargetPath, manifestSymlinkPath, symlinkError);
+    if (symlinkError)
+    {
+        std::filesystem::remove_all(targetPackage);
+        return;
+    }
+
+    projectname::ProjectPackageSaveAsRetryState recovery;
+    recovery.sourcePackageDirectory = sourcePackage;
+    recovery.targetPackageDirectory = targetPackage;
+    recovery.projectSnapshot = project;
+    recovery.copiedFileCount = 1;
+
+    const auto symlinkConflict = projectname::preflightProjectPackageSaveAsRetry(&recovery,
+                                                                                 project,
+                                                                                 sourcePackage);
+    expect(symlinkConflict.status
+               == projectname::ProjectPackageSaveAsRetryPreflightStatus::targetManifestConflict,
+           "Save As retry preflight rejects manifest symlink conflicts");
+    expect(symlinkConflict.message.find("target manifest path is occupied by a non-regular entry")
+               != std::string::npos,
+           "Save As retry manifest symlink conflict error is human-readable");
+    expect(symlinkConflict.path == manifestSymlinkPath,
+           "Save As retry manifest symlink conflict reports the symlink path");
+    expect(std::filesystem::is_symlink(std::filesystem::symlink_status(manifestSymlinkPath)),
+           "Save As retry preflight leaves the manifest symlink unchanged");
+    expect(readTextFile(symlinkTargetPath) == "external manifest target",
+           "Save As retry preflight does not overwrite or remove the manifest symlink target");
+    expect(readTextFile(targetPackage / imported.relativePath) == "copied audio",
+           "Save As retry preflight does not recopy or mutate copied target assets");
+    expect(!std::filesystem::exists(targetPackage / "manifest.json.tmp"),
+           "Save As retry manifest symlink conflict does not create a temporary manifest");
+
+    std::filesystem::remove_all(targetPackage);
+}
+
 void projectPackageSaveAsRetryPreflightRejectsMissingCopiedAssetsAndStaleState()
 {
     auto project = projectname::ProjectModel::createDefault();
@@ -9295,6 +9352,7 @@ int main()
     backgroundSaveAsPackageCopyJobCancelsBeforeStart();
     projectPackageSaveAsRetryPreflightAllowsManifestOnlyRetryAndStaleTempCleanup();
     projectPackageSaveAsRetryPreflightRejectsTargetManifestConflicts();
+    projectPackageSaveAsRetryPreflightRejectsTargetManifestSymlinkConflicts();
     projectPackageSaveAsRetryPreflightRejectsMissingCopiedAssetsAndStaleState();
     projectLoopRegionValidatesAndRoundTrips();
     projectImportedClipSelectionValidatesAndRoundTrips();

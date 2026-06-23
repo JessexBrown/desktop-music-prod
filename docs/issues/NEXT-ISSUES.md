@@ -2,19 +2,7 @@
 
 # Next Issues
 
-## 1. Add Save As Retry Symlink Conflict Coverage
-
-Acceptance:
-- Add focused retry preflight coverage for `manifest.json` symlink conflicts on
-  platforms where symlink creation is available without elevated permissions.
-- Skip or fixture-gate the symlink case cleanly when the host cannot create test
-  symlinks.
-- Verify the symlink target is not overwritten or removed, retry remains
-  manifest-only, and the error is human-readable.
-- Preserve the existing regular-file, directory, missing-asset, and stale
-  temporary-manifest retry coverage.
-
-## 2. Add Project Manifest Load Directory Failure Coverage
+## 1. Add Project Manifest Load Directory Failure Coverage
 
 Acceptance:
 - Add focused core coverage for loading a project package whose `manifest.json`
@@ -25,7 +13,7 @@ Acceptance:
 - Preserve malformed JSON, unsupported-version, schema, and missing-manifest
   load failure coverage.
 
-## 3. Add Project Save Package Directory Creation Failure Coverage
+## 2. Add Project Save Package Directory Creation Failure Coverage
 
 Acceptance:
 - Add focused core coverage for saving a project package when the package
@@ -37,7 +25,7 @@ Acceptance:
 - Preserve package-path file rejection, asset-folder failure, temporary-manifest
   failure, backup failure, commit failure, and successful save/load tests.
 
-## 4. Add App Settings Load Directory Path Coverage
+## 3. Add App Settings Load Directory Path Coverage
 
 Acceptance:
 - Add focused core coverage for loading app settings when the settings path is
@@ -49,7 +37,7 @@ Acceptance:
 - Preserve missing-file, malformed JSON, unsupported-version, reset, and
   successful load/save coverage.
 
-## 5. Add macOS Artifact Upload Guardrail Check
+## 4. Add macOS Artifact Upload Guardrail Check
 
 Acceptance:
 - Add a lightweight repository check that verifies the `macOS JUCE App` CI job
@@ -60,3 +48,15 @@ Acceptance:
   checksum generation, unsigned debug messaging, signing, notarization, or
   installer work is intentionally added.
 - Preserve the existing CI job names and current Windows/Linux artifact tests.
+
+## 5. Add Save As Retry Asset Symlink Rejection Coverage
+
+Acceptance:
+- Add focused retry preflight coverage for copied package asset paths that are
+  symlinks instead of regular files.
+- Fixture-gate the symlink case cleanly when the host cannot create test
+  symlinks without elevated permissions.
+- Verify the asset symlink target is not overwritten or removed, retry does not
+  recopy assets or write a manifest, and the error is human-readable.
+- Preserve the existing regular-file, directory, missing-asset,
+  manifest-symlink, and stale temporary-manifest retry coverage.
