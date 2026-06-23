@@ -268,9 +268,9 @@ Third-party dependencies remain under their own licenses as recorded in
   existing manifest, writes the next manifest through `manifest.json.tmp`, and
   removes the staged manifest if previous-backup creation fails. Stale temporary
   manifest symlinks, including broken links, are removed before writing, while
-  asset-folder and final manifest symlinks, including broken links, are rejected
-  before manifest staging, backup, or commit so the save path does not follow
-  them.
+  asset-folder and final manifest symlinks, including linked and broken later
+  asset-folder links, are rejected before manifest staging, backup, or commit so
+  the save path does not follow them.
 - Project load rejects manifest directories and manifest symlinks, including
   broken links, before parsing them; session coverage keeps the active project
   unchanged and verifies manifest-link failures do not rewrite isolated app

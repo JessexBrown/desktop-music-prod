@@ -378,8 +378,8 @@ manifest-directory load failure/app-settings isolation tests, manifest symlink
 and broken-symlink load failure/app-settings isolation tests when host-supported,
 package-path file rejection tests, package directory creation failure tests,
 package and asset-folder symlink path failure tests, including broken asset
-folder links and later broken asset folder links, when host-supported, staged
-temporary-manifest symlink cleanup tests, including broken links, when
+folder links and linked/broken later asset folder links, when host-supported,
+staged temporary-manifest symlink cleanup tests, including broken links, when
 host-supported, manifest symlink and broken-symlink save rejection tests,
 session-level manifest and asset-folder symlink save failure tests, including
 broken links, when host-supported, staged temporary-manifest open/commit failure
