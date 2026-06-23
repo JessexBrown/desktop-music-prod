@@ -272,7 +272,8 @@ Third-party dependencies remain under their own licenses as recorded in
   settings or create `manifest.json.tmp`.
 - Shared app session that keeps UI playback state tied to the project-backed
   transport and preserves the current in-memory project when package saves or
-  loads fail.
+  loads fail, including final manifest symlink and broken-symlink save
+  rejections.
 - Project menu, Import control, and deterministic initial
   `Rabbington Studio Demo.project` package in the user's documents folder.
 - Import uses a native file chooser in the JUCE shell, runs project-package WAV

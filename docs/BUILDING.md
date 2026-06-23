@@ -381,8 +381,8 @@ package and asset-folder symlink path failure tests, including broken asset
 folder links, when host-supported, staged temporary-manifest symlink cleanup
 tests, including broken links, when host-supported, manifest symlink and
 broken-symlink save rejection tests,
-session-level manifest symlink save failure tests when host-supported, staged
-temporary-manifest open/commit failure tests, Save As retry manifest/asset
+session-level manifest symlink and broken-symlink save failure tests when
+host-supported, staged temporary-manifest open/commit failure tests, Save As retry manifest/asset
 symlink conflict tests when host-supported, Save As source and target symlink
 rejection tests, including broken source and target links, when host-supported, plus
 app settings load-directory, symlink, broken-symlink, empty-path,
