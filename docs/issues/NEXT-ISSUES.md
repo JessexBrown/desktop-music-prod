@@ -2,21 +2,7 @@
 
 # Next Issues
 
-## 1. Add Project Save Broken Asset Folder Symlink Failure Coverage
-
-Acceptance:
-- Add focused core coverage for saving a project package when an asset folder
-  path, such as `audio/`, is a broken symlink.
-- Fixture-gate cleanly when the host cannot create test symlinks without
-  elevated permissions.
-- Verify save rejects the asset folder path before manifest staging, leaves the
-  missing symlink target uncreated, and does not write or remove project
-  manifest files through the link.
-- Preserve package-path symlink rejection, asset-folder symlink-to-directory
-  rejection, temporary-manifest cleanup, manifest-symlink rejection, and
-  successful save/load coverage.
-
-## 2. Add Project Save Broken Manifest Symlink Session Failure Coverage
+## 1. Add Project Save Broken Manifest Symlink Session Failure Coverage
 
 Acceptance:
 - Add focused `AppSession` coverage for saving a project package whose existing
@@ -30,7 +16,7 @@ Acceptance:
   manifest-symlink save rejection, temporary-manifest cleanup, and successful
   session save/load coverage.
 
-## 3. Add App Settings Save Broken Parent Symlink Failure Coverage
+## 2. Add App Settings Save Broken Parent Symlink Failure Coverage
 
 Acceptance:
 - Add focused core coverage for saving app settings when an intermediate
@@ -44,7 +30,7 @@ Acceptance:
   rejection, temporary-symlink cleanup, temporary-write failure, commit failure,
   and successful load/save coverage.
 
-## 4. Add Project Load Manifest Directory Settings Isolation Coverage
+## 3. Add Project Load Manifest Directory Settings Isolation Coverage
 
 Acceptance:
 - Add focused session coverage proving project load failures caused by a
@@ -56,7 +42,7 @@ Acceptance:
   broken-symlink settings isolation, app settings corruption recovery, and
   successful project load/save coverage.
 
-## 5. Add Background Save As Broken Source Symlink Failure Coverage
+## 4. Add Background Save As Broken Source Symlink Failure Coverage
 
 Acceptance:
 - Add focused background Save As package-copy job coverage for a broken source
@@ -68,3 +54,18 @@ Acceptance:
 - Preserve plain copy-command broken source symlink coverage, broken target
   symlink coverage, cancellation progress, and successful background copy
   coverage.
+
+## 5. Add Project Save Broken Later Asset Folder Symlink Coverage
+
+Acceptance:
+- Add focused core coverage for saving a project package when a later asset
+  folder path, such as `samples/` or `backups/`, is a broken symlink after
+  earlier asset folders already exist as regular directories.
+- Fixture-gate cleanly when the host cannot create test symlinks without
+  elevated permissions.
+- Verify save rejects the named asset folder before manifest staging, leaves the
+  missing symlink target uncreated, preserves earlier asset directories, and
+  does not write or remove project manifest files through the link.
+- Preserve broken `audio/` asset-folder symlink rejection, package-path symlink
+  rejection, asset-folder symlink-to-directory rejection, temporary-manifest
+  cleanup, manifest-symlink rejection, and successful save/load coverage.
