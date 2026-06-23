@@ -9889,6 +9889,78 @@ void appSessionSaveBrokenManifestSymlinkFailureKeepsSessionProject()
            "Temporary session broken manifest-symlink package deleted");
 }
 
+void appSessionSaveBrokenAssetFolderSymlinkFailureKeepsSessionProject()
+{
+    projectname::AppSession session;
+    session.getProject().setName("Before Session Broken Asset Folder Symlink Failure");
+    session.setTempoBpm(119.0);
+
+    const auto package =
+        makeTemporaryPackagePath("projectname-session-save-broken-asset-folder-symlink-test");
+
+    std::string error;
+    expect(session.saveProjectPackage(package, error),
+           "Initial session broken asset-folder symlink package save succeeds");
+
+    const auto manifestPath = package / "manifest.json";
+    const auto temporaryManifestPath = package / "manifest.json.tmp";
+    const auto originalManifestText = readTextFile(manifestPath);
+    expect(originalManifestText.find("Before Session Broken Asset Folder Symlink Failure") != std::string::npos,
+           "Session broken asset-folder symlink fixture starts with the original manifest state");
+
+    const auto audioSymlinkPath = package / "audio";
+    const auto missingAudioTarget =
+        makeTemporaryPackagePath("projectname-session-save-broken-asset-folder-symlink-target-test");
+    expect(std::filesystem::remove_all(audioSymlinkPath) > 0,
+           "Session broken asset-folder symlink fixture removes the original audio directory");
+
+    std::error_code symlinkError;
+    std::filesystem::create_directory_symlink(missingAudioTarget, audioSymlinkPath, symlinkError);
+    if (symlinkError)
+    {
+        std::filesystem::remove_all(package);
+        return;
+    }
+
+    session.getProject().setName("After Session Broken Asset Folder Symlink Failure");
+    session.setTempoBpm(167.0);
+    const auto attemptedSessionProject = session.getProject();
+
+    error = "stale session broken asset-folder symlink save error";
+    expect(!session.saveProjectPackage(package, error),
+           "Session save rejects a broken symlink asset folder path");
+    expect(error.find("asset folder") != std::string::npos
+               && error.find("symlink") != std::string::npos
+               && error.find("audio") != std::string::npos,
+           "Session broken asset-folder symlink failure error is human-readable");
+    expect(error.find("not found") == std::string::npos,
+           "Session broken asset-folder symlink failure is not reported as a missing folder");
+    expect(session.getProject() == attemptedSessionProject,
+           "Session broken asset-folder symlink save failure leaves the session project unchanged");
+    expect(std::filesystem::is_symlink(std::filesystem::symlink_status(audioSymlinkPath)),
+           "Session broken asset-folder symlink failure leaves the audio symlink unchanged");
+    expect(!std::filesystem::exists(missingAudioTarget),
+           "Session broken asset-folder symlink failure does not create the missing target");
+    expect(!std::filesystem::exists(temporaryManifestPath),
+           "Session broken asset-folder symlink failure does not create a temporary manifest");
+    expect(readTextFile(manifestPath) == originalManifestText,
+           "Session broken asset-folder symlink failure leaves the active manifest unchanged");
+    expect(readTextFile(manifestPath).find("After Session Broken Asset Folder Symlink Failure") == std::string::npos,
+           "Session broken asset-folder symlink failure does not commit the new project state");
+    expect(!std::filesystem::exists(package / "backups" / "manifest.previous.json"),
+           "Session broken asset-folder symlink failure happens before backup creation");
+    expect(!std::filesystem::exists(missingAudioTarget / "manifest.json"),
+           "Session broken asset-folder symlink failure does not write target manifest through the link");
+    expect(!std::filesystem::exists(missingAudioTarget / "manifest.json.tmp"),
+           "Session broken asset-folder symlink failure does not write target temporary manifest through the link");
+
+    expect(std::filesystem::remove(audioSymlinkPath),
+           "Temporary session broken asset-folder symlink deleted");
+    expect(std::filesystem::remove_all(package) > 0,
+           "Temporary session broken asset-folder symlink package deleted");
+    std::filesystem::remove_all(missingAudioTarget);
+}
+
 void appSessionLoopRegionCommandsKeepTransportState()
 {
     projectname::AppSession session;
@@ -11391,6 +11463,7 @@ int main()
     appSessionSavesAndLoadsProjectPackages();
     appSessionSaveManifestSymlinkFailureKeepsSessionProject();
     appSessionSaveBrokenManifestSymlinkFailureKeepsSessionProject();
+    appSessionSaveBrokenAssetFolderSymlinkFailureKeepsSessionProject();
     appSessionLoopRegionCommandsKeepTransportState();
     appSessionAdvanceWrapsEnabledLoopRegion();
     appSessionPreparesImportedTimelinePlaybackFromPlay();
