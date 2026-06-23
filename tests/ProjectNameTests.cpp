@@ -1771,6 +1771,47 @@ void projectSavePackagePathFileFailureLeavesOccupiedPathUntouched()
            "Temporary occupied project package path file deleted");
 }
 
+void projectSavePackageDirectoryCreationFailureLeavesOccupiedParentUntouched()
+{
+    auto project = projectname::ProjectModel::createDefault();
+    project.setName("Package Directory Creation Failure Test");
+    project.getTransport().setTempoBpm(102.0);
+
+    const auto occupiedParentPath =
+        makeTemporaryPackagePath("projectname-save-package-parent-file-failure-test");
+    const auto targetPackage = occupiedParentPath / "Nested Target.project";
+    writeTextFile(occupiedParentPath, "occupied intermediate package parent");
+
+    std::string error;
+    expect(!project.savePackage(targetPackage, error),
+           "Project save reports package directory creation failure");
+    expect(error.find("Could not create project package directory") != std::string::npos,
+           "Package directory creation failure error is human-readable");
+    expect(std::filesystem::is_regular_file(occupiedParentPath),
+           "Package directory creation failure leaves occupied parent as a file");
+    expect(readTextFile(occupiedParentPath) == "occupied intermediate package parent",
+           "Package directory creation failure preserves occupied parent contents");
+    expect(!std::filesystem::exists(targetPackage),
+           "Package directory creation failure does not create the target package directory");
+    expect(!std::filesystem::exists(targetPackage / "manifest.json"),
+           "Package directory creation failure does not create a manifest below occupied parent");
+    expect(!std::filesystem::exists(targetPackage / "manifest.json.tmp"),
+           "Package directory creation failure does not create a temporary manifest below occupied parent");
+    expect(!std::filesystem::exists(targetPackage / "audio"),
+           "Package directory creation failure does not create an audio asset folder");
+    expect(!std::filesystem::exists(targetPackage / "samples"),
+           "Package directory creation failure does not create a samples asset folder");
+    expect(!std::filesystem::exists(targetPackage / "presets"),
+           "Package directory creation failure does not create a presets asset folder");
+    expect(!std::filesystem::exists(targetPackage / "analysis"),
+           "Package directory creation failure does not create an analysis asset folder");
+    expect(!std::filesystem::exists(targetPackage / "backups"),
+           "Package directory creation failure does not create a backups asset folder");
+
+    expect(std::filesystem::remove(occupiedParentPath),
+           "Temporary occupied package parent path file deleted");
+}
+
 void projectSaveCreatesPreviousManifestBackup()
 {
     auto project = projectname::ProjectModel::createDefault();
@@ -9395,6 +9436,7 @@ int main()
     projectImportedClipSelectionValidatesAndRoundTrips();
     projectTrackMixStateRoundTripsAndLoadsLegacyDefaults();
     projectSavePackagePathFileFailureLeavesOccupiedPathUntouched();
+    projectSavePackageDirectoryCreationFailureLeavesOccupiedParentUntouched();
     projectSaveCreatesPreviousManifestBackup();
     projectSaveBackupFailureKeepsManifestAndRemovesTemporaryManifest();
     projectSaveTemporaryManifestOpenFailureKeepsManifestAndOccupiedPath();

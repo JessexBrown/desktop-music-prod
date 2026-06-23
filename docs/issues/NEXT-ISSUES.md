@@ -2,19 +2,7 @@
 
 # Next Issues
 
-## 1. Add Project Save Package Directory Creation Failure Coverage
-
-Acceptance:
-- Add focused core coverage for saving a project package when the package
-  directory cannot be created because an intermediate parent path is occupied by
-  a regular file.
-- Verify the occupied parent file remains unchanged and no package asset folders
-  or manifest temp files are created.
-- Verify the error is human-readable.
-- Preserve package-path file rejection, asset-folder failure, temporary-manifest
-  failure, backup failure, commit failure, and successful save/load tests.
-
-## 2. Add App Settings Load Directory Path Coverage
+## 1. Add App Settings Load Directory Path Coverage
 
 Acceptance:
 - Add focused core coverage for loading app settings when the settings path is
@@ -26,7 +14,7 @@ Acceptance:
 - Preserve missing-file, malformed JSON, unsupported-version, reset, and
   successful load/save coverage.
 
-## 3. Add macOS Artifact Upload Guardrail Check
+## 2. Add macOS Artifact Upload Guardrail Check
 
 Acceptance:
 - Add a lightweight repository check that verifies the `macOS JUCE App` CI job
@@ -38,7 +26,7 @@ Acceptance:
   installer work is intentionally added.
 - Preserve the existing CI job names and current Windows/Linux artifact tests.
 
-## 4. Add Save As Retry Asset Symlink Rejection Coverage
+## 3. Add Save As Retry Asset Symlink Rejection Coverage
 
 Acceptance:
 - Add focused retry preflight coverage for copied package asset paths that are
@@ -50,7 +38,7 @@ Acceptance:
 - Preserve the existing regular-file, directory, missing-asset,
   manifest-symlink, and stale temporary-manifest retry coverage.
 
-## 5. Add Project Manifest Load Symlink Failure Coverage
+## 4. Add Project Manifest Load Symlink Failure Coverage
 
 Acceptance:
 - Add focused core coverage for loading a project package whose `manifest.json`
@@ -61,3 +49,16 @@ Acceptance:
   target untouched, and does not mutate an existing `AppSession` project.
 - Preserve missing-manifest, manifest-directory, malformed JSON,
   unsupported-version, schema, and successful load/save coverage.
+
+## 5. Add Project Save Package Symlink Path Failure Coverage
+
+Acceptance:
+- Add focused core coverage for saving a project package when the target package
+  path or an intermediate parent path is a symlink.
+- Fixture-gate the symlink case cleanly when the host cannot create test
+  symlinks without elevated permissions.
+- Verify save does not follow the symlink, does not create package asset folders
+  or manifest temp files, and leaves the symlink target untouched.
+- Preserve package-path file rejection, package-directory-creation failure,
+  asset-folder failure, temporary-manifest failure, backup failure, commit
+  failure, and successful save/load tests.
