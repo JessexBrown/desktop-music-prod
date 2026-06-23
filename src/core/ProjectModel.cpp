@@ -366,9 +366,29 @@ std::optional<ProjectModel> ProjectModel::loadPackage(const std::filesystem::pat
 {
     const auto manifestPath = packageDirectory / manifestFileName;
 
-    if (!std::filesystem::is_regular_file(manifestPath))
+    std::error_code filesystemError;
+    const auto manifestStatus = std::filesystem::symlink_status(manifestPath, filesystemError);
+    if (filesystemError)
+    {
+        error = "Project manifest could not be inspected: " + filesystemError.message();
+        return std::nullopt;
+    }
+
+    if (manifestStatus.type() == std::filesystem::file_type::not_found)
     {
         error = "Project manifest was not found.";
+        return std::nullopt;
+    }
+
+    if (std::filesystem::is_symlink(manifestStatus))
+    {
+        error = "Project manifest path is a symlink.";
+        return std::nullopt;
+    }
+
+    if (!std::filesystem::is_regular_file(manifestStatus))
+    {
+        error = "Project manifest path is not a regular file.";
         return std::nullopt;
     }
 

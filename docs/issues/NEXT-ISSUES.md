@@ -2,19 +2,7 @@
 
 # Next Issues
 
-## 1. Add Project Manifest Load Symlink Failure Coverage
-
-Acceptance:
-- Add focused core coverage for loading a project package whose `manifest.json`
-  path is a symlink.
-- Fixture-gate the symlink case cleanly when the host cannot create test
-  symlinks without elevated permissions.
-- Verify load fails without parsing JSON through the symlink, leaves the link
-  target untouched, and does not mutate an existing `AppSession` project.
-- Preserve missing-manifest, manifest-directory, malformed JSON,
-  unsupported-version, schema, and successful load/save coverage.
-
-## 2. Add Project Save Package Symlink Path Failure Coverage
+## 1. Add Project Save Package Symlink Path Failure Coverage
 
 Acceptance:
 - Add focused core coverage for saving a project package when the target package
@@ -27,7 +15,7 @@ Acceptance:
   asset-folder failure, temporary-manifest failure, backup failure, commit
   failure, and successful save/load tests.
 
-## 3. Add App Settings Load Symlink Path Coverage
+## 2. Add App Settings Load Symlink Path Coverage
 
 Acceptance:
 - Add focused core coverage for loading app settings when the settings path is a
@@ -40,7 +28,7 @@ Acceptance:
 - Preserve missing-file, load-directory, malformed JSON, unsupported-version,
   reset, and successful load/save coverage.
 
-## 4. Add App Settings Save Symlink Path Failure Coverage
+## 3. Add App Settings Save Symlink Path Failure Coverage
 
 Acceptance:
 - Add focused core coverage for saving app settings when the settings file path
@@ -53,7 +41,7 @@ Acceptance:
 - Preserve empty-path, directory-creation failure, temporary-write failure,
   commit failure, load-directory, and successful load/save coverage.
 
-## 5. Add Save As Copy Source Symlink Rejection Coverage
+## 4. Add Save As Copy Source Symlink Rejection Coverage
 
 Acceptance:
 - Add focused Save As copy coverage for source package folders or copied source
@@ -64,3 +52,17 @@ Acceptance:
   untouched, and reports a human-readable unsupported-source-entry error.
 - Preserve target-conflict, source-missing, cancellation, progress, and
   successful copy coverage.
+
+## 5. Add Project Manifest Load Broken Symlink Coverage
+
+Acceptance:
+- Add focused core coverage for loading a project package whose `manifest.json`
+  path is a broken symlink.
+- Fixture-gate the symlink case cleanly when the host cannot create test
+  symlinks without elevated permissions.
+- Verify load fails as a symlink rejection rather than a missing manifest,
+  does not create the broken target, and does not mutate an existing
+  `AppSession` project.
+- Preserve missing-manifest, manifest-directory, manifest-symlink-target,
+  malformed JSON, unsupported-version, schema, and successful load/save
+  coverage.

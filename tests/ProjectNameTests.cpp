@@ -9464,8 +9464,7 @@ void projectManifestDirectoryLoadFailureKeepsSessionProject()
     expect(!loaded.has_value(),
            "Project load rejects a package whose manifest path is a directory");
     expect(error.find("manifest") != std::string::npos
-               && (error.find("not found") != std::string::npos
-                   || error.find("could not be opened") != std::string::npos),
+               && error.find("not a regular file") != std::string::npos,
            "Manifest directory load failure error is human-readable");
     expect(error.find("JSON") == std::string::npos,
            "Manifest directory load failure does not parse the directory as JSON");
@@ -9481,6 +9480,53 @@ void projectManifestDirectoryLoadFailureKeepsSessionProject()
 
     expect(std::filesystem::remove_all(package) > 0,
            "Temporary manifest-directory load package deleted");
+}
+
+void projectManifestSymlinkLoadFailureKeepsSessionProject()
+{
+    projectname::AppSession session;
+    session.getProject().setName("Keep Manifest Symlink Baseline");
+    session.setTempoBpm(104.0);
+    const auto originalProject = session.getProject();
+
+    const auto package = makeTemporaryPackagePath("projectname-manifest-symlink-load-test");
+    const auto manifestSymlinkPath = package / "manifest.json";
+    const auto symlinkTargetPath = package / "linked-manifest-target.json";
+    const auto linkedManifestText =
+        R"({"manifestVersion":1,"name":"Linked Manifest Should Not Load","transport":{"tempoBpm":88.0,"timeSignature":{"numerator":5,"denominator":4},"positionBeats":2.0},"tracks":[]})";
+    writeTextFile(symlinkTargetPath, linkedManifestText);
+
+    std::error_code symlinkError;
+    std::filesystem::create_symlink(symlinkTargetPath, manifestSymlinkPath, symlinkError);
+    if (symlinkError)
+    {
+        std::filesystem::remove_all(package);
+        return;
+    }
+
+    std::string error;
+    auto loaded = projectname::ProjectModel::loadPackage(package, error);
+    expect(!loaded.has_value(),
+           "Project load rejects a package whose manifest path is a symlink");
+    expect(error.find("manifest") != std::string::npos
+               && error.find("symlink") != std::string::npos,
+           "Manifest symlink load failure error is human-readable");
+    expect(error.find("JSON") == std::string::npos,
+           "Manifest symlink load failure does not parse JSON through the symlink");
+    expect(std::filesystem::is_symlink(std::filesystem::symlink_status(manifestSymlinkPath)),
+           "Manifest symlink load failure leaves the manifest symlink unchanged");
+    expect(readTextFile(symlinkTargetPath) == linkedManifestText,
+           "Manifest symlink load failure preserves the symlink target contents");
+
+    expect(!session.loadProjectPackage(package, error),
+           "Session rejects a package whose manifest path is a symlink");
+    expect(session.getProject() == originalProject,
+           "Session keeps current project after manifest symlink load failure");
+    expect(!std::filesystem::exists(package / "manifest.json.tmp"),
+           "Manifest symlink load failure does not create a temporary manifest");
+
+    expect(std::filesystem::remove_all(package) > 0,
+           "Temporary manifest-symlink load package deleted");
 }
 } // namespace
 
@@ -9519,6 +9565,7 @@ int main()
     appSessionImportsAudioWithoutResumingGeneratedTone();
     appSessionLoadFailureKeepsCurrentProject();
     projectManifestDirectoryLoadFailureKeepsSessionProject();
+    projectManifestSymlinkLoadFailureKeepsSessionProject();
     transportStateAdvancesOnlyWhilePlaying();
     projectManifestRoundTrips();
     appSettingsRoundTripsAudioSetupPreferences();
