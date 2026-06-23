@@ -348,8 +348,9 @@ official GitHub repositories. Their test suites include the app launch,
 project-chooser, Audio/MIDI reset, app settings corruption, and restore-detail
 smoke tests plus the SPDX fixture check, CI artifact contents fixture check, and
 core unit tests. See `docs/BUILDING.md` for platform notes and the local-JUCE
-option. Linux JUCE app CI prerequisites are tracked separately in
-`docs/LINUX_JUCE_APP_PREREQUISITES.md`.
+option. Linux and macOS app CI prerequisites are tracked separately in
+`docs/LINUX_JUCE_APP_PREREQUISITES.md` and
+`docs/MACOS_CI_PREREQUISITES.md`.
 
 To run only the domain tests without building the JUCE desktop app:
 
@@ -370,7 +371,9 @@ integrity checks. CI verifies the staged artifact allowlist and checksum file
 before upload so caches, build intermediates, plugins, presets, samples, and
 proprietary assets fail the package gate. `docs/BUILDING.md` documents where to
 find the successful-run artifacts, their expected names, and launch caveats for
-unsigned debug/smoke packages.
+unsigned debug/smoke packages. macOS CI is documented but not enabled yet;
+ADR-0103 keeps the first macOS job build/test-only and defers artifact upload,
+signing, notarization, and installer work.
 
 On Windows machines with MinGW but without a JUCE-supported compiler, the
 fallback launcher can be verified with the non-JUCE fallback preset:

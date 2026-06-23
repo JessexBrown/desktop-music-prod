@@ -2,18 +2,7 @@
 
 # Next Issues
 
-## 1. Add macOS CI Prerequisites Note
-
-Acceptance:
-- Document the expected macOS JUCE app build prerequisites and GitHub Actions
-  runner/toolchain assumptions before adding a macOS app CI job.
-- Decide whether macOS CI should be added immediately or deferred until
-  signing/package policy is clearer, and record any meaningful decision in ADR.
-- Preserve the current local `dev-host` build path and avoid signing,
-  notarization, installer, bundled-plugin, preset, sample, or proprietary-asset
-  claims.
-
-## 2. Add Save As Failed Target Retry Design
+## 1. Add Save As Failed Target Retry Design
 
 Acceptance:
 - Define the UX and command boundary for retrying a target manifest save after a
@@ -24,7 +13,7 @@ Acceptance:
 - Keep retry planning and any future file operations off the real-time audio
   path.
 
-## 3. Add Project Save Backup Failure Coverage
+## 2. Add Project Save Backup Failure Coverage
 
 Acceptance:
 - Add focused core coverage for a project save failure while creating
@@ -35,7 +24,7 @@ Acceptance:
   documented if the current writer cannot clean it safely.
 - Keep the fixture deterministic on Windows, macOS, and Linux.
 
-## 4. Add App Settings Temporary Write Failure Coverage
+## 3. Add App Settings Temporary Write Failure Coverage
 
 Acceptance:
 - Add focused core coverage for an app settings save failure before
@@ -45,7 +34,7 @@ Acceptance:
   human-readable.
 - Preserve the successful settings save/load, reset, and commit-failure tests.
 
-## 5. Add App Settings Directory Creation Failure Coverage
+## 4. Add App Settings Directory Creation Failure Coverage
 
 Acceptance:
 - Add focused core coverage for an app settings save failure when the configured
@@ -55,3 +44,14 @@ Acceptance:
   human-readable.
 - Preserve the successful settings save/load, reset, commit-failure, and
   temporary-write-failure tests.
+
+## 5. Add macOS Build-Test CI Job
+
+Acceptance:
+- Add a `macOS JUCE App` GitHub Actions job using the
+  `docs/MACOS_CI_PREREQUISITES.md` assumptions.
+- Pin the runner to `macos-15`, select Xcode 16.4 explicitly, use the existing
+  `dev-host` preset, and give the job a dedicated FetchContent cache path.
+- Run configure, build, and `ctest --preset dev-host --output-on-failure`.
+- Do not upload a macOS artifact, sign, notarize, create an installer, or bundle
+  plugins, presets, samples, commercial sounds, or proprietary assets.

@@ -34,6 +34,9 @@ cmake --build --preset dev-host
 ctest --preset dev-host --output-on-failure
 ```
 
+See `docs/MACOS_CI_PREREQUISITES.md` for the macOS local baseline and the
+future pinned GitHub Actions job shape.
+
 The Windows `dev` preset configures the project in `out/build/dev-vs2026`; the
 macOS/Linux `dev-host` preset configures in `out/build/dev`. Both enable tests
 and fetch JUCE by default. Their CTest runs include the JUCE app launch smoke
@@ -42,7 +45,8 @@ test (`projectname --smoke-test`), hidden project chooser smoke test
 (`projectname --smoke-audio-midi-reset`), hidden app settings corruption
 recovery smoke test (`projectname --smoke-app-settings-corruption`), hidden
 restore-detail smoke test (`projectname --smoke-restore-details`), the SPDX
-license-header check, the SPDX checker fixture test, and the core unit tests.
+license-header check, the SPDX checker fixture test, the CI artifact contents
+fixture test, and the core unit tests.
 
 For domain-only model/transport/tone tests without building the JUCE app:
 
@@ -143,6 +147,10 @@ GitHub Actions currently runs three jobs on pushes and pull requests:
   runs `ctest --preset dev-host --output-on-failure` under `xvfb-run -a`.
   After tests pass, the job uploads a short-retention artifact named
   `rabbington-studio-linux-juce-app-<commit-sha>` for 7 days.
+- macOS app CI is documented in `docs/MACOS_CI_PREREQUISITES.md` but is not
+  enabled yet. ADR-0103 defers the workflow job in this slice; the first future
+  macOS job should be build/test-only, pin `macos-15`, select Xcode 16.4
+  explicitly, use `dev-host`, and upload no app artifact.
 
 All CI jobs set `FETCHCONTENT_BASE_DIR` to a job-specific directory under
 `.cache/fetchcontent` and cache that directory with `actions/cache`. This
@@ -173,8 +181,8 @@ The app artifacts are only present after the matching app job has passed:
 
 GitHub keeps these CI artifacts for 7 days. The `<commit-sha>` suffix is the
 full commit SHA for that workflow run. macOS does not have a CI app artifact
-yet; build it locally with the `dev-host` preset until macOS CI/package policy
-is added.
+yet; build it locally with the `dev-host` preset until macOS build/test CI and
+package policy are added.
 
 With GitHub CLI, find a successful run and download one or both app artifacts:
 
@@ -267,6 +275,8 @@ are intentionally not implemented yet.
 Install Xcode or Command Line Tools plus CMake, then use `dev-host` for the JUCE
 desktop app build. Audio Unit hosting is not implemented in this first slice.
 Signing/notarization are release tasks, not part of the local prototype build.
+See `docs/MACOS_CI_PREREQUISITES.md` for the current macOS source review,
+minimum JUCE/CMake assumptions, and future build/test-only CI shape.
 
 ### Linux
 
