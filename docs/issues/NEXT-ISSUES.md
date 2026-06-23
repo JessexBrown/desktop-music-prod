@@ -2,18 +2,7 @@
 
 # Next Issues
 
-## 1. Add Project Manifest Load Directory Failure Coverage
-
-Acceptance:
-- Add focused core coverage for loading a project package whose `manifest.json`
-  path is occupied by a directory.
-- Verify load fails with a human-readable missing/unreadable manifest error and
-  does not mutate an existing `AppSession` project when routed through session
-  loading.
-- Preserve malformed JSON, unsupported-version, schema, and missing-manifest
-  load failure coverage.
-
-## 2. Add Project Save Package Directory Creation Failure Coverage
+## 1. Add Project Save Package Directory Creation Failure Coverage
 
 Acceptance:
 - Add focused core coverage for saving a project package when the package
@@ -25,7 +14,7 @@ Acceptance:
 - Preserve package-path file rejection, asset-folder failure, temporary-manifest
   failure, backup failure, commit failure, and successful save/load tests.
 
-## 3. Add App Settings Load Directory Path Coverage
+## 2. Add App Settings Load Directory Path Coverage
 
 Acceptance:
 - Add focused core coverage for loading app settings when the settings path is
@@ -37,7 +26,7 @@ Acceptance:
 - Preserve missing-file, malformed JSON, unsupported-version, reset, and
   successful load/save coverage.
 
-## 4. Add macOS Artifact Upload Guardrail Check
+## 3. Add macOS Artifact Upload Guardrail Check
 
 Acceptance:
 - Add a lightweight repository check that verifies the `macOS JUCE App` CI job
@@ -49,7 +38,7 @@ Acceptance:
   installer work is intentionally added.
 - Preserve the existing CI job names and current Windows/Linux artifact tests.
 
-## 5. Add Save As Retry Asset Symlink Rejection Coverage
+## 4. Add Save As Retry Asset Symlink Rejection Coverage
 
 Acceptance:
 - Add focused retry preflight coverage for copied package asset paths that are
@@ -60,3 +49,15 @@ Acceptance:
   recopy assets or write a manifest, and the error is human-readable.
 - Preserve the existing regular-file, directory, missing-asset,
   manifest-symlink, and stale temporary-manifest retry coverage.
+
+## 5. Add Project Manifest Load Symlink Failure Coverage
+
+Acceptance:
+- Add focused core coverage for loading a project package whose `manifest.json`
+  path is a symlink.
+- Fixture-gate the symlink case cleanly when the host cannot create test
+  symlinks without elevated permissions.
+- Verify load fails without parsing JSON through the symlink, leaves the link
+  target untouched, and does not mutate an existing `AppSession` project.
+- Preserve missing-manifest, manifest-directory, malformed JSON,
+  unsupported-version, schema, and successful load/save coverage.

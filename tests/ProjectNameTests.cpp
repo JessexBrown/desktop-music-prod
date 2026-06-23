@@ -9295,6 +9295,42 @@ void appSessionLoadFailureKeepsCurrentProject()
 
     expect(std::filesystem::remove_all(invalidPackage) > 0, "Temporary invalid session package deleted");
 }
+
+void projectManifestDirectoryLoadFailureKeepsSessionProject()
+{
+    projectname::AppSession session;
+    session.getProject().setName("Keep Manifest Directory Baseline");
+    session.setTempoBpm(101.0);
+    const auto originalProject = session.getProject();
+
+    const auto package = makeTemporaryPackagePath("projectname-manifest-directory-load-test");
+    const auto manifestDirectory = package / "manifest.json";
+    const auto sentinelPath = manifestDirectory / "sentinel.txt";
+    writeTextFile(sentinelPath, "manifest directory sentinel");
+
+    std::string error;
+    auto loaded = projectname::ProjectModel::loadPackage(package, error);
+    expect(!loaded.has_value(),
+           "Project load rejects a package whose manifest path is a directory");
+    expect(error.find("manifest") != std::string::npos
+               && (error.find("not found") != std::string::npos
+                   || error.find("could not be opened") != std::string::npos),
+           "Manifest directory load failure error is human-readable");
+    expect(error.find("JSON") == std::string::npos,
+           "Manifest directory load failure does not parse the directory as JSON");
+    expect(std::filesystem::is_directory(manifestDirectory),
+           "Manifest directory load failure leaves the occupied manifest path unchanged");
+    expect(readTextFile(sentinelPath) == "manifest directory sentinel",
+           "Manifest directory load failure preserves directory contents");
+
+    expect(!session.loadProjectPackage(package, error),
+           "Session rejects a package whose manifest path is a directory");
+    expect(session.getProject() == originalProject,
+           "Session keeps current project after manifest directory load failure");
+
+    expect(std::filesystem::remove_all(package) > 0,
+           "Temporary manifest-directory load package deleted");
+}
 } // namespace
 
 int main()
@@ -9331,6 +9367,7 @@ int main()
     timelinePlaybackPreparationCompletionRejectsCancelledAndStaleResults();
     appSessionImportsAudioWithoutResumingGeneratedTone();
     appSessionLoadFailureKeepsCurrentProject();
+    projectManifestDirectoryLoadFailureKeepsSessionProject();
     transportStateAdvancesOnlyWhilePlaying();
     projectManifestRoundTrips();
     appSettingsRoundTripsAudioSetupPreferences();
