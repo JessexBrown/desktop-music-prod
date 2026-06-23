@@ -1140,6 +1140,57 @@ void appSettingsLoadSymlinkPathKeepsCallerFallbackSettings()
            "Temporary app settings symlink target deleted");
 }
 
+void appSettingsLoadBrokenSymlinkPathKeepsCallerFallbackSettings()
+{
+    projectname::AppSettings fallbackSettings;
+    fallbackSettings.audioSetup.firstRunPromptDismissed = true;
+    fallbackSettings.audioSetup.preferredOutput.hasOutputDevice = true;
+    fallbackSettings.audioSetup.preferredOutput.deviceType = "Windows Audio";
+    fallbackSettings.audioSetup.preferredOutput.deviceName = "Fallback Broken Link Output";
+    fallbackSettings.audioSetup.preferredOutput.sampleRateHz = 48000.0;
+    fallbackSettings.audioSetup.preferredOutput.bufferSizeSamples = 256;
+    fallbackSettings.audioSetup.preferredOutput.outputChannelCount = 2;
+    fallbackSettings.audioSetup.preferredOutput.juceDeviceStateXml =
+        R"(<DEVICESETUP deviceType="Windows Audio" audioOutputDeviceName="Fallback Broken Link Output"/>)";
+    const auto originalFallbackSettings = fallbackSettings;
+
+    const auto settingsSymlinkPath =
+        makeTemporarySettingsPath("projectname-app-settings-load-broken-symlink-test");
+    const auto brokenSettingsTargetPath =
+        makeTemporarySettingsPath("projectname-app-settings-load-broken-symlink-target-test");
+
+    std::error_code symlinkError;
+    std::filesystem::create_symlink(brokenSettingsTargetPath, settingsSymlinkPath, symlinkError);
+    if (symlinkError)
+        return;
+
+    std::string error = "stale broken symlink settings load error";
+    const auto loaded = projectname::loadAppSettings(settingsSymlinkPath, error);
+    expect(!loaded.has_value(),
+           "App settings load rejects a broken symlink settings path");
+    expect(error.find("App settings") != std::string::npos
+               && error.find("symlink") != std::string::npos,
+           "App settings broken-symlink load failure error is human-readable");
+    expect(error.find("No such") == std::string::npos
+               && error.find("not found") == std::string::npos,
+           "App settings broken-symlink load failure is not reported as missing settings");
+
+    if (loaded.has_value())
+        fallbackSettings = *loaded;
+
+    expect(fallbackSettings == originalFallbackSettings,
+           "App settings broken-symlink load leaves caller fallback settings unchanged");
+    expect(std::filesystem::is_symlink(std::filesystem::symlink_status(settingsSymlinkPath)),
+           "App settings broken-symlink load leaves the settings symlink unchanged");
+    expect(!std::filesystem::exists(brokenSettingsTargetPath),
+           "App settings broken-symlink load does not create the missing target");
+    expect(!std::filesystem::exists(settingsSymlinkPath.string() + ".tmp"),
+           "App settings broken-symlink load does not create a temporary settings file");
+
+    expect(std::filesystem::remove(settingsSymlinkPath),
+           "Temporary broken app settings symlink deleted");
+}
+
 void appSettingsLoadsAudioSetupDefaultsFromMinimalJson()
 {
     std::string error;
@@ -10064,6 +10115,7 @@ int main()
     appSettingsEmptyPathFailsBeforeFilesystemWork();
     appSettingsLoadDirectoryPathKeepsCallerFallbackSettings();
     appSettingsLoadSymlinkPathKeepsCallerFallbackSettings();
+    appSettingsLoadBrokenSymlinkPathKeepsCallerFallbackSettings();
     appSettingsLoadsAudioSetupDefaultsFromMinimalJson();
     appSettingsRejectsUnsupportedVersion();
     appSettingsResetClearsAudioSetupPreferences();
