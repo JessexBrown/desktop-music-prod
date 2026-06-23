@@ -350,9 +350,10 @@ The Windows `dev` preset uses Visual Studio 2026, MSVC, and x64. Both
 desktop-app presets fetch JUCE 8.0.13 and nlohmann/json 3.12.0 from their
 official GitHub repositories. Their test suites include the app launch,
 project-chooser, Audio/MIDI reset, app settings corruption, and restore-detail
-smoke tests plus the SPDX fixture check, CI artifact contents fixture check, and
-core unit tests. See `docs/BUILDING.md` for platform notes and the local-JUCE
-option. Linux and macOS app CI prerequisites are tracked separately in
+smoke tests plus the SPDX fixture check, CI artifact contents fixture check, the
+macOS artifact upload guard checks, and core unit tests. See `docs/BUILDING.md`
+for platform notes and the local-JUCE option. Linux and macOS app CI
+prerequisites are tracked separately in
 `docs/LINUX_JUCE_APP_PREREQUISITES.md` and
 `docs/MACOS_CI_PREREQUISITES.md`.
 
@@ -377,7 +378,8 @@ before upload so caches, build intermediates, plugins, presets, samples, and
 proprietary assets fail the package gate. `docs/BUILDING.md` documents where to
 find the successful-run artifacts, their expected names, and launch caveats for
 unsigned debug/smoke packages. The macOS CI job is build/test-only and defers
-artifact upload, signing, notarization, and installer work under
+artifact upload, signing, notarization, and installer work under a CTest
+guardrail tied to
 `docs/adr/ADR-0106-macos-artifact-signing-policy.md`.
 
 On Windows machines with MinGW but without a JUCE-supported compiler, the

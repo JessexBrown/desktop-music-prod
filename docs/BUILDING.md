@@ -46,7 +46,7 @@ test (`projectname --smoke-test`), hidden project chooser smoke test
 recovery smoke test (`projectname --smoke-app-settings-corruption`), hidden
 restore-detail smoke test (`projectname --smoke-restore-details`), the SPDX
 license-header check, the SPDX checker fixture test, the CI artifact contents
-fixture test, and the core unit tests.
+fixture test, the macOS artifact upload guard checks, and the core unit tests.
 
 For domain-only model/transport/tone tests without building the JUCE app:
 
@@ -126,6 +126,12 @@ ctest --preset dev --output-on-failure
 - `projectname_ci_artifact_contents_fixture_check` verifies the CI artifact
   allowlist checker accepts Windows and Linux app package shapes, rejects staged
   cache/plugin/preset/sample paths, and rejects checksum drift before upload.
+- `projectname_ci_macos_artifact_guard_check` verifies the production CI
+  workflow keeps the `macOS JUCE App` job build/test-only while preserving the
+  existing Windows MSVC and Linux JUCE app upload steps.
+- `projectname_ci_macos_artifact_guard_fixture_check` verifies the macOS
+  artifact guard allows the current Windows/Linux upload shape, rejects an
+  accidental macOS `upload-artifact` step, and fails if the app job names drift.
 - `projectname_tests` runs the current unit tests.
 
 ## Continuous Integration
@@ -137,8 +143,9 @@ GitHub Actions currently runs four jobs on pushes and pull requests:
   `projectname_project_chooser_smoke`, `projectname_audio_midi_reset_smoke`,
   `projectname_app_settings_corruption_smoke`,
   `projectname_restore_detail_smoke`, the SPDX check, the SPDX fixture check,
-  the CI artifact contents fixture check, and the core unit tests. After tests
-  pass, the job uploads a short-retention artifact named
+  the CI artifact contents fixture check, the macOS artifact guard checks, and
+  the core unit tests. After tests pass, the job uploads a short-retention
+  artifact named
   `rabbington-studio-windows-msvc-app-<commit-sha>` for 7 days.
 - `Linux Core` configures, builds, and tests the `core-dev` preset on
   `ubuntu-latest` for dependency-light second-host coverage.
@@ -185,6 +192,12 @@ full commit SHA for that workflow run. macOS CI is build/test-only and does not
 upload an app artifact; any future macOS package, signing, notarization, or
 installer implementation must follow
 `docs/adr/ADR-0106-macos-artifact-signing-policy.md`.
+The CTest guard `projectname_ci_macos_artifact_guard_check` intentionally fails
+if `macOS JUCE App` adds `actions/upload-artifact` before that work lands. When
+macOS artifact staging, checksum generation, unsigned debug messaging, signing,
+notarization, or installer packaging is intentionally implemented, update or
+retire `tools/check_ci_macos_artifact_upload_guard.cmake` and its fixture test
+in the same reviewed change that implements the ADR-0106 requirements.
 
 With GitHub CLI, find a successful run and download one or both app artifacts:
 
@@ -327,7 +340,9 @@ Maintenance review-row copy/activation behavior for conflict and partial-failure
 restore manifests, including distinct package-relative and restore-manifest
 fallback status copy, without starting cleanup or restore jobs. The same run also
 passed `projectname_spdx_check`, `projectname_spdx_fixture_check`, and
-`projectname_ci_artifact_contents_fixture_check`, plus `projectname_tests`,
+`projectname_ci_artifact_contents_fixture_check`,
+`projectname_ci_macos_artifact_guard_check`,
+`projectname_ci_macos_artifact_guard_fixture_check`, plus `projectname_tests`,
 including cached prepared voice-window playback, background voice-window
 preparation, imported clip inspector metadata, deterministic imported clip
 selection, and persisted track mix state/static mix command/sample-rate

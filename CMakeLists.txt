@@ -231,6 +231,18 @@ if(BUILD_TESTING)
             -P ${CMAKE_CURRENT_SOURCE_DIR}/tools/check_ci_artifact_contents_fixtures.cmake)
     set_tests_properties(projectname_ci_artifact_contents_fixture_check PROPERTIES TIMEOUT 20)
 
+    add_test(NAME projectname_ci_macos_artifact_guard_check
+        COMMAND ${CMAKE_COMMAND}
+            -DCI_WORKFLOW_PATH=${CMAKE_CURRENT_SOURCE_DIR}/.github/workflows/ci.yml
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/tools/check_ci_macos_artifact_upload_guard.cmake)
+    set_tests_properties(projectname_ci_macos_artifact_guard_check PROPERTIES TIMEOUT 20)
+
+    add_test(NAME projectname_ci_macos_artifact_guard_fixture_check
+        COMMAND ${CMAKE_COMMAND}
+            -DCI_MACOS_ARTIFACT_GUARD_FIXTURE_ROOT=${CMAKE_CURRENT_BINARY_DIR}/ci-macos-artifact-guard-fixtures
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/tools/check_ci_macos_artifact_upload_guard_fixtures.cmake)
+    set_tests_properties(projectname_ci_macos_artifact_guard_fixture_check PROPERTIES TIMEOUT 20)
+
     add_executable(projectname_tests
         tests/ProjectNameTests.cpp)
 

@@ -88,6 +88,9 @@ plugin-hosting architecture work and reflected in `docs/PLUGIN_POLICY.md`.
 
 - If a macOS CI artifact is added, mirror the Windows/Linux artifact allowlist
   and checksum gate before upload.
+- Update or retire `tools/check_ci_macos_artifact_upload_guard.cmake` and its
+  fixture test in the same reviewed change that intentionally adds macOS
+  artifact staging, signing, notarization, or installer packaging.
 - Add release packaging scripts only after the exact macOS package format is
   selected and documented.
 - Revisit entitlements during the plugin-host prototype, especially for

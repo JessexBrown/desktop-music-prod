@@ -2,19 +2,7 @@
 
 # Next Issues
 
-## 1. Add macOS Artifact Upload Guardrail Check
-
-Acceptance:
-- Add a lightweight repository check that verifies the `macOS JUCE App` CI job
-  remains build/test-only until ADR-0106 artifact rules are implemented.
-- Verify the check allows the existing Windows MSVC and Linux JUCE app artifact
-  uploads while rejecting an accidental macOS `upload-artifact` step.
-- Document how to update or retire the check when macOS artifact staging,
-  checksum generation, unsigned debug messaging, signing, notarization, or
-  installer work is intentionally added.
-- Preserve the existing CI job names and current Windows/Linux artifact tests.
-
-## 2. Add Save As Retry Asset Symlink Rejection Coverage
+## 1. Add Save As Retry Asset Symlink Rejection Coverage
 
 Acceptance:
 - Add focused retry preflight coverage for copied package asset paths that are
@@ -26,7 +14,7 @@ Acceptance:
 - Preserve the existing regular-file, directory, missing-asset,
   manifest-symlink, and stale temporary-manifest retry coverage.
 
-## 3. Add Project Manifest Load Symlink Failure Coverage
+## 2. Add Project Manifest Load Symlink Failure Coverage
 
 Acceptance:
 - Add focused core coverage for loading a project package whose `manifest.json`
@@ -38,7 +26,7 @@ Acceptance:
 - Preserve missing-manifest, manifest-directory, malformed JSON,
   unsupported-version, schema, and successful load/save coverage.
 
-## 4. Add Project Save Package Symlink Path Failure Coverage
+## 3. Add Project Save Package Symlink Path Failure Coverage
 
 Acceptance:
 - Add focused core coverage for saving a project package when the target package
@@ -51,7 +39,7 @@ Acceptance:
   asset-folder failure, temporary-manifest failure, backup failure, commit
   failure, and successful save/load tests.
 
-## 5. Add App Settings Load Symlink Path Coverage
+## 4. Add App Settings Load Symlink Path Coverage
 
 Acceptance:
 - Add focused core coverage for loading app settings when the settings path is a
@@ -63,3 +51,16 @@ Acceptance:
   unchanged.
 - Preserve missing-file, load-directory, malformed JSON, unsupported-version,
   reset, and successful load/save coverage.
+
+## 5. Add App Settings Save Symlink Path Failure Coverage
+
+Acceptance:
+- Add focused core coverage for saving app settings when the settings file path
+  or an intermediate parent path is a symlink.
+- Fixture-gate cleanly when the host cannot create test symlinks without
+  elevated permissions.
+- Verify save does not follow the symlink, does not create temporary settings
+  files through the linked path, leaves the symlink target untouched, and reports
+  a human-readable error.
+- Preserve empty-path, directory-creation failure, temporary-write failure,
+  commit failure, load-directory, and successful load/save coverage.
