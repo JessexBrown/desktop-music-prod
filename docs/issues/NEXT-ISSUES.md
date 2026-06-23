@@ -2,21 +2,7 @@
 
 # Next Issues
 
-## 1. Add Save As Copy Broken Target Symlink Failure Coverage
-
-Acceptance:
-- Add focused Save As copy coverage for target package paths or intermediate
-  target parent directories that are broken symlinks.
-- Fixture-gate cleanly when the host cannot create test symlinks without
-  elevated permissions.
-- Verify copy fails before package asset mutation, leaves the missing symlink
-  target uncreated, and reports a human-readable target-directory symlink
-  error.
-- Preserve Save As target-parent symlink rejection, source-symlink rejection,
-  target-conflict, source-missing, cancellation, progress, and successful copy
-  coverage.
-
-## 2. Add Project Save Broken Temporary Manifest Symlink Cleanup Coverage
+## 1. Add Project Save Broken Temporary Manifest Symlink Cleanup Coverage
 
 Acceptance:
 - Add focused core coverage for saving a project package when a stale
@@ -30,7 +16,7 @@ Acceptance:
   rejection, temporary-manifest write/commit failure, backup failure, and
   successful save/load coverage.
 
-## 3. Add Project Save Manifest Symlink Session Failure Coverage
+## 2. Add Project Save Manifest Symlink Session Failure Coverage
 
 Acceptance:
 - Add focused `AppSession` coverage for saving a project package whose existing
@@ -44,7 +30,7 @@ Acceptance:
   coverage, temporary-manifest cleanup, and successful session save/load
   coverage.
 
-## 4. Add App Settings Save Broken Temporary Symlink Cleanup Coverage
+## 3. Add App Settings Save Broken Temporary Symlink Cleanup Coverage
 
 Acceptance:
 - Add focused core coverage for saving app settings when a stale
@@ -58,7 +44,7 @@ Acceptance:
   rejection, temporary-symlink-to-file cleanup, temporary-write failure, commit
   failure, and successful load/save coverage.
 
-## 5. Add Project Load Manifest Symlink Settings Isolation Coverage
+## 4. Add Project Load Manifest Symlink Settings Isolation Coverage
 
 Acceptance:
 - Add focused session coverage proving project load failures caused by
@@ -71,3 +57,17 @@ Acceptance:
   project temporary manifest.
 - Preserve existing project load symlink rejection, app settings corruption
   recovery, and successful project load/save coverage.
+
+## 5. Add Save As Copy Broken Source Symlink Failure Coverage
+
+Acceptance:
+- Add focused Save As copy coverage for source package asset folders or asset
+  entries that are broken symlinks.
+- Fixture-gate cleanly when the host cannot create test symlinks without
+  elevated permissions.
+- Verify copy rejects the source link before target package mutation, leaves the
+  missing symlink target uncreated, and reports the existing source
+  folder/entry symlink error.
+- Preserve Save As source-folder symlink rejection, source-entry symlink
+  rejection, broken target symlink rejection, target-conflict, cancellation,
+  progress, and successful copy coverage.

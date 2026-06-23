@@ -1653,6 +1653,103 @@ void projectPackageSaveAsCopyCommandRejectsTargetSymlinksBeforeCopy()
            "Temporary Save As target-parent symlink target deleted");
 }
 
+void projectPackageSaveAsCopyCommandRejectsBrokenTargetSymlinksBeforeCopy()
+{
+    auto project = projectname::ProjectModel::createDefault();
+
+    projectname::ProjectClip imported;
+    imported.id = "save-as-broken-target-symlink-imported";
+    imported.name = "Save As Broken Target Symlink Imported";
+    imported.type = "audio-file";
+    imported.relativePath = "audio/take.wav";
+    imported.lengthBeats = 4.0;
+    expect(project.addClipToTrack("track-1", imported),
+           "Save As broken target symlink test adds imported clip");
+
+    const auto sourcePackage =
+        makeTemporaryPackagePath("projectname-save-as-broken-target-symlink-source-test");
+    const auto targetPackageSymlink =
+        makeTemporaryPackagePath("projectname-save-as-broken-target-package-symlink-link-test");
+    const auto missingTargetPackage =
+        makeTemporaryPackagePath("projectname-save-as-broken-target-package-symlink-target-test");
+    const auto parentSymlink =
+        makeTemporaryPackagePath("projectname-save-as-broken-target-parent-symlink-link-test");
+    const auto missingParentTarget =
+        makeTemporaryPackagePath("projectname-save-as-broken-target-parent-symlink-target-test");
+    const auto nestedTargetPackage = parentSymlink / "Nested Target.project";
+
+    writeTextFile(sourcePackage / imported.relativePath, "new audio");
+    writeTextFile(sourcePackage / "samples" / "one-shot.wav", "sample");
+
+    std::error_code symlinkError;
+    std::filesystem::create_directory_symlink(missingTargetPackage,
+                                             targetPackageSymlink,
+                                             symlinkError);
+    if (symlinkError)
+    {
+        std::filesystem::remove_all(sourcePackage);
+        return;
+    }
+
+    symlinkError.clear();
+    std::filesystem::create_directory_symlink(missingParentTarget, parentSymlink, symlinkError);
+    if (symlinkError)
+    {
+        std::filesystem::remove(targetPackageSymlink);
+        std::filesystem::remove_all(sourcePackage);
+        return;
+    }
+
+    const auto targetPackageResult =
+        projectname::copyProjectPackageAssetsForSaveAs({ project, sourcePackage, targetPackageSymlink });
+
+    expect(targetPackageResult.status == projectname::ProjectPackageSaveAsCopyStatus::copyFailed,
+           "Save As copy command rejects a broken symlink target package");
+    expect(targetPackageResult.error.find("Target directory path is a symlink") != std::string::npos,
+           "Save As broken target-package symlink failure error is human-readable");
+    expect(targetPackageResult.plan.requiresPackageAssetCopy,
+           "Save As broken target-package symlink failure preserves the copy plan");
+    expect(targetPackageResult.createdPaths.empty(),
+           "Save As broken target-package symlink failure creates no target paths");
+    expect(std::filesystem::is_symlink(std::filesystem::symlink_status(targetPackageSymlink)),
+           "Save As broken target-package symlink failure leaves the target package symlink unchanged");
+    expect(!std::filesystem::exists(missingTargetPackage),
+           "Save As broken target-package symlink failure does not create the missing target");
+    expect(!std::filesystem::exists(missingTargetPackage / imported.relativePath),
+           "Save As broken target-package symlink failure does not copy audio through the broken symlink");
+    expect(!std::filesystem::exists(missingTargetPackage / "samples" / "one-shot.wav"),
+           "Save As broken target-package symlink failure does not copy samples through the broken symlink");
+
+    const auto parentSymlinkResult =
+        projectname::copyProjectPackageAssetsForSaveAs({ project, sourcePackage, nestedTargetPackage });
+
+    expect(parentSymlinkResult.status == projectname::ProjectPackageSaveAsCopyStatus::copyFailed,
+           "Save As copy command rejects a broken symlink target parent");
+    expect(parentSymlinkResult.error.find("Target directory path is a symlink") != std::string::npos,
+           "Save As broken target-parent symlink failure error is human-readable");
+    expect(parentSymlinkResult.plan.requiresPackageAssetCopy,
+           "Save As broken target-parent symlink failure preserves the copy plan");
+    expect(parentSymlinkResult.createdPaths.empty(),
+           "Save As broken target-parent symlink failure creates no target paths");
+    expect(std::filesystem::is_symlink(std::filesystem::symlink_status(parentSymlink)),
+           "Save As broken target-parent symlink failure leaves the parent symlink unchanged");
+    expect(!std::filesystem::exists(missingParentTarget),
+           "Save As broken target-parent symlink failure does not create the missing parent target");
+    expect(!std::filesystem::exists(missingParentTarget / "Nested Target.project"),
+           "Save As broken target-parent symlink failure does not create a package through the broken symlink");
+    expect(!std::filesystem::exists(missingParentTarget / "Nested Target.project" / imported.relativePath),
+           "Save As broken target-parent symlink failure does not copy audio through the broken symlink");
+
+    expect(std::filesystem::remove(targetPackageSymlink),
+           "Temporary Save As broken target-package symlink deleted");
+    expect(std::filesystem::remove(parentSymlink),
+           "Temporary Save As broken target-parent symlink deleted");
+    expect(std::filesystem::remove_all(sourcePackage) > 0,
+           "Temporary Save As broken target-symlink source package deleted");
+    std::filesystem::remove_all(missingTargetPackage);
+    std::filesystem::remove_all(missingParentTarget);
+}
+
 void projectPackageSaveAsCopyCommandRejectsSourceSymlinksBeforeCopy()
 {
     auto folderSymlinkProject = projectname::ProjectModel::createDefault();
@@ -10505,6 +10602,7 @@ int main()
     projectPackageSaveAsCopyCommandCopiesPackageAssetsAndStartsFreshBackups();
     projectPackageSaveAsCopyCommandRejectsTargetConflictsBeforeCopy();
     projectPackageSaveAsCopyCommandRejectsTargetSymlinksBeforeCopy();
+    projectPackageSaveAsCopyCommandRejectsBrokenTargetSymlinksBeforeCopy();
     projectPackageSaveAsCopyCommandRejectsSourceSymlinksBeforeCopy();
     projectPackageSaveAsCopyCommandRejectsTargetInsideSource();
     projectPackageSaveAsCopyCommandCancelsAndRollsBackPartialTarget();

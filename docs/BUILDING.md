@@ -382,7 +382,7 @@ temporary-manifest symlink cleanup tests when host-supported, manifest symlink
 and broken-symlink save rejection tests when host-supported, staged
 temporary-manifest open/commit failure tests, Save As retry manifest/asset
 symlink conflict tests when host-supported, Save As source and target symlink
-rejection tests when host-supported, plus
+rejection tests, including broken target links, when host-supported, plus
 app settings load-directory, symlink, broken-symlink, empty-path,
 save-symlink, save-broken-symlink, temporary-symlink, path, and write-failure
 tests.
@@ -418,8 +418,8 @@ remain in the chosen package for recovery or manual cleanup. The Project menu's
 `Copy Failed Save As Target` action copies that kept target package path, and
 the `Retry Failed Save As` action writes only the kept target manifest after the
 blocking manifest path is fixed. Copy refuses symlinked source package folders,
-source asset entries, target package paths, or intermediate target parents
-before mutating the target package. Retry refuses
+source asset entries, target package paths, or intermediate target parents,
+including broken target links, before mutating the target package. Retry refuses
 existing target manifests, non-regular manifest paths, and missing or symlinked
 copied target assets without starting cleanup, recopying assets, or touching the
 audio callback. The
