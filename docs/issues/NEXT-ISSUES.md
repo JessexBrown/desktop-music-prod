@@ -2,19 +2,7 @@
 
 # Next Issues
 
-## 1. Add App Settings Load Directory Path Coverage
-
-Acceptance:
-- Add focused core coverage for loading app settings when the settings path is
-  occupied by a directory.
-- Verify load returns no settings without parsing JSON or mutating caller-owned
-  default settings.
-- Verify the app fallback path remains explicit in tests when no persisted
-  settings are loaded.
-- Preserve missing-file, malformed JSON, unsupported-version, reset, and
-  successful load/save coverage.
-
-## 2. Add macOS Artifact Upload Guardrail Check
+## 1. Add macOS Artifact Upload Guardrail Check
 
 Acceptance:
 - Add a lightweight repository check that verifies the `macOS JUCE App` CI job
@@ -26,7 +14,7 @@ Acceptance:
   installer work is intentionally added.
 - Preserve the existing CI job names and current Windows/Linux artifact tests.
 
-## 3. Add Save As Retry Asset Symlink Rejection Coverage
+## 2. Add Save As Retry Asset Symlink Rejection Coverage
 
 Acceptance:
 - Add focused retry preflight coverage for copied package asset paths that are
@@ -38,7 +26,7 @@ Acceptance:
 - Preserve the existing regular-file, directory, missing-asset,
   manifest-symlink, and stale temporary-manifest retry coverage.
 
-## 4. Add Project Manifest Load Symlink Failure Coverage
+## 3. Add Project Manifest Load Symlink Failure Coverage
 
 Acceptance:
 - Add focused core coverage for loading a project package whose `manifest.json`
@@ -50,7 +38,7 @@ Acceptance:
 - Preserve missing-manifest, manifest-directory, malformed JSON,
   unsupported-version, schema, and successful load/save coverage.
 
-## 5. Add Project Save Package Symlink Path Failure Coverage
+## 4. Add Project Save Package Symlink Path Failure Coverage
 
 Acceptance:
 - Add focused core coverage for saving a project package when the target package
@@ -62,3 +50,16 @@ Acceptance:
 - Preserve package-path file rejection, package-directory-creation failure,
   asset-folder failure, temporary-manifest failure, backup failure, commit
   failure, and successful save/load tests.
+
+## 5. Add App Settings Load Symlink Path Coverage
+
+Acceptance:
+- Add focused core coverage for loading app settings when the settings path is a
+  symlink.
+- Fixture-gate cleanly when the host cannot create test symlinks without
+  elevated permissions.
+- Verify load returns no settings without parsing JSON through the symlink,
+  leaves the link target untouched, and keeps caller fallback/default settings
+  unchanged.
+- Preserve missing-file, load-directory, malformed JSON, unsupported-version,
+  reset, and successful load/save coverage.

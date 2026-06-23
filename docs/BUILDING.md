@@ -362,7 +362,7 @@ prepared voice summing tests, previous-manifest backup success/failure tests,
 manifest-directory load failure tests, package-path file rejection tests,
 package directory creation failure tests, staged temporary-manifest open/commit
 failure tests, Save As retry symlink conflict tests when host-supported, plus
-app settings empty-path/path/write-failure tests.
+app settings load-directory/empty-path/path/write-failure tests.
 It also
 configured, built, launched, audio-smoke-tested,
 project-save/load-smoke-tested, and audio-import-smoke-tested the Windows-only

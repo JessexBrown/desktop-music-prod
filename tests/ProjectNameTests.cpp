@@ -932,6 +932,49 @@ void appSettingsEmptyPathFailsBeforeFilesystemWork()
            "Temporary empty-path app settings cwd deleted");
 }
 
+void appSettingsLoadDirectoryPathKeepsCallerFallbackSettings()
+{
+    projectname::AppSettings fallbackSettings;
+    fallbackSettings.audioSetup.firstRunPromptDismissed = true;
+    fallbackSettings.audioSetup.preferredOutput.hasOutputDevice = true;
+    fallbackSettings.audioSetup.preferredOutput.deviceType = "Windows Audio";
+    fallbackSettings.audioSetup.preferredOutput.deviceName = "Fallback Output";
+    fallbackSettings.audioSetup.preferredOutput.sampleRateHz = 44100.0;
+    fallbackSettings.audioSetup.preferredOutput.bufferSizeSamples = 512;
+    fallbackSettings.audioSetup.preferredOutput.outputChannelCount = 2;
+    fallbackSettings.audioSetup.preferredOutput.juceDeviceStateXml =
+        R"(<DEVICESETUP deviceType="Windows Audio" audioOutputDeviceName="Fallback Output"/>)";
+    const auto originalFallbackSettings = fallbackSettings;
+
+    const auto settingsPath =
+        makeTemporarySettingsPath("projectname-app-settings-load-directory-test");
+    const auto nestedSettingsPath = settingsPath / projectname::appSettingsFileName;
+    writeTextFile(nestedSettingsPath, "{ malformed nested app settings");
+
+    std::string error = "stale load error";
+    const auto loaded = projectname::loadAppSettings(settingsPath, error);
+    expect(!loaded.has_value(),
+           "App settings load treats a directory settings path as no persisted settings");
+    expect(error.empty(),
+           "Directory app settings load leaves error empty like a missing settings file");
+    expect(error.find("parse") == std::string::npos
+               && error.find("Unsupported app settings version") == std::string::npos,
+           "Directory app settings load does not parse JSON below the occupied settings path");
+
+    if (loaded.has_value())
+        fallbackSettings = *loaded;
+
+    expect(fallbackSettings == originalFallbackSettings,
+           "Directory app settings load leaves caller fallback settings unchanged");
+    expect(std::filesystem::is_directory(settingsPath),
+           "Directory app settings load leaves occupied settings path unchanged");
+    expect(readTextFile(nestedSettingsPath) == "{ malformed nested app settings",
+           "Directory app settings load preserves nested settings directory contents");
+
+    expect(std::filesystem::remove_all(settingsPath) > 0,
+           "Temporary directory app settings path deleted");
+}
+
 void appSettingsLoadsAudioSetupDefaultsFromMinimalJson()
 {
     std::string error;
@@ -9416,6 +9459,7 @@ int main()
     appSettingsTemporaryWriteFailureKeepsExistingSettings();
     appSettingsDirectoryCreationFailurePreservesOccupiedParentPath();
     appSettingsEmptyPathFailsBeforeFilesystemWork();
+    appSettingsLoadDirectoryPathKeepsCallerFallbackSettings();
     appSettingsLoadsAudioSetupDefaultsFromMinimalJson();
     appSettingsRejectsUnsupportedVersion();
     appSettingsResetClearsAudioSetupPreferences();
