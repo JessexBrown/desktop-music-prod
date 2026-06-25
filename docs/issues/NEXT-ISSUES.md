@@ -2,23 +2,7 @@
 
 # Next Issues
 
-## 1. Add AppSession Load Package Path File Settings Isolation Coverage
-
-Acceptance:
-- Add focused `AppSession` coverage that loading from a requested project
-  package path occupied by a regular file leaves an isolated app settings file
-  unchanged.
-- Verify session load reports a human-readable package-path failure without
-  parsing JSON, leaves the occupied file unchanged, keeps the current session
-  project unchanged, leaves app settings loadable and byte-for-byte unchanged,
-  and creates no package folders or `manifest.json.tmp`.
-- Preserve project and AppSession package-path file load coverage, project
-  package-path file settings-isolation coverage, package path file save
-  rejection, direct linked/broken package symlink rejection, linked/broken
-  package-parent rejection, manifest directory rejection, manifest
-  symlink/broken-symlink rejection, and successful save/load coverage.
-
-## 2. Add Project Load Missing Manifest Settings Isolation Coverage
+## 1. Add Project Load Missing Manifest Settings Isolation Coverage
 
 Acceptance:
 - Add focused core coverage that loading a project package directory with no
@@ -31,7 +15,7 @@ Acceptance:
   linked/broken package-parent rejection, manifest directory rejection,
   manifest symlink/broken-symlink rejection, and successful save/load coverage.
 
-## 3. Add AppSession Load Missing Manifest Settings Isolation Coverage
+## 2. Add AppSession Load Missing Manifest Settings Isolation Coverage
 
 Acceptance:
 - Add focused `AppSession` coverage that loading a project package directory
@@ -46,7 +30,7 @@ Acceptance:
   package-parent rejection, manifest directory rejection, manifest
   symlink/broken-symlink rejection, and successful session save/load coverage.
 
-## 4. Add Project Load Malformed Manifest Settings Isolation Coverage
+## 3. Add Project Load Malformed Manifest Settings Isolation Coverage
 
 Acceptance:
 - Add focused core coverage that loading a project package with malformed
@@ -60,7 +44,7 @@ Acceptance:
   rejection, manifest directory rejection, manifest symlink/broken-symlink
   rejection, and successful save/load coverage.
 
-## 5. Add AppSession Load Malformed Manifest Settings Isolation Coverage
+## 4. Add AppSession Load Malformed Manifest Settings Isolation Coverage
 
 Acceptance:
 - Add focused `AppSession` coverage that loading a project package with
@@ -75,3 +59,18 @@ Acceptance:
   package symlink rejection, linked/broken package-parent rejection, manifest
   directory rejection, manifest symlink/broken-symlink rejection, and successful
   session save/load coverage.
+
+## 5. Add Project Load Unsupported Manifest Version Settings Isolation Coverage
+
+Acceptance:
+- Add focused core coverage that loading a project package with an unsupported
+  `manifestVersion` leaves an isolated app settings file unchanged.
+- Verify load reports a human-readable version failure, leaves the unsupported
+  manifest unchanged, leaves app settings loadable and byte-for-byte unchanged,
+  and creates no `manifest.json.tmp`.
+- Preserve unsupported-version recovery coverage, malformed-manifest recovery
+  coverage, missing-manifest settings-isolation coverage, project and
+  AppSession package-path file coverage, direct linked/broken package symlink
+  rejection, linked/broken package-parent rejection, manifest directory
+  rejection, manifest symlink/broken-symlink rejection, and successful
+  save/load coverage.
