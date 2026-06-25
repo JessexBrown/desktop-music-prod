@@ -12521,6 +12521,83 @@ void appSessionBrokenPackageParentSymlinkLoadFailureKeepsSessionProject()
     std::filesystem::remove_all(missingParentTarget);
 }
 
+void appSessionBrokenPackageParentSymlinkLoadFailureLeavesAppSettingsUntouched()
+{
+    projectname::AppSettings settings;
+    settings.audioSetup.firstRunPromptDismissed = true;
+    settings.audioSetup.preferredOutput.hasOutputDevice = true;
+    settings.audioSetup.preferredOutput.deviceType = "Windows Audio";
+    settings.audioSetup.preferredOutput.deviceName = "Session Broken Parent Isolation Output";
+    settings.audioSetup.preferredOutput.sampleRateHz = 48000.0;
+    settings.audioSetup.preferredOutput.bufferSizeSamples = 256;
+    settings.audioSetup.preferredOutput.outputChannelCount = 2;
+    settings.audioSetup.preferredOutput.juceDeviceStateXml =
+        "<DEVICESETUP deviceType=\"Windows Audio\" audioOutputDeviceName=\"Session Broken Parent Isolation Output\"/>";
+
+    const auto settingsPath =
+        makeTemporarySettingsPath("projectname-session-broken-package-parent-load-settings-isolation-test");
+
+    std::string error;
+    expect(projectname::saveAppSettings(settings, settingsPath, error),
+           "Session broken package-parent settings-isolation fixture saves app settings");
+    const auto originalSettingsText = readTextFile(settingsPath);
+
+    projectname::AppSession session;
+    session.getProject().setName("Keep Session Broken Parent Settings Isolation Baseline");
+    session.setTempoBpm(139.0);
+    const auto originalProject = session.getProject();
+
+    const auto parentSymlink =
+        makeTemporaryPackagePath("projectname-session-broken-package-parent-load-settings-isolation-link-test");
+    const auto missingParentTarget =
+        makeTemporaryPackagePath("projectname-session-broken-package-parent-load-settings-isolation-target-test");
+    const auto requestedPackage = parentSymlink / "Nested Session Load.project";
+
+    std::error_code symlinkError;
+    std::filesystem::create_directory_symlink(missingParentTarget, parentSymlink, symlinkError);
+    if (symlinkError)
+    {
+        std::filesystem::remove(settingsPath);
+        return;
+    }
+
+    error = "stale session broken package-parent settings-isolation load error";
+    expect(!session.loadProjectPackage(requestedPackage, error),
+           "Session load rejects a broken intermediate parent during settings-isolation check");
+    expect(error.find("Project package path contains a symlink") != std::string::npos
+               && error.find(parentSymlink.generic_string()) != std::string::npos,
+           "Session broken package-parent settings-isolation load failure error is human-readable");
+    expect(error.find("not found") == std::string::npos,
+           "Session broken package-parent settings-isolation load failure is not reported as a missing manifest");
+    expect(error.find("JSON") == std::string::npos,
+           "Session broken package-parent settings-isolation load failure does not parse JSON through the symlink");
+    expect(session.getProject() == originalProject,
+           "Session broken package-parent settings-isolation load failure keeps current session project");
+    expect(readTextFile(settingsPath) == originalSettingsText,
+           "Session broken package-parent settings-isolation load failure leaves app settings unchanged");
+
+    std::string settingsError;
+    const auto reloadedSettings = projectname::loadAppSettings(settingsPath, settingsError);
+    expect(reloadedSettings.has_value() && *reloadedSettings == settings,
+           "Session broken package-parent settings-isolation load failure leaves app settings loadable");
+    expect(std::filesystem::is_symlink(std::filesystem::symlink_status(parentSymlink)),
+           "Session broken package-parent settings-isolation load failure leaves the parent symlink unchanged");
+    expect(!std::filesystem::exists(missingParentTarget),
+           "Session broken package-parent settings-isolation load failure does not create the missing parent target");
+    expect(!std::filesystem::exists(missingParentTarget / "Nested Session Load.project"),
+           "Session broken package-parent settings-isolation load failure does not create a package through the broken link");
+    expect(!std::filesystem::exists(requestedPackage / "manifest.json.tmp"),
+           "Session broken package-parent settings-isolation load failure does not create a temporary manifest through the link");
+    expect(!std::filesystem::exists(missingParentTarget / "Nested Session Load.project" / "manifest.json.tmp"),
+           "Session broken package-parent settings-isolation load failure does not write target temporary manifest");
+
+    expect(std::filesystem::remove(parentSymlink),
+           "Temporary session broken package-parent settings-isolation symlink deleted");
+    std::filesystem::remove_all(missingParentTarget);
+    expect(std::filesystem::remove(settingsPath),
+           "Temporary session broken package-parent settings-isolation app settings file deleted");
+}
+
 void projectBrokenPackageParentSymlinkLoadFailureRejectsBeforeManifestWork()
 {
     const auto parentSymlink =
@@ -12949,6 +13026,7 @@ int main()
     appSessionLinkedPackageParentSymlinkLoadFailureKeepsSessionProject();
     appSessionLinkedPackageParentSymlinkLoadFailureLeavesAppSettingsUntouched();
     appSessionBrokenPackageParentSymlinkLoadFailureKeepsSessionProject();
+    appSessionBrokenPackageParentSymlinkLoadFailureLeavesAppSettingsUntouched();
     projectBrokenPackageParentSymlinkLoadFailureRejectsBeforeManifestWork();
     projectBrokenPackageParentSymlinkLoadFailureLeavesAppSettingsUntouched();
     projectManifestDirectoryLoadFailureLeavesAppSettingsUntouched();
