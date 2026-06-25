@@ -11997,6 +11997,80 @@ void appSessionMalformedManifestLoadFailureLeavesAppSettingsUntouched()
            "Temporary session malformed-manifest settings-isolation app settings file deleted");
 }
 
+void projectUnsupportedManifestVersionLoadFailureLeavesAppSettingsUntouched()
+{
+    projectname::AppSettings settings;
+    settings.audioSetup.firstRunPromptDismissed = true;
+    settings.audioSetup.preferredOutput.hasOutputDevice = true;
+    settings.audioSetup.preferredOutput.deviceType = "Windows Audio";
+    settings.audioSetup.preferredOutput.deviceName = "Unsupported Version Isolation Output";
+    settings.audioSetup.preferredOutput.sampleRateHz = 48000.0;
+    settings.audioSetup.preferredOutput.bufferSizeSamples = 256;
+    settings.audioSetup.preferredOutput.outputChannelCount = 2;
+    settings.audioSetup.preferredOutput.juceDeviceStateXml =
+        "<DEVICESETUP deviceType=\"Windows Audio\" audioOutputDeviceName=\"Unsupported Version Isolation Output\"/>";
+
+    const auto settingsPath =
+        makeTemporarySettingsPath("projectname-unsupported-version-load-settings-isolation-test");
+
+    std::string error;
+    expect(projectname::saveAppSettings(settings, settingsPath, error),
+           "Unsupported-version settings-isolation fixture saves app settings");
+    const auto originalSettingsText = readTextFile(settingsPath);
+
+    const auto package =
+        makeTemporaryPackagePath("projectname-unsupported-version-load-settings-isolation-test");
+    const auto unsupportedManifestText = std::string(R"({
+  "manifestVersion": 999,
+  "name": "Too New Settings Isolation",
+  "transport": {
+    "tempoBpm": 120,
+    "timeSignature": { "numerator": 4, "denominator": 4 },
+    "positionBeats": 0
+  },
+  "tracks": []
+})");
+    const auto sentinelPath = package / "sentinel.txt";
+    writeManifestText(package, unsupportedManifestText);
+    const auto originalManifestText = readTextFile(package / "manifest.json");
+    writeTextFile(sentinelPath, "unsupported version settings-isolation sentinel");
+
+    error = "stale unsupported version settings-isolation load error";
+    auto loaded = projectname::ProjectModel::loadPackage(package, error);
+    expect(!loaded.has_value(),
+           "Project load rejects unsupported manifest version during settings-isolation check");
+    expect(error.find("Unsupported project manifest version") != std::string::npos,
+           "Unsupported-version settings-isolation load failure error is human-readable");
+    expect(readTextFile(settingsPath) == originalSettingsText,
+           "Unsupported-version settings-isolation load failure leaves app settings unchanged");
+
+    std::string settingsError;
+    const auto reloadedSettings = projectname::loadAppSettings(settingsPath, settingsError);
+    expect(reloadedSettings.has_value() && *reloadedSettings == settings,
+           "Unsupported-version settings-isolation load failure leaves app settings loadable");
+    expect(readTextFile(package / "manifest.json") == originalManifestText,
+           "Unsupported-version settings-isolation load failure preserves unsupported manifest");
+    expect(!std::filesystem::exists(package / "manifest.json.tmp"),
+           "Unsupported-version settings-isolation load failure does not create a temporary manifest");
+    expect(readTextFile(sentinelPath) == "unsupported version settings-isolation sentinel",
+           "Unsupported-version settings-isolation load failure preserves package contents");
+    expect(!std::filesystem::exists(package / "audio"),
+           "Unsupported-version settings-isolation load failure does not create an audio asset folder");
+    expect(!std::filesystem::exists(package / "samples"),
+           "Unsupported-version settings-isolation load failure does not create a samples asset folder");
+    expect(!std::filesystem::exists(package / "presets"),
+           "Unsupported-version settings-isolation load failure does not create a presets asset folder");
+    expect(!std::filesystem::exists(package / "analysis"),
+           "Unsupported-version settings-isolation load failure does not create an analysis asset folder");
+    expect(!std::filesystem::exists(package / "backups"),
+           "Unsupported-version settings-isolation load failure does not create a backups asset folder");
+
+    expect(std::filesystem::remove_all(package) > 0,
+           "Temporary unsupported-version settings-isolation package deleted");
+    expect(std::filesystem::remove(settingsPath),
+           "Temporary unsupported-version settings-isolation app settings file deleted");
+}
+
 void projectLoadPackagePathFileFailureLeavesOccupiedPathUntouched()
 {
     const auto occupiedPackagePath =
@@ -13501,6 +13575,7 @@ int main()
     appSessionMissingManifestLoadFailureLeavesAppSettingsUntouched();
     projectMalformedManifestLoadFailureLeavesAppSettingsUntouched();
     appSessionMalformedManifestLoadFailureLeavesAppSettingsUntouched();
+    projectUnsupportedManifestVersionLoadFailureLeavesAppSettingsUntouched();
     projectLoadPackagePathFileFailureLeavesOccupiedPathUntouched();
     projectLoadPackagePathFileFailureLeavesAppSettingsUntouched();
     appSessionLoadPackagePathFileFailureKeepsSessionProject();
