@@ -12307,6 +12307,85 @@ void appSessionInvalidLoopRegionSchemaLoadFailureLeavesAppSettingsUntouched()
            "Temporary session invalid-loop-region schema settings-isolation app settings file deleted");
 }
 
+void projectInvalidLoopRegionValueLoadFailureLeavesAppSettingsUntouched()
+{
+    projectname::AppSettings settings;
+    settings.audioSetup.firstRunPromptDismissed = true;
+    settings.audioSetup.preferredOutput.hasOutputDevice = true;
+    settings.audioSetup.preferredOutput.deviceType = "Windows Audio";
+    settings.audioSetup.preferredOutput.deviceName = "Invalid Loop Region Value Isolation Output";
+    settings.audioSetup.preferredOutput.sampleRateHz = 48000.0;
+    settings.audioSetup.preferredOutput.bufferSizeSamples = 256;
+    settings.audioSetup.preferredOutput.outputChannelCount = 2;
+    settings.audioSetup.preferredOutput.juceDeviceStateXml =
+        "<DEVICESETUP deviceType=\"Windows Audio\" audioOutputDeviceName=\"Invalid Loop Region Value Isolation Output\"/>";
+
+    const auto settingsPath =
+        makeTemporarySettingsPath("projectname-invalid-loop-region-value-load-settings-isolation-test");
+
+    std::string error;
+    expect(projectname::saveAppSettings(settings, settingsPath, error),
+           "Invalid-loop-region value settings-isolation fixture saves app settings");
+    const auto originalSettingsText = readTextFile(settingsPath);
+
+    const auto package =
+        makeTemporaryPackagePath("projectname-invalid-loop-region-value-load-settings-isolation-test");
+    const auto invalidLoopRegionManifestText = std::string(R"({
+  "manifestVersion": 1,
+  "name": "Bad Loop Region Value Settings Isolation",
+  "transport": {
+    "tempoBpm": 120,
+    "timeSignature": { "numerator": 4, "denominator": 4 },
+    "positionBeats": 0
+  },
+  "loopRegion": {
+    "enabled": true,
+    "startBeats": 8,
+    "lengthBeats": 0
+  },
+  "tracks": []
+})");
+    const auto sentinelPath = package / "sentinel.txt";
+    writeManifestText(package, invalidLoopRegionManifestText);
+    const auto originalManifestText = readTextFile(package / "manifest.json");
+    writeTextFile(sentinelPath, "invalid loop region value settings-isolation sentinel");
+
+    error = "stale invalid loop region value settings-isolation load error";
+    auto loaded = projectname::ProjectModel::loadPackage(package, error);
+    expect(!loaded.has_value(),
+           "Project load rejects invalid loop-region value during settings-isolation check");
+    expect(error.find("Project loop region is invalid") != std::string::npos,
+           "Invalid-loop-region value settings-isolation load failure error is human-readable");
+    expect(readTextFile(settingsPath) == originalSettingsText,
+           "Invalid-loop-region value settings-isolation load failure leaves app settings unchanged");
+
+    std::string settingsError;
+    const auto reloadedSettings = projectname::loadAppSettings(settingsPath, settingsError);
+    expect(reloadedSettings.has_value() && *reloadedSettings == settings,
+           "Invalid-loop-region value settings-isolation load failure leaves app settings loadable");
+    expect(readTextFile(package / "manifest.json") == originalManifestText,
+           "Invalid-loop-region value settings-isolation load failure preserves manifest");
+    expect(!std::filesystem::exists(package / "manifest.json.tmp"),
+           "Invalid-loop-region value settings-isolation load failure does not create a temporary manifest");
+    expect(readTextFile(sentinelPath) == "invalid loop region value settings-isolation sentinel",
+           "Invalid-loop-region value settings-isolation load failure preserves package contents");
+    expect(!std::filesystem::exists(package / "audio"),
+           "Invalid-loop-region value settings-isolation load failure does not create an audio asset folder");
+    expect(!std::filesystem::exists(package / "samples"),
+           "Invalid-loop-region value settings-isolation load failure does not create a samples asset folder");
+    expect(!std::filesystem::exists(package / "presets"),
+           "Invalid-loop-region value settings-isolation load failure does not create a presets asset folder");
+    expect(!std::filesystem::exists(package / "analysis"),
+           "Invalid-loop-region value settings-isolation load failure does not create an analysis asset folder");
+    expect(!std::filesystem::exists(package / "backups"),
+           "Invalid-loop-region value settings-isolation load failure does not create a backups asset folder");
+
+    expect(std::filesystem::remove_all(package) > 0,
+           "Temporary invalid-loop-region value settings-isolation package deleted");
+    expect(std::filesystem::remove(settingsPath),
+           "Temporary invalid-loop-region value settings-isolation app settings file deleted");
+}
+
 void projectInvalidTracksSchemaLoadFailureLeavesAppSettingsUntouched()
 {
     projectname::AppSettings settings;
@@ -13969,6 +14048,7 @@ int main()
     appSessionUnsupportedManifestVersionLoadFailureLeavesAppSettingsUntouched();
     projectInvalidLoopRegionSchemaLoadFailureLeavesAppSettingsUntouched();
     appSessionInvalidLoopRegionSchemaLoadFailureLeavesAppSettingsUntouched();
+    projectInvalidLoopRegionValueLoadFailureLeavesAppSettingsUntouched();
     projectInvalidTracksSchemaLoadFailureLeavesAppSettingsUntouched();
     appSessionInvalidTracksSchemaLoadFailureLeavesAppSettingsUntouched();
     projectLoadPackagePathFileFailureLeavesOccupiedPathUntouched();
