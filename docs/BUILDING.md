@@ -374,10 +374,10 @@ restore-manifest/preflight/file-moving/restore/background-job tests, workspace c
 registry metadata/enablement/dispatch-result tests, timeline viewport indicator
 formatting tests, persisted track mix state/static mix command tests, stereo
 prepared voice summing tests, previous-manifest backup success/failure tests,
-missing-manifest and manifest-directory load failure/app-settings isolation
-tests, direct package symlink load rejection, including broken links and session
-unchanged-state coverage for linked/broken direct package symlinks, direct
-package symlink
+project and AppSession missing-manifest load failure/app-settings isolation
+tests, manifest-directory load failure/app-settings isolation tests, direct
+package symlink load rejection, including broken links and session unchanged-state
+coverage for linked/broken direct package symlinks, direct package symlink
 settings-isolation tests including broken links, AppSession direct package
 symlink settings-isolation tests including broken links, linked/broken
 package-parent load rejection, linked/broken package-parent settings-isolation

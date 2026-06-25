@@ -277,9 +277,9 @@ Third-party dependencies remain under their own licenses as recorded in
   them; session
   coverage keeps the active project unchanged for package-path file failures,
   linked/broken direct package symlink and linked/broken package-parent
-  failures and verifies project missing-manifest failures, project and
-  AppSession package-path file failures, project and AppSession direct package
-  symlink failures, including broken links, project linked/broken
+  failures and verifies project and AppSession missing-manifest failures,
+  project and AppSession package-path file failures, project and AppSession
+  direct package symlink failures, including broken links, project linked/broken
   package-parent failures,
   AppSession linked/broken package-parent failures, and manifest-link failures
   do not rewrite isolated app settings or create `manifest.json.tmp`.

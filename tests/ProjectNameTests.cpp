@@ -11793,6 +11793,76 @@ void projectMissingManifestLoadFailureLeavesAppSettingsUntouched()
            "Temporary missing-manifest settings-isolation app settings file deleted");
 }
 
+void appSessionMissingManifestLoadFailureLeavesAppSettingsUntouched()
+{
+    projectname::AppSettings settings;
+    settings.audioSetup.firstRunPromptDismissed = true;
+    settings.audioSetup.preferredOutput.hasOutputDevice = true;
+    settings.audioSetup.preferredOutput.deviceType = "Windows Audio";
+    settings.audioSetup.preferredOutput.deviceName = "Session Missing Manifest Isolation Output";
+    settings.audioSetup.preferredOutput.sampleRateHz = 48000.0;
+    settings.audioSetup.preferredOutput.bufferSizeSamples = 256;
+    settings.audioSetup.preferredOutput.outputChannelCount = 2;
+    settings.audioSetup.preferredOutput.juceDeviceStateXml =
+        "<DEVICESETUP deviceType=\"Windows Audio\" audioOutputDeviceName=\"Session Missing Manifest Isolation Output\"/>";
+
+    const auto settingsPath =
+        makeTemporarySettingsPath("projectname-session-missing-manifest-load-settings-isolation-test");
+
+    std::string error;
+    expect(projectname::saveAppSettings(settings, settingsPath, error),
+           "Session missing-manifest settings-isolation fixture saves app settings");
+    const auto originalSettingsText = readTextFile(settingsPath);
+
+    projectname::AppSession session;
+    session.getProject().setName("Keep Session Missing Manifest Settings Isolation Baseline");
+    session.setTempoBpm(137.0);
+    const auto originalProject = session.getProject();
+
+    const auto package =
+        makeTemporaryPackagePath("projectname-session-missing-manifest-load-settings-isolation-test");
+    const auto sentinelPath = package / "sentinel.txt";
+    writeTextFile(sentinelPath, "session missing manifest settings-isolation sentinel");
+
+    error = "stale session missing manifest settings-isolation load error";
+    expect(!session.loadProjectPackage(package, error),
+           "Session load rejects missing manifest during settings-isolation check");
+    expect(error.find("Project manifest was not found") != std::string::npos,
+           "Session missing-manifest settings-isolation load failure error is human-readable");
+    expect(error.find("JSON") == std::string::npos,
+           "Session missing-manifest settings-isolation load failure does not parse JSON");
+    expect(session.getProject() == originalProject,
+           "Session missing-manifest settings-isolation load failure keeps current session project");
+    expect(readTextFile(settingsPath) == originalSettingsText,
+           "Session missing-manifest settings-isolation load failure leaves app settings unchanged");
+
+    std::string settingsError;
+    const auto reloadedSettings = projectname::loadAppSettings(settingsPath, settingsError);
+    expect(reloadedSettings.has_value() && *reloadedSettings == settings,
+           "Session missing-manifest settings-isolation load failure leaves app settings loadable");
+    expect(!std::filesystem::exists(package / "manifest.json"),
+           "Session missing-manifest settings-isolation load failure does not create a manifest");
+    expect(!std::filesystem::exists(package / "manifest.json.tmp"),
+           "Session missing-manifest settings-isolation load failure does not create a temporary manifest");
+    expect(readTextFile(sentinelPath) == "session missing manifest settings-isolation sentinel",
+           "Session missing-manifest settings-isolation load failure preserves package contents");
+    expect(!std::filesystem::exists(package / "audio"),
+           "Session missing-manifest settings-isolation load failure does not create an audio asset folder");
+    expect(!std::filesystem::exists(package / "samples"),
+           "Session missing-manifest settings-isolation load failure does not create a samples asset folder");
+    expect(!std::filesystem::exists(package / "presets"),
+           "Session missing-manifest settings-isolation load failure does not create a presets asset folder");
+    expect(!std::filesystem::exists(package / "analysis"),
+           "Session missing-manifest settings-isolation load failure does not create an analysis asset folder");
+    expect(!std::filesystem::exists(package / "backups"),
+           "Session missing-manifest settings-isolation load failure does not create a backups asset folder");
+
+    expect(std::filesystem::remove_all(package) > 0,
+           "Temporary session missing-manifest settings-isolation package deleted");
+    expect(std::filesystem::remove(settingsPath),
+           "Temporary session missing-manifest settings-isolation app settings file deleted");
+}
+
 void projectLoadPackagePathFileFailureLeavesOccupiedPathUntouched()
 {
     const auto occupiedPackagePath =
@@ -13294,6 +13364,7 @@ int main()
     appSessionLoadFailureKeepsCurrentProject();
     projectManifestDirectoryLoadFailureKeepsSessionProject();
     projectMissingManifestLoadFailureLeavesAppSettingsUntouched();
+    appSessionMissingManifestLoadFailureLeavesAppSettingsUntouched();
     projectLoadPackagePathFileFailureLeavesOccupiedPathUntouched();
     projectLoadPackagePathFileFailureLeavesAppSettingsUntouched();
     appSessionLoadPackagePathFileFailureKeepsSessionProject();
