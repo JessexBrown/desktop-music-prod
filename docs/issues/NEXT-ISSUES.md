@@ -2,25 +2,7 @@
 
 # Next Issues
 
-## 1. Add AppSession Load Broken Direct Package Symlink Settings Isolation Coverage
-
-Acceptance:
-- Add focused `AppSession` coverage that loading through a direct
-  package-directory symlink whose target is missing leaves an isolated app
-  settings file unchanged.
-- Fixture-gate cleanly when the host cannot create test symlinks without
-  elevated permissions.
-- Verify session load rejects the broken package symlink, leaves the missing
-  target uncreated, keeps the current session project unchanged, leaves app
-  settings loadable and byte-for-byte unchanged, and creates no temporary
-  manifest through the link or target path.
-- Preserve direct linked/broken package symlink rejection, session linked/broken
-  direct package symlink rejection, AppSession direct package settings
-  isolation, linked/broken package-parent settings isolation, manifest symlink
-  and broken-symlink settings isolation, manifest directory settings isolation,
-  and successful session save/load coverage.
-
-## 2. Add AppSession Load Linked Parent Settings Isolation Coverage
+## 1. Add AppSession Load Linked Parent Settings Isolation Coverage
 
 Acceptance:
 - Add focused `AppSession` coverage that loading through a linked intermediate
@@ -37,7 +19,7 @@ Acceptance:
   broken-symlink settings isolation, manifest directory settings isolation, and
   successful session save/load coverage.
 
-## 3. Add AppSession Load Broken Parent Settings Isolation Coverage
+## 2. Add AppSession Load Broken Parent Settings Isolation Coverage
 
 Acceptance:
 - Add focused `AppSession` coverage that loading through a broken intermediate
@@ -54,7 +36,7 @@ Acceptance:
   broken-symlink settings isolation, manifest directory settings isolation, and
   successful session save/load coverage.
 
-## 4. Add Project Load Package Path File Failure Coverage
+## 3. Add Project Load Package Path File Failure Coverage
 
 Acceptance:
 - Add focused core coverage for loading from a requested project package path
@@ -67,7 +49,7 @@ Acceptance:
   rejection, manifest directory rejection, and manifest symlink/broken-symlink
   rejection.
 
-## 5. Add AppSession Load Package Path File Failure Coverage
+## 4. Add AppSession Load Package Path File Failure Coverage
 
 Acceptance:
 - Add focused `AppSession` coverage for loading from a requested project package
@@ -79,3 +61,17 @@ Acceptance:
   load coverage, package path file save rejection, direct linked/broken package
   symlink rejection, linked/broken package-parent rejection, manifest directory
   rejection, and manifest symlink/broken-symlink rejection.
+
+## 5. Add Project Load Package Path File Settings Isolation Coverage
+
+Acceptance:
+- Add focused core coverage that loading from a requested project package path
+  occupied by a regular file leaves an isolated app settings file unchanged.
+- Verify load reports a human-readable package-path failure without parsing
+  JSON, leaves the occupied file unchanged, leaves app settings loadable and
+  byte-for-byte unchanged, and creates no package folders or
+  `manifest.json.tmp`.
+- Preserve project and AppSession package-path file load coverage, package path
+  file save rejection, direct linked/broken package symlink rejection,
+  linked/broken package-parent rejection, manifest directory rejection, manifest
+  symlink/broken-symlink rejection, and successful save/load coverage.

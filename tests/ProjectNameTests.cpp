@@ -12135,6 +12135,80 @@ void appSessionBrokenDirectPackageSymlinkLoadFailureKeepsSessionProject()
     std::filesystem::remove_all(missingTargetPackage);
 }
 
+void appSessionBrokenDirectPackageSymlinkLoadFailureLeavesAppSettingsUntouched()
+{
+    projectname::AppSettings settings;
+    settings.audioSetup.firstRunPromptDismissed = true;
+    settings.audioSetup.preferredOutput.hasOutputDevice = true;
+    settings.audioSetup.preferredOutput.deviceType = "Windows Audio";
+    settings.audioSetup.preferredOutput.deviceName = "Session Broken Direct Package Isolation Output";
+    settings.audioSetup.preferredOutput.sampleRateHz = 48000.0;
+    settings.audioSetup.preferredOutput.bufferSizeSamples = 256;
+    settings.audioSetup.preferredOutput.outputChannelCount = 2;
+    settings.audioSetup.preferredOutput.juceDeviceStateXml =
+        "<DEVICESETUP deviceType=\"Windows Audio\" audioOutputDeviceName=\"Session Broken Direct Package Isolation Output\"/>";
+
+    const auto settingsPath =
+        makeTemporarySettingsPath("projectname-session-broken-direct-package-load-settings-isolation-test");
+
+    std::string error;
+    expect(projectname::saveAppSettings(settings, settingsPath, error),
+           "Session broken direct package symlink settings-isolation fixture saves app settings");
+    const auto originalSettingsText = readTextFile(settingsPath);
+
+    projectname::AppSession session;
+    session.getProject().setName("Keep Session Broken Direct Package Settings Isolation Baseline");
+    session.setTempoBpm(131.0);
+    const auto originalProject = session.getProject();
+
+    const auto packageSymlink =
+        makeTemporaryPackagePath("projectname-session-broken-direct-package-load-settings-isolation-link-test");
+    const auto missingTargetPackage =
+        makeTemporaryPackagePath("projectname-session-broken-direct-package-load-settings-isolation-target-test");
+
+    std::error_code symlinkError;
+    std::filesystem::create_directory_symlink(missingTargetPackage, packageSymlink, symlinkError);
+    if (symlinkError)
+    {
+        std::filesystem::remove(settingsPath);
+        return;
+    }
+
+    error = "stale session broken direct package settings-isolation load error";
+    expect(!session.loadProjectPackage(packageSymlink, error),
+           "Session load rejects a broken direct package symlink during settings-isolation check");
+    expect(error.find("Project package path contains a symlink") != std::string::npos
+               && error.find(packageSymlink.generic_string()) != std::string::npos,
+           "Session broken direct package symlink settings-isolation load failure error is human-readable");
+    expect(error.find("not found") == std::string::npos,
+           "Session broken direct package symlink settings-isolation load failure is not reported as a missing manifest");
+    expect(error.find("JSON") == std::string::npos,
+           "Session broken direct package symlink settings-isolation load failure does not parse JSON through the symlink");
+    expect(session.getProject() == originalProject,
+           "Session broken direct package symlink settings-isolation load failure keeps current session project");
+    expect(readTextFile(settingsPath) == originalSettingsText,
+           "Session broken direct package symlink settings-isolation load failure leaves app settings unchanged");
+
+    std::string settingsError;
+    const auto reloadedSettings = projectname::loadAppSettings(settingsPath, settingsError);
+    expect(reloadedSettings.has_value() && *reloadedSettings == settings,
+           "Session broken direct package symlink settings-isolation load failure leaves app settings loadable");
+    expect(std::filesystem::is_symlink(std::filesystem::symlink_status(packageSymlink)),
+           "Session broken direct package symlink settings-isolation load failure leaves the package symlink unchanged");
+    expect(!std::filesystem::exists(missingTargetPackage),
+           "Session broken direct package symlink settings-isolation load failure does not create the missing target");
+    expect(!std::filesystem::exists(packageSymlink / "manifest.json.tmp"),
+           "Session broken direct package symlink settings-isolation load failure does not create a temporary manifest through the link");
+    expect(!std::filesystem::exists(missingTargetPackage / "manifest.json.tmp"),
+           "Session broken direct package symlink settings-isolation load failure does not write target temporary manifest");
+
+    expect(std::filesystem::remove(packageSymlink),
+           "Temporary session broken direct package symlink settings-isolation symlink deleted");
+    std::filesystem::remove_all(missingTargetPackage);
+    expect(std::filesystem::remove(settingsPath),
+           "Temporary session broken direct package symlink settings-isolation app settings file deleted");
+}
+
 void projectLinkedPackageParentSymlinkLoadFailureRejectsBeforeParsingManifest()
 {
     const auto parentSymlink =
@@ -12785,6 +12859,7 @@ int main()
     appSessionDirectPackageSymlinkLoadFailureKeepsSessionProject();
     appSessionDirectPackageSymlinkLoadFailureLeavesAppSettingsUntouched();
     appSessionBrokenDirectPackageSymlinkLoadFailureKeepsSessionProject();
+    appSessionBrokenDirectPackageSymlinkLoadFailureLeavesAppSettingsUntouched();
     projectLinkedPackageParentSymlinkLoadFailureRejectsBeforeParsingManifest();
     projectLinkedPackageParentSymlinkLoadFailureLeavesAppSettingsUntouched();
     appSessionLinkedPackageParentSymlinkLoadFailureKeepsSessionProject();
