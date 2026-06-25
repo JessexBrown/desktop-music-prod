@@ -11863,6 +11863,70 @@ void appSessionMissingManifestLoadFailureLeavesAppSettingsUntouched()
            "Temporary session missing-manifest settings-isolation app settings file deleted");
 }
 
+void projectMalformedManifestLoadFailureLeavesAppSettingsUntouched()
+{
+    projectname::AppSettings settings;
+    settings.audioSetup.firstRunPromptDismissed = true;
+    settings.audioSetup.preferredOutput.hasOutputDevice = true;
+    settings.audioSetup.preferredOutput.deviceType = "Windows Audio";
+    settings.audioSetup.preferredOutput.deviceName = "Malformed Manifest Isolation Output";
+    settings.audioSetup.preferredOutput.sampleRateHz = 48000.0;
+    settings.audioSetup.preferredOutput.bufferSizeSamples = 256;
+    settings.audioSetup.preferredOutput.outputChannelCount = 2;
+    settings.audioSetup.preferredOutput.juceDeviceStateXml =
+        "<DEVICESETUP deviceType=\"Windows Audio\" audioOutputDeviceName=\"Malformed Manifest Isolation Output\"/>";
+
+    const auto settingsPath =
+        makeTemporarySettingsPath("projectname-malformed-manifest-load-settings-isolation-test");
+
+    std::string error;
+    expect(projectname::saveAppSettings(settings, settingsPath, error),
+           "Malformed-manifest settings-isolation fixture saves app settings");
+    const auto originalSettingsText = readTextFile(settingsPath);
+
+    const auto package =
+        makeTemporaryPackagePath("projectname-malformed-manifest-load-settings-isolation-test");
+    const auto malformedManifestText = std::string("{ not valid json");
+    const auto sentinelPath = package / "sentinel.txt";
+    writeManifestText(package, malformedManifestText);
+    writeTextFile(sentinelPath, "malformed manifest settings-isolation sentinel");
+
+    error = "stale malformed manifest settings-isolation load error";
+    auto loaded = projectname::ProjectModel::loadPackage(package, error);
+    expect(!loaded.has_value(),
+           "Project load rejects malformed manifest during settings-isolation check");
+    expect(error.find("Project manifest is not valid JSON") != std::string::npos,
+           "Malformed-manifest settings-isolation load failure error is human-readable");
+    expect(readTextFile(settingsPath) == originalSettingsText,
+           "Malformed-manifest settings-isolation load failure leaves app settings unchanged");
+
+    std::string settingsError;
+    const auto reloadedSettings = projectname::loadAppSettings(settingsPath, settingsError);
+    expect(reloadedSettings.has_value() && *reloadedSettings == settings,
+           "Malformed-manifest settings-isolation load failure leaves app settings loadable");
+    expect(readTextFile(package / "manifest.json") == malformedManifestText,
+           "Malformed-manifest settings-isolation load failure preserves malformed manifest");
+    expect(!std::filesystem::exists(package / "manifest.json.tmp"),
+           "Malformed-manifest settings-isolation load failure does not create a temporary manifest");
+    expect(readTextFile(sentinelPath) == "malformed manifest settings-isolation sentinel",
+           "Malformed-manifest settings-isolation load failure preserves package contents");
+    expect(!std::filesystem::exists(package / "audio"),
+           "Malformed-manifest settings-isolation load failure does not create an audio asset folder");
+    expect(!std::filesystem::exists(package / "samples"),
+           "Malformed-manifest settings-isolation load failure does not create a samples asset folder");
+    expect(!std::filesystem::exists(package / "presets"),
+           "Malformed-manifest settings-isolation load failure does not create a presets asset folder");
+    expect(!std::filesystem::exists(package / "analysis"),
+           "Malformed-manifest settings-isolation load failure does not create an analysis asset folder");
+    expect(!std::filesystem::exists(package / "backups"),
+           "Malformed-manifest settings-isolation load failure does not create a backups asset folder");
+
+    expect(std::filesystem::remove_all(package) > 0,
+           "Temporary malformed-manifest settings-isolation package deleted");
+    expect(std::filesystem::remove(settingsPath),
+           "Temporary malformed-manifest settings-isolation app settings file deleted");
+}
+
 void projectLoadPackagePathFileFailureLeavesOccupiedPathUntouched()
 {
     const auto occupiedPackagePath =
@@ -13365,6 +13429,7 @@ int main()
     projectManifestDirectoryLoadFailureKeepsSessionProject();
     projectMissingManifestLoadFailureLeavesAppSettingsUntouched();
     appSessionMissingManifestLoadFailureLeavesAppSettingsUntouched();
+    projectMalformedManifestLoadFailureLeavesAppSettingsUntouched();
     projectLoadPackagePathFileFailureLeavesOccupiedPathUntouched();
     projectLoadPackagePathFileFailureLeavesAppSettingsUntouched();
     appSessionLoadPackagePathFileFailureKeepsSessionProject();
