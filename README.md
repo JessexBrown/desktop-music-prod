@@ -54,8 +54,8 @@ Third-party dependencies remain under their own licenses as recorded in
   broken links, instead of following them. Core tests cover failed
   project and AppSession missing-manifest and malformed-manifest failures,
   project and AppSession unsupported-version and invalid-tracks failures, plus
-  manifest-directory and symlinked-manifest loads, leaving isolated app settings
-  untouched.
+  project invalid loop-region schema failures, manifest-directory and
+  symlinked-manifest loads, leaving isolated app settings untouched.
 - Core project-package audio import that copies PCM16 WAV files into `audio/`,
   records `audio-file` clips with package-relative paths, and returns a prepared
   mono playback buffer.
@@ -281,9 +281,10 @@ Third-party dependencies remain under their own licenses as recorded in
   linked/broken direct package symlink and linked/broken package-parent
   failures and verifies project and AppSession missing-manifest and
   malformed-manifest failures, project and AppSession unsupported-version
-  and invalid-tracks failures, project and AppSession package-path file
-  failures, project and AppSession direct package symlink failures, including
-  broken links, project linked/broken package-parent failures,
+  and invalid-tracks failures, project invalid loop-region schema failures,
+  project and AppSession package-path file failures, project and AppSession
+  direct package symlink failures, including broken links, project linked/broken
+  package-parent failures,
   AppSession linked/broken package-parent failures, and manifest-link failures
   do not rewrite isolated app settings or create `manifest.json.tmp`.
 - Shared app session that keeps UI playback state tied to the project-backed

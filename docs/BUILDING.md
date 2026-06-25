@@ -378,6 +378,7 @@ project and AppSession missing-manifest load failure/app-settings isolation
 tests, project and AppSession malformed-manifest load failure/app-settings
 isolation tests, project and AppSession unsupported-version load
 failure/app-settings isolation tests, project and AppSession invalid-tracks load
+failure/app-settings isolation tests, project invalid-loop-region schema load
 failure/app-settings isolation tests,
 manifest-directory load failure/app-settings isolation tests, direct package
 symlink load rejection, including broken links and session unchanged-state
