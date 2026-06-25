@@ -52,8 +52,9 @@ Third-party dependencies remain under their own licenses as recorded in
   including broken links and later asset-folder failures before manifest
   staging, and loading rejects directory or symlinked manifest paths, including
   broken links, instead of following them. Core tests cover failed
-  missing-manifest, malformed-manifest, manifest-directory, and
-  symlinked-manifest loads leaving isolated app settings untouched.
+  project and AppSession missing-manifest and malformed-manifest failures,
+  plus manifest-directory and symlinked-manifest loads, leaving isolated app
+  settings untouched.
 - Core project-package audio import that copies PCM16 WAV files into `audio/`,
   records `audio-file` clips with package-relative paths, and returns a prepared
   mono playback buffer.
@@ -277,8 +278,8 @@ Third-party dependencies remain under their own licenses as recorded in
   them; session
   coverage keeps the active project unchanged for package-path file failures,
   linked/broken direct package symlink and linked/broken package-parent
-  failures and verifies project and AppSession missing-manifest failures,
-  project malformed-manifest failures, project and AppSession package-path file
+  failures and verifies project and AppSession missing-manifest and
+  malformed-manifest failures, project and AppSession package-path file
   failures, project and AppSession direct package symlink failures, including
   broken links, project linked/broken package-parent failures,
   AppSession linked/broken package-parent failures, and manifest-link failures
