@@ -11766,6 +11766,71 @@ void projectLoadPackagePathFileFailureLeavesOccupiedPathUntouched()
            "Temporary occupied project package load path file deleted");
 }
 
+void projectLoadPackagePathFileFailureLeavesAppSettingsUntouched()
+{
+    projectname::AppSettings settings;
+    settings.audioSetup.firstRunPromptDismissed = true;
+    settings.audioSetup.preferredOutput.hasOutputDevice = true;
+    settings.audioSetup.preferredOutput.deviceType = "Windows Audio";
+    settings.audioSetup.preferredOutput.deviceName = "Project Package Path File Isolation Output";
+    settings.audioSetup.preferredOutput.sampleRateHz = 48000.0;
+    settings.audioSetup.preferredOutput.bufferSizeSamples = 256;
+    settings.audioSetup.preferredOutput.outputChannelCount = 2;
+    settings.audioSetup.preferredOutput.juceDeviceStateXml =
+        "<DEVICESETUP deviceType=\"Windows Audio\" audioOutputDeviceName=\"Project Package Path File Isolation Output\"/>";
+
+    const auto settingsPath =
+        makeTemporarySettingsPath("projectname-load-package-file-settings-isolation-test");
+
+    std::string error;
+    expect(projectname::saveAppSettings(settings, settingsPath, error),
+           "Project package-path file settings-isolation fixture saves app settings");
+    const auto originalSettingsText = readTextFile(settingsPath);
+
+    const auto occupiedPackagePath =
+        makeTemporaryPackagePath("projectname-load-package-file-settings-isolation-test");
+    writeTextFile(occupiedPackagePath, "occupied project package settings-isolation load path");
+
+    error = "stale package path file settings-isolation load error";
+    auto loaded = projectname::ProjectModel::loadPackage(occupiedPackagePath, error);
+    expect(!loaded.has_value(),
+           "Project load rejects a package path file during settings-isolation check");
+    expect(error.find("Project package path points to a file") != std::string::npos,
+           "Project package-path file settings-isolation load failure error is human-readable");
+    expect(error.find("JSON") == std::string::npos,
+           "Project package-path file settings-isolation load failure does not parse JSON");
+    expect(readTextFile(settingsPath) == originalSettingsText,
+           "Project package-path file settings-isolation load failure leaves app settings unchanged");
+
+    std::string settingsError;
+    const auto reloadedSettings = projectname::loadAppSettings(settingsPath, settingsError);
+    expect(reloadedSettings.has_value() && *reloadedSettings == settings,
+           "Project package-path file settings-isolation load failure leaves app settings loadable");
+    expect(std::filesystem::is_regular_file(occupiedPackagePath),
+           "Project package-path file settings-isolation load failure leaves occupied path as a file");
+    expect(readTextFile(occupiedPackagePath) == "occupied project package settings-isolation load path",
+           "Project package-path file settings-isolation load failure preserves occupied file contents");
+    expect(!std::filesystem::exists(occupiedPackagePath / "manifest.json"),
+           "Project package-path file settings-isolation load failure does not create a manifest below occupied path");
+    expect(!std::filesystem::exists(occupiedPackagePath / "manifest.json.tmp"),
+           "Project package-path file settings-isolation load failure does not create a temporary manifest below occupied path");
+    expect(!std::filesystem::exists(occupiedPackagePath / "audio"),
+           "Project package-path file settings-isolation load failure does not create an audio asset folder");
+    expect(!std::filesystem::exists(occupiedPackagePath / "samples"),
+           "Project package-path file settings-isolation load failure does not create a samples asset folder");
+    expect(!std::filesystem::exists(occupiedPackagePath / "presets"),
+           "Project package-path file settings-isolation load failure does not create a presets asset folder");
+    expect(!std::filesystem::exists(occupiedPackagePath / "analysis"),
+           "Project package-path file settings-isolation load failure does not create an analysis asset folder");
+    expect(!std::filesystem::exists(occupiedPackagePath / "backups"),
+           "Project package-path file settings-isolation load failure does not create a backups asset folder");
+
+    expect(std::filesystem::remove(occupiedPackagePath),
+           "Temporary occupied project package settings-isolation load path file deleted");
+    expect(std::filesystem::remove(settingsPath),
+           "Temporary project package-path file settings-isolation app settings file deleted");
+}
+
 void appSessionLoadPackagePathFileFailureKeepsSessionProject()
 {
     projectname::AppSession session;
@@ -13094,6 +13159,7 @@ int main()
     appSessionLoadFailureKeepsCurrentProject();
     projectManifestDirectoryLoadFailureKeepsSessionProject();
     projectLoadPackagePathFileFailureLeavesOccupiedPathUntouched();
+    projectLoadPackagePathFileFailureLeavesAppSettingsUntouched();
     appSessionLoadPackagePathFileFailureKeepsSessionProject();
     projectDirectPackageSymlinkLoadFailureRejectsBeforeParsingManifest();
     projectDirectPackageSymlinkLoadFailureLeavesAppSettingsUntouched();
