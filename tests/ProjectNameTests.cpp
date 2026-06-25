@@ -12010,6 +12010,88 @@ void appSessionDirectPackageSymlinkLoadFailureKeepsSessionProject()
            "Temporary session direct package load symlink target deleted");
 }
 
+void appSessionDirectPackageSymlinkLoadFailureLeavesAppSettingsUntouched()
+{
+    projectname::AppSettings settings;
+    settings.audioSetup.firstRunPromptDismissed = true;
+    settings.audioSetup.preferredOutput.hasOutputDevice = true;
+    settings.audioSetup.preferredOutput.deviceType = "Windows Audio";
+    settings.audioSetup.preferredOutput.deviceName = "Session Direct Package Isolation Output";
+    settings.audioSetup.preferredOutput.sampleRateHz = 48000.0;
+    settings.audioSetup.preferredOutput.bufferSizeSamples = 256;
+    settings.audioSetup.preferredOutput.outputChannelCount = 2;
+    settings.audioSetup.preferredOutput.juceDeviceStateXml =
+        "<DEVICESETUP deviceType=\"Windows Audio\" audioOutputDeviceName=\"Session Direct Package Isolation Output\"/>";
+
+    const auto settingsPath =
+        makeTemporarySettingsPath("projectname-session-direct-package-load-settings-isolation-test");
+
+    std::string error;
+    expect(projectname::saveAppSettings(settings, settingsPath, error),
+           "Session direct package symlink settings-isolation fixture saves app settings");
+    const auto originalSettingsText = readTextFile(settingsPath);
+
+    projectname::AppSession session;
+    session.getProject().setName("Keep Session Direct Package Settings Isolation Baseline");
+    session.setTempoBpm(129.0);
+    const auto originalProject = session.getProject();
+
+    const auto packageSymlink =
+        makeTemporaryPackagePath("projectname-session-direct-package-load-settings-isolation-link-test");
+    const auto linkedTargetPackage =
+        makeTemporaryPackagePath("projectname-session-direct-package-load-settings-isolation-target-test");
+    const auto linkedTargetSentinel = linkedTargetPackage / "sentinel.txt";
+    const auto linkedManifestText =
+        R"({"manifestVersion":1,"name":"Session Direct Package Settings Isolation Manifest Should Not Load","transport":{"tempoBpm":88.0,"timeSignature":{"numerator":5,"denominator":4},"positionBeats":2.0},"tracks":[]})";
+
+    writeManifestText(linkedTargetPackage, linkedManifestText);
+    writeTextFile(linkedTargetSentinel, "session direct package settings-isolation sentinel");
+
+    std::error_code symlinkError;
+    std::filesystem::create_directory_symlink(linkedTargetPackage, packageSymlink, symlinkError);
+    if (symlinkError)
+    {
+        std::filesystem::remove_all(linkedTargetPackage);
+        std::filesystem::remove(settingsPath);
+        return;
+    }
+
+    error = "stale session direct package settings-isolation load error";
+    expect(!session.loadProjectPackage(packageSymlink, error),
+           "Session load rejects a direct package symlink during settings-isolation check");
+    expect(error.find("Project package path contains a symlink") != std::string::npos
+               && error.find(packageSymlink.generic_string()) != std::string::npos,
+           "Session direct package symlink settings-isolation load failure error is human-readable");
+    expect(error.find("JSON") == std::string::npos,
+           "Session direct package symlink settings-isolation load failure does not parse JSON through the symlink");
+    expect(session.getProject() == originalProject,
+           "Session direct package symlink settings-isolation load failure keeps current session project");
+    expect(readTextFile(settingsPath) == originalSettingsText,
+           "Session direct package symlink settings-isolation load failure leaves app settings unchanged");
+
+    std::string settingsError;
+    const auto reloadedSettings = projectname::loadAppSettings(settingsPath, settingsError);
+    expect(reloadedSettings.has_value() && *reloadedSettings == settings,
+           "Session direct package symlink settings-isolation load failure leaves app settings loadable");
+    expect(std::filesystem::is_symlink(std::filesystem::symlink_status(packageSymlink)),
+           "Session direct package symlink settings-isolation load failure leaves the package symlink unchanged");
+    expect(readTextFile(linkedTargetPackage / "manifest.json") == linkedManifestText,
+           "Session direct package symlink settings-isolation load failure preserves the linked target manifest");
+    expect(readTextFile(linkedTargetSentinel) == "session direct package settings-isolation sentinel",
+           "Session direct package symlink settings-isolation load failure preserves the linked target sentinel");
+    expect(!std::filesystem::exists(packageSymlink / "manifest.json.tmp"),
+           "Session direct package symlink settings-isolation load failure does not create a temporary manifest through the link");
+    expect(!std::filesystem::exists(linkedTargetPackage / "manifest.json.tmp"),
+           "Session direct package symlink settings-isolation load failure does not write target temporary manifest");
+
+    expect(std::filesystem::remove(packageSymlink),
+           "Temporary session direct package symlink settings-isolation symlink deleted");
+    expect(std::filesystem::remove_all(linkedTargetPackage) > 0,
+           "Temporary session direct package symlink settings-isolation target deleted");
+    expect(std::filesystem::remove(settingsPath),
+           "Temporary session direct package symlink settings-isolation app settings file deleted");
+}
+
 void appSessionBrokenDirectPackageSymlinkLoadFailureKeepsSessionProject()
 {
     projectname::AppSession session;
@@ -12701,6 +12783,7 @@ int main()
     projectBrokenDirectPackageSymlinkLoadFailureRejectsBeforeManifestWork();
     projectBrokenDirectPackageSymlinkLoadFailureLeavesAppSettingsUntouched();
     appSessionDirectPackageSymlinkLoadFailureKeepsSessionProject();
+    appSessionDirectPackageSymlinkLoadFailureLeavesAppSettingsUntouched();
     appSessionBrokenDirectPackageSymlinkLoadFailureKeepsSessionProject();
     projectLinkedPackageParentSymlinkLoadFailureRejectsBeforeParsingManifest();
     projectLinkedPackageParentSymlinkLoadFailureLeavesAppSettingsUntouched();

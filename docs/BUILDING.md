@@ -377,11 +377,11 @@ prepared voice summing tests, previous-manifest backup success/failure tests,
 manifest-directory load failure/app-settings isolation tests, direct package
 symlink load rejection, including broken links and session unchanged-state
 coverage for linked/broken direct package symlinks, direct package symlink
-settings-isolation tests including broken links, linked/broken package-parent
-load rejection, linked/broken package-parent settings-isolation tests, and
-session linked/broken-parent rejection tests when host-supported, manifest
-symlink and broken-symlink load failure/app-settings isolation tests when
-host-supported,
+settings-isolation tests including broken links, AppSession direct package
+symlink settings-isolation tests, linked/broken package-parent load rejection,
+linked/broken package-parent settings-isolation tests, and session
+linked/broken-parent rejection tests when host-supported, manifest symlink and
+broken-symlink load failure/app-settings isolation tests when host-supported,
 package-path file rejection tests, package directory creation failure tests,
 package and asset-folder symlink path failure tests, including broken asset
 folder links and linked/broken later asset folder links, when host-supported,
