@@ -12151,6 +12151,80 @@ void appSessionUnsupportedManifestVersionLoadFailureLeavesAppSettingsUntouched()
            "Temporary session unsupported-version settings-isolation app settings file deleted");
 }
 
+void projectInvalidTracksSchemaLoadFailureLeavesAppSettingsUntouched()
+{
+    projectname::AppSettings settings;
+    settings.audioSetup.firstRunPromptDismissed = true;
+    settings.audioSetup.preferredOutput.hasOutputDevice = true;
+    settings.audioSetup.preferredOutput.deviceType = "Windows Audio";
+    settings.audioSetup.preferredOutput.deviceName = "Invalid Tracks Isolation Output";
+    settings.audioSetup.preferredOutput.sampleRateHz = 48000.0;
+    settings.audioSetup.preferredOutput.bufferSizeSamples = 256;
+    settings.audioSetup.preferredOutput.outputChannelCount = 2;
+    settings.audioSetup.preferredOutput.juceDeviceStateXml =
+        "<DEVICESETUP deviceType=\"Windows Audio\" audioOutputDeviceName=\"Invalid Tracks Isolation Output\"/>";
+
+    const auto settingsPath =
+        makeTemporarySettingsPath("projectname-invalid-tracks-load-settings-isolation-test");
+
+    std::string error;
+    expect(projectname::saveAppSettings(settings, settingsPath, error),
+           "Invalid-tracks settings-isolation fixture saves app settings");
+    const auto originalSettingsText = readTextFile(settingsPath);
+
+    const auto package =
+        makeTemporaryPackagePath("projectname-invalid-tracks-load-settings-isolation-test");
+    const auto invalidTracksManifestText = std::string(R"({
+  "manifestVersion": 1,
+  "name": "Bad Tracks Settings Isolation",
+  "transport": {
+    "tempoBpm": 120,
+    "timeSignature": { "numerator": 4, "denominator": 4 },
+    "positionBeats": 0
+  },
+  "tracks": {}
+})");
+    const auto sentinelPath = package / "sentinel.txt";
+    writeManifestText(package, invalidTracksManifestText);
+    const auto originalManifestText = readTextFile(package / "manifest.json");
+    writeTextFile(sentinelPath, "invalid tracks settings-isolation sentinel");
+
+    error = "stale invalid tracks settings-isolation load error";
+    auto loaded = projectname::ProjectModel::loadPackage(package, error);
+    expect(!loaded.has_value(),
+           "Project load rejects invalid tracks schema during settings-isolation check");
+    expect(error.find("Project tracks must be an array") != std::string::npos,
+           "Invalid-tracks settings-isolation load failure error is human-readable");
+    expect(readTextFile(settingsPath) == originalSettingsText,
+           "Invalid-tracks settings-isolation load failure leaves app settings unchanged");
+
+    std::string settingsError;
+    const auto reloadedSettings = projectname::loadAppSettings(settingsPath, settingsError);
+    expect(reloadedSettings.has_value() && *reloadedSettings == settings,
+           "Invalid-tracks settings-isolation load failure leaves app settings loadable");
+    expect(readTextFile(package / "manifest.json") == originalManifestText,
+           "Invalid-tracks settings-isolation load failure preserves manifest");
+    expect(!std::filesystem::exists(package / "manifest.json.tmp"),
+           "Invalid-tracks settings-isolation load failure does not create a temporary manifest");
+    expect(readTextFile(sentinelPath) == "invalid tracks settings-isolation sentinel",
+           "Invalid-tracks settings-isolation load failure preserves package contents");
+    expect(!std::filesystem::exists(package / "audio"),
+           "Invalid-tracks settings-isolation load failure does not create an audio asset folder");
+    expect(!std::filesystem::exists(package / "samples"),
+           "Invalid-tracks settings-isolation load failure does not create a samples asset folder");
+    expect(!std::filesystem::exists(package / "presets"),
+           "Invalid-tracks settings-isolation load failure does not create a presets asset folder");
+    expect(!std::filesystem::exists(package / "analysis"),
+           "Invalid-tracks settings-isolation load failure does not create an analysis asset folder");
+    expect(!std::filesystem::exists(package / "backups"),
+           "Invalid-tracks settings-isolation load failure does not create a backups asset folder");
+
+    expect(std::filesystem::remove_all(package) > 0,
+           "Temporary invalid-tracks settings-isolation package deleted");
+    expect(std::filesystem::remove(settingsPath),
+           "Temporary invalid-tracks settings-isolation app settings file deleted");
+}
+
 void projectLoadPackagePathFileFailureLeavesOccupiedPathUntouched()
 {
     const auto occupiedPackagePath =
@@ -13657,6 +13731,7 @@ int main()
     appSessionMalformedManifestLoadFailureLeavesAppSettingsUntouched();
     projectUnsupportedManifestVersionLoadFailureLeavesAppSettingsUntouched();
     appSessionUnsupportedManifestVersionLoadFailureLeavesAppSettingsUntouched();
+    projectInvalidTracksSchemaLoadFailureLeavesAppSettingsUntouched();
     projectLoadPackagePathFileFailureLeavesOccupiedPathUntouched();
     projectLoadPackagePathFileFailureLeavesAppSettingsUntouched();
     appSessionLoadPackagePathFileFailureKeepsSessionProject();
