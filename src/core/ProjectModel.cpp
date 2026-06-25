@@ -430,6 +430,12 @@ std::optional<ProjectModel> ProjectModel::loadPackage(const std::filesystem::pat
     const auto manifestStatus = std::filesystem::symlink_status(manifestPath, filesystemError);
     if (filesystemError)
     {
+        if (isMissingPathError(filesystemError))
+        {
+            error = "Project manifest was not found.";
+            return std::nullopt;
+        }
+
         error = "Project manifest could not be inspected: " + filesystemError.message();
         return std::nullopt;
     }

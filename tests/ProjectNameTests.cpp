@@ -11729,6 +11729,70 @@ void projectManifestDirectoryLoadFailureKeepsSessionProject()
            "Temporary manifest-directory load package deleted");
 }
 
+void projectMissingManifestLoadFailureLeavesAppSettingsUntouched()
+{
+    projectname::AppSettings settings;
+    settings.audioSetup.firstRunPromptDismissed = true;
+    settings.audioSetup.preferredOutput.hasOutputDevice = true;
+    settings.audioSetup.preferredOutput.deviceType = "Windows Audio";
+    settings.audioSetup.preferredOutput.deviceName = "Missing Manifest Isolation Output";
+    settings.audioSetup.preferredOutput.sampleRateHz = 48000.0;
+    settings.audioSetup.preferredOutput.bufferSizeSamples = 256;
+    settings.audioSetup.preferredOutput.outputChannelCount = 2;
+    settings.audioSetup.preferredOutput.juceDeviceStateXml =
+        "<DEVICESETUP deviceType=\"Windows Audio\" audioOutputDeviceName=\"Missing Manifest Isolation Output\"/>";
+
+    const auto settingsPath =
+        makeTemporarySettingsPath("projectname-missing-manifest-load-settings-isolation-test");
+
+    std::string error;
+    expect(projectname::saveAppSettings(settings, settingsPath, error),
+           "Missing-manifest settings-isolation fixture saves app settings");
+    const auto originalSettingsText = readTextFile(settingsPath);
+
+    const auto package =
+        makeTemporaryPackagePath("projectname-missing-manifest-load-settings-isolation-test");
+    const auto sentinelPath = package / "sentinel.txt";
+    writeTextFile(sentinelPath, "missing manifest settings-isolation sentinel");
+
+    error = "stale missing manifest settings-isolation load error";
+    auto loaded = projectname::ProjectModel::loadPackage(package, error);
+    expect(!loaded.has_value(),
+           "Project load rejects missing manifest during settings-isolation check");
+    expect(error.find("Project manifest was not found") != std::string::npos,
+           "Missing-manifest settings-isolation load failure error is human-readable");
+    expect(error.find("JSON") == std::string::npos,
+           "Missing-manifest settings-isolation load failure does not parse JSON");
+    expect(readTextFile(settingsPath) == originalSettingsText,
+           "Missing-manifest settings-isolation load failure leaves app settings unchanged");
+
+    std::string settingsError;
+    const auto reloadedSettings = projectname::loadAppSettings(settingsPath, settingsError);
+    expect(reloadedSettings.has_value() && *reloadedSettings == settings,
+           "Missing-manifest settings-isolation load failure leaves app settings loadable");
+    expect(!std::filesystem::exists(package / "manifest.json"),
+           "Missing-manifest settings-isolation load failure does not create a manifest");
+    expect(!std::filesystem::exists(package / "manifest.json.tmp"),
+           "Missing-manifest settings-isolation load failure does not create a temporary manifest");
+    expect(readTextFile(sentinelPath) == "missing manifest settings-isolation sentinel",
+           "Missing-manifest settings-isolation load failure preserves package contents");
+    expect(!std::filesystem::exists(package / "audio"),
+           "Missing-manifest settings-isolation load failure does not create an audio asset folder");
+    expect(!std::filesystem::exists(package / "samples"),
+           "Missing-manifest settings-isolation load failure does not create a samples asset folder");
+    expect(!std::filesystem::exists(package / "presets"),
+           "Missing-manifest settings-isolation load failure does not create a presets asset folder");
+    expect(!std::filesystem::exists(package / "analysis"),
+           "Missing-manifest settings-isolation load failure does not create an analysis asset folder");
+    expect(!std::filesystem::exists(package / "backups"),
+           "Missing-manifest settings-isolation load failure does not create a backups asset folder");
+
+    expect(std::filesystem::remove_all(package) > 0,
+           "Temporary missing-manifest settings-isolation package deleted");
+    expect(std::filesystem::remove(settingsPath),
+           "Temporary missing-manifest settings-isolation app settings file deleted");
+}
+
 void projectLoadPackagePathFileFailureLeavesOccupiedPathUntouched()
 {
     const auto occupiedPackagePath =
@@ -13229,6 +13293,7 @@ int main()
     appSessionImportsAudioWithoutResumingGeneratedTone();
     appSessionLoadFailureKeepsCurrentProject();
     projectManifestDirectoryLoadFailureKeepsSessionProject();
+    projectMissingManifestLoadFailureLeavesAppSettingsUntouched();
     projectLoadPackagePathFileFailureLeavesOccupiedPathUntouched();
     projectLoadPackagePathFileFailureLeavesAppSettingsUntouched();
     appSessionLoadPackagePathFileFailureKeepsSessionProject();
