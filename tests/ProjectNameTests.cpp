@@ -12471,6 +12471,88 @@ void appSessionInvalidLoopRegionValueLoadFailureLeavesAppSettingsUntouched()
            "Temporary session invalid-loop-region value settings-isolation app settings file deleted");
 }
 
+void projectInvalidDevicesSchemaLoadFailureLeavesAppSettingsUntouched()
+{
+    projectname::AppSettings settings;
+    settings.audioSetup.firstRunPromptDismissed = true;
+    settings.audioSetup.preferredOutput.hasOutputDevice = true;
+    settings.audioSetup.preferredOutput.deviceType = "Windows Audio";
+    settings.audioSetup.preferredOutput.deviceName = "Invalid Devices Schema Isolation Output";
+    settings.audioSetup.preferredOutput.sampleRateHz = 48000.0;
+    settings.audioSetup.preferredOutput.bufferSizeSamples = 256;
+    settings.audioSetup.preferredOutput.outputChannelCount = 2;
+    settings.audioSetup.preferredOutput.juceDeviceStateXml =
+        "<DEVICESETUP deviceType=\"Windows Audio\" audioOutputDeviceName=\"Invalid Devices Schema Isolation Output\"/>";
+
+    const auto settingsPath =
+        makeTemporarySettingsPath("projectname-invalid-devices-load-settings-isolation-test");
+
+    std::string error;
+    expect(projectname::saveAppSettings(settings, settingsPath, error),
+           "Invalid-devices schema settings-isolation fixture saves app settings");
+    const auto originalSettingsText = readTextFile(settingsPath);
+
+    const auto package =
+        makeTemporaryPackagePath("projectname-invalid-devices-load-settings-isolation-test");
+    const auto invalidDevicesManifestText = std::string(R"({
+  "manifestVersion": 1,
+  "name": "Bad Devices Settings Isolation",
+  "transport": {
+    "tempoBpm": 120,
+    "timeSignature": { "numerator": 4, "denominator": 4 },
+    "positionBeats": 0
+  },
+  "tracks": [
+    {
+      "id": "track-invalid-devices",
+      "name": "Invalid Devices Track",
+      "type": "audio",
+      "devices": {},
+      "clips": []
+    }
+  ]
+})");
+    const auto sentinelPath = package / "sentinel.txt";
+    writeManifestText(package, invalidDevicesManifestText);
+    const auto originalManifestText = readTextFile(package / "manifest.json");
+    writeTextFile(sentinelPath, "invalid devices settings-isolation sentinel");
+
+    error = "stale invalid devices settings-isolation load error";
+    auto loaded = projectname::ProjectModel::loadPackage(package, error);
+    expect(!loaded.has_value(),
+           "Project load rejects invalid devices schema during settings-isolation check");
+    expect(error.find("Track devices must be an array") != std::string::npos,
+           "Invalid-devices schema settings-isolation load failure error is human-readable");
+    expect(readTextFile(settingsPath) == originalSettingsText,
+           "Invalid-devices schema settings-isolation load failure leaves app settings unchanged");
+
+    std::string settingsError;
+    const auto reloadedSettings = projectname::loadAppSettings(settingsPath, settingsError);
+    expect(reloadedSettings.has_value() && *reloadedSettings == settings,
+           "Invalid-devices schema settings-isolation load failure leaves app settings loadable");
+    expect(readTextFile(package / "manifest.json") == originalManifestText,
+           "Invalid-devices schema settings-isolation load failure preserves manifest");
+    expect(!std::filesystem::exists(package / "manifest.json.tmp"),
+           "Invalid-devices schema settings-isolation load failure does not create a temporary manifest");
+    expect(readTextFile(sentinelPath) == "invalid devices settings-isolation sentinel",
+           "Invalid-devices schema settings-isolation load failure preserves package contents");
+    expect(!std::filesystem::exists(package / "audio"),
+           "Invalid-devices schema settings-isolation load failure does not create an audio asset folder");
+    expect(!std::filesystem::exists(package / "samples"),
+           "Invalid-devices schema settings-isolation load failure does not create a samples asset folder");
+    expect(!std::filesystem::exists(package / "presets"),
+           "Invalid-devices schema settings-isolation load failure does not create a presets asset folder");
+    expect(!std::filesystem::exists(package / "analysis"),
+           "Invalid-devices schema settings-isolation load failure does not create an analysis asset folder");
+    expect(!std::filesystem::exists(package / "backups"),
+           "Invalid-devices schema settings-isolation load failure does not create a backups asset folder");
+
+    expect(std::filesystem::remove_all(package) > 0,
+           "Temporary invalid-devices schema settings-isolation package deleted");
+    expect(std::filesystem::remove(settingsPath),
+           "Temporary invalid-devices schema settings-isolation app settings file deleted");
+}
+
 void projectInvalidTracksSchemaLoadFailureLeavesAppSettingsUntouched()
 {
     projectname::AppSettings settings;
@@ -14135,6 +14217,7 @@ int main()
     appSessionInvalidLoopRegionSchemaLoadFailureLeavesAppSettingsUntouched();
     projectInvalidLoopRegionValueLoadFailureLeavesAppSettingsUntouched();
     appSessionInvalidLoopRegionValueLoadFailureLeavesAppSettingsUntouched();
+    projectInvalidDevicesSchemaLoadFailureLeavesAppSettingsUntouched();
     projectInvalidTracksSchemaLoadFailureLeavesAppSettingsUntouched();
     appSessionInvalidTracksSchemaLoadFailureLeavesAppSettingsUntouched();
     projectLoadPackagePathFileFailureLeavesOccupiedPathUntouched();
