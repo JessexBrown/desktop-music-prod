@@ -376,8 +376,8 @@ formatting tests, persisted track mix state/static mix command tests, stereo
 prepared voice summing tests, previous-manifest backup success/failure tests,
 project and AppSession missing-manifest load failure/app-settings isolation
 tests, project and AppSession malformed-manifest load failure/app-settings
-isolation tests, project unsupported-version load failure/app-settings isolation
-tests,
+isolation tests, project and AppSession unsupported-version load
+failure/app-settings isolation tests,
 manifest-directory load failure/app-settings isolation tests, direct package
 symlink load rejection, including broken links and session unchanged-state
 coverage for linked/broken direct package symlinks, direct package symlink
