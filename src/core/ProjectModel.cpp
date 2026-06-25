@@ -408,9 +408,25 @@ std::optional<ProjectModel> ProjectModel::loadPackage(const std::filesystem::pat
     if (!rejectSymlinkedProjectPackagePath(packageDirectory, error))
         return std::nullopt;
 
+    std::error_code filesystemError;
+    const auto packageStatus = std::filesystem::symlink_status(packageDirectory, filesystemError);
+    if (filesystemError)
+    {
+        if (!isMissingPathError(filesystemError))
+        {
+            error = "Could not inspect project package path: " + filesystemError.message();
+            return std::nullopt;
+        }
+    }
+    else if (std::filesystem::is_regular_file(packageStatus))
+    {
+        error = "Project package path points to a file.";
+        return std::nullopt;
+    }
+
     const auto manifestPath = packageDirectory / manifestFileName;
 
-    std::error_code filesystemError;
+    filesystemError.clear();
     const auto manifestStatus = std::filesystem::symlink_status(manifestPath, filesystemError);
     if (filesystemError)
     {

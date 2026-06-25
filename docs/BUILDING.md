@@ -384,7 +384,8 @@ tests, AppSession linked/broken package-parent settings-isolation tests, and
 session linked/broken-parent rejection tests when host-supported, manifest
 symlink and broken-symlink load failure/app-settings isolation tests when
 host-supported,
-package-path file rejection tests, package directory creation failure tests,
+package-path file load/save rejection tests, package directory creation failure
+tests,
 package and asset-folder symlink path failure tests, including broken asset
 folder links and linked/broken later asset folder links, when host-supported,
 staged temporary-manifest symlink cleanup tests, including broken links, when

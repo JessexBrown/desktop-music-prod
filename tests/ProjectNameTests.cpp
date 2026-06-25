@@ -11729,6 +11729,43 @@ void projectManifestDirectoryLoadFailureKeepsSessionProject()
            "Temporary manifest-directory load package deleted");
 }
 
+void projectLoadPackagePathFileFailureLeavesOccupiedPathUntouched()
+{
+    const auto occupiedPackagePath =
+        makeTemporaryPackagePath("projectname-load-package-file-failure-test");
+    writeTextFile(occupiedPackagePath, "occupied project package load path");
+
+    std::string error = "stale package path file load error";
+    auto loaded = projectname::ProjectModel::loadPackage(occupiedPackagePath, error);
+    expect(!loaded.has_value(),
+           "Project load rejects a package path occupied by a file");
+    expect(error.find("Project package path points to a file") != std::string::npos,
+           "Project load package-path file failure error is human-readable");
+    expect(error.find("JSON") == std::string::npos,
+           "Project load package-path file failure does not parse JSON");
+    expect(std::filesystem::is_regular_file(occupiedPackagePath),
+           "Project load package-path file failure leaves occupied path as a file");
+    expect(readTextFile(occupiedPackagePath) == "occupied project package load path",
+           "Project load package-path file failure preserves occupied file contents");
+    expect(!std::filesystem::exists(occupiedPackagePath / "manifest.json"),
+           "Project load package-path file failure does not create a manifest below occupied path");
+    expect(!std::filesystem::exists(occupiedPackagePath / "manifest.json.tmp"),
+           "Project load package-path file failure does not create a temporary manifest below occupied path");
+    expect(!std::filesystem::exists(occupiedPackagePath / "audio"),
+           "Project load package-path file failure does not create an audio asset folder");
+    expect(!std::filesystem::exists(occupiedPackagePath / "samples"),
+           "Project load package-path file failure does not create a samples asset folder");
+    expect(!std::filesystem::exists(occupiedPackagePath / "presets"),
+           "Project load package-path file failure does not create a presets asset folder");
+    expect(!std::filesystem::exists(occupiedPackagePath / "analysis"),
+           "Project load package-path file failure does not create an analysis asset folder");
+    expect(!std::filesystem::exists(occupiedPackagePath / "backups"),
+           "Project load package-path file failure does not create a backups asset folder");
+
+    expect(std::filesystem::remove(occupiedPackagePath),
+           "Temporary occupied project package load path file deleted");
+}
+
 void projectDirectPackageSymlinkLoadFailureRejectsBeforeParsingManifest()
 {
     const auto packageSymlink =
@@ -13013,6 +13050,7 @@ int main()
     appSessionImportsAudioWithoutResumingGeneratedTone();
     appSessionLoadFailureKeepsCurrentProject();
     projectManifestDirectoryLoadFailureKeepsSessionProject();
+    projectLoadPackagePathFileFailureLeavesOccupiedPathUntouched();
     projectDirectPackageSymlinkLoadFailureRejectsBeforeParsingManifest();
     projectDirectPackageSymlinkLoadFailureLeavesAppSettingsUntouched();
     projectBrokenDirectPackageSymlinkLoadFailureRejectsBeforeManifestWork();
