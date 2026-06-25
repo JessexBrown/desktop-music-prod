@@ -11776,6 +11776,82 @@ void projectDirectPackageSymlinkLoadFailureRejectsBeforeParsingManifest()
            "Temporary direct package load symlink target deleted");
 }
 
+void projectDirectPackageSymlinkLoadFailureLeavesAppSettingsUntouched()
+{
+    projectname::AppSettings settings;
+    settings.audioSetup.firstRunPromptDismissed = true;
+    settings.audioSetup.preferredOutput.hasOutputDevice = true;
+    settings.audioSetup.preferredOutput.deviceType = "Windows Audio";
+    settings.audioSetup.preferredOutput.deviceName = "Direct Package Isolation Output";
+    settings.audioSetup.preferredOutput.sampleRateHz = 48000.0;
+    settings.audioSetup.preferredOutput.bufferSizeSamples = 256;
+    settings.audioSetup.preferredOutput.outputChannelCount = 2;
+    settings.audioSetup.preferredOutput.juceDeviceStateXml =
+        "<DEVICESETUP deviceType=\"Windows Audio\" audioOutputDeviceName=\"Direct Package Isolation Output\"/>";
+
+    const auto settingsPath =
+        makeTemporarySettingsPath("projectname-direct-package-load-settings-isolation-test");
+
+    std::string error;
+    expect(projectname::saveAppSettings(settings, settingsPath, error),
+           "Direct package symlink settings-isolation fixture saves app settings");
+    const auto originalSettingsText = readTextFile(settingsPath);
+
+    const auto packageSymlink =
+        makeTemporaryPackagePath("projectname-direct-package-load-settings-isolation-link-test");
+    const auto linkedTargetPackage =
+        makeTemporaryPackagePath("projectname-direct-package-load-settings-isolation-target-test");
+    const auto linkedTargetSentinel = linkedTargetPackage / "sentinel.txt";
+    const auto linkedManifestText =
+        R"({"manifestVersion":1,"name":"Direct Package Settings Isolation Manifest Should Not Load","transport":{"tempoBpm":88.0,"timeSignature":{"numerator":5,"denominator":4},"positionBeats":2.0},"tracks":[]})";
+
+    writeManifestText(linkedTargetPackage, linkedManifestText);
+    writeTextFile(linkedTargetSentinel, "direct package settings-isolation sentinel");
+
+    std::error_code symlinkError;
+    std::filesystem::create_directory_symlink(linkedTargetPackage, packageSymlink, symlinkError);
+    if (symlinkError)
+    {
+        std::filesystem::remove_all(linkedTargetPackage);
+        std::filesystem::remove(settingsPath);
+        return;
+    }
+
+    error = "stale direct package settings-isolation load error";
+    auto loaded = projectname::ProjectModel::loadPackage(packageSymlink, error);
+    expect(!loaded.has_value(),
+           "Project load rejects a direct package symlink during settings-isolation check");
+    expect(error.find("Project package path contains a symlink") != std::string::npos
+               && error.find(packageSymlink.generic_string()) != std::string::npos,
+           "Direct package symlink settings-isolation load failure error is human-readable");
+    expect(error.find("JSON") == std::string::npos,
+           "Direct package symlink settings-isolation load failure does not parse JSON through the symlink");
+    expect(readTextFile(settingsPath) == originalSettingsText,
+           "Direct package symlink settings-isolation load failure leaves app settings unchanged");
+
+    std::string settingsError;
+    const auto reloadedSettings = projectname::loadAppSettings(settingsPath, settingsError);
+    expect(reloadedSettings.has_value() && *reloadedSettings == settings,
+           "Direct package symlink settings-isolation load failure leaves app settings loadable");
+    expect(std::filesystem::is_symlink(std::filesystem::symlink_status(packageSymlink)),
+           "Direct package symlink settings-isolation load failure leaves the package symlink unchanged");
+    expect(readTextFile(linkedTargetPackage / "manifest.json") == linkedManifestText,
+           "Direct package symlink settings-isolation load failure preserves the linked target manifest");
+    expect(readTextFile(linkedTargetSentinel) == "direct package settings-isolation sentinel",
+           "Direct package symlink settings-isolation load failure preserves the linked target sentinel");
+    expect(!std::filesystem::exists(packageSymlink / "manifest.json.tmp"),
+           "Direct package symlink settings-isolation load failure does not create a temporary manifest through the link");
+    expect(!std::filesystem::exists(linkedTargetPackage / "manifest.json.tmp"),
+           "Direct package symlink settings-isolation load failure does not write target temporary manifest");
+
+    expect(std::filesystem::remove(packageSymlink),
+           "Temporary direct package symlink settings-isolation symlink deleted");
+    expect(std::filesystem::remove_all(linkedTargetPackage) > 0,
+           "Temporary direct package symlink settings-isolation target deleted");
+    expect(std::filesystem::remove(settingsPath),
+           "Temporary direct package symlink settings-isolation app settings file deleted");
+}
+
 void projectBrokenDirectPackageSymlinkLoadFailureRejectsBeforeManifestWork()
 {
     const auto packageSymlink =
@@ -12553,6 +12629,7 @@ int main()
     appSessionLoadFailureKeepsCurrentProject();
     projectManifestDirectoryLoadFailureKeepsSessionProject();
     projectDirectPackageSymlinkLoadFailureRejectsBeforeParsingManifest();
+    projectDirectPackageSymlinkLoadFailureLeavesAppSettingsUntouched();
     projectBrokenDirectPackageSymlinkLoadFailureRejectsBeforeManifestWork();
     appSessionDirectPackageSymlinkLoadFailureKeepsSessionProject();
     appSessionBrokenDirectPackageSymlinkLoadFailureKeepsSessionProject();
