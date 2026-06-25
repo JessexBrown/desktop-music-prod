@@ -12226,6 +12226,87 @@ void projectInvalidLoopRegionSchemaLoadFailureLeavesAppSettingsUntouched()
            "Temporary invalid-loop-region schema settings-isolation app settings file deleted");
 }
 
+void appSessionInvalidLoopRegionSchemaLoadFailureLeavesAppSettingsUntouched()
+{
+    projectname::AppSettings settings;
+    settings.audioSetup.firstRunPromptDismissed = true;
+    settings.audioSetup.preferredOutput.hasOutputDevice = true;
+    settings.audioSetup.preferredOutput.deviceType = "Windows Audio";
+    settings.audioSetup.preferredOutput.deviceName = "Session Invalid Loop Region Schema Isolation Output";
+    settings.audioSetup.preferredOutput.sampleRateHz = 48000.0;
+    settings.audioSetup.preferredOutput.bufferSizeSamples = 256;
+    settings.audioSetup.preferredOutput.outputChannelCount = 2;
+    settings.audioSetup.preferredOutput.juceDeviceStateXml =
+        "<DEVICESETUP deviceType=\"Windows Audio\" audioOutputDeviceName=\"Session Invalid Loop Region Schema Isolation Output\"/>";
+
+    const auto settingsPath =
+        makeTemporarySettingsPath("projectname-session-invalid-loop-region-schema-load-settings-isolation-test");
+
+    std::string error;
+    expect(projectname::saveAppSettings(settings, settingsPath, error),
+           "Session invalid-loop-region schema settings-isolation fixture saves app settings");
+    const auto originalSettingsText = readTextFile(settingsPath);
+
+    projectname::AppSession session;
+    session.getProject().setName("Keep Session Invalid Loop Region Schema Settings Isolation Baseline");
+    session.setTempoBpm(137.0);
+    const auto originalProject = session.getProject();
+
+    const auto package =
+        makeTemporaryPackagePath("projectname-session-invalid-loop-region-schema-load-settings-isolation-test");
+    const auto invalidLoopRegionManifestText = std::string(R"({
+  "manifestVersion": 1,
+  "name": "Bad Loop Region Schema Session Settings Isolation",
+  "transport": {
+    "tempoBpm": 120,
+    "timeSignature": { "numerator": 4, "denominator": 4 },
+    "positionBeats": 0
+  },
+  "loopRegion": [],
+  "tracks": []
+})");
+    const auto sentinelPath = package / "sentinel.txt";
+    writeManifestText(package, invalidLoopRegionManifestText);
+    const auto originalManifestText = readTextFile(package / "manifest.json");
+    writeTextFile(sentinelPath, "session invalid loop region schema settings-isolation sentinel");
+
+    error = "stale session invalid loop region schema settings-isolation load error";
+    expect(!session.loadProjectPackage(package, error),
+           "Session load rejects invalid loop-region schema during settings-isolation check");
+    expect(error.find("Project loop region must be an object") != std::string::npos,
+           "Session invalid-loop-region schema settings-isolation load failure error is human-readable");
+    expect(session.getProject() == originalProject,
+           "Session invalid-loop-region schema settings-isolation load failure keeps current session project");
+    expect(readTextFile(settingsPath) == originalSettingsText,
+           "Session invalid-loop-region schema settings-isolation load failure leaves app settings unchanged");
+
+    std::string settingsError;
+    const auto reloadedSettings = projectname::loadAppSettings(settingsPath, settingsError);
+    expect(reloadedSettings.has_value() && *reloadedSettings == settings,
+           "Session invalid-loop-region schema settings-isolation load failure leaves app settings loadable");
+    expect(readTextFile(package / "manifest.json") == originalManifestText,
+           "Session invalid-loop-region schema settings-isolation load failure preserves manifest");
+    expect(!std::filesystem::exists(package / "manifest.json.tmp"),
+           "Session invalid-loop-region schema settings-isolation load failure does not create a temporary manifest");
+    expect(readTextFile(sentinelPath) == "session invalid loop region schema settings-isolation sentinel",
+           "Session invalid-loop-region schema settings-isolation load failure preserves package contents");
+    expect(!std::filesystem::exists(package / "audio"),
+           "Session invalid-loop-region schema settings-isolation load failure does not create an audio asset folder");
+    expect(!std::filesystem::exists(package / "samples"),
+           "Session invalid-loop-region schema settings-isolation load failure does not create a samples asset folder");
+    expect(!std::filesystem::exists(package / "presets"),
+           "Session invalid-loop-region schema settings-isolation load failure does not create a presets asset folder");
+    expect(!std::filesystem::exists(package / "analysis"),
+           "Session invalid-loop-region schema settings-isolation load failure does not create an analysis asset folder");
+    expect(!std::filesystem::exists(package / "backups"),
+           "Session invalid-loop-region schema settings-isolation load failure does not create a backups asset folder");
+
+    expect(std::filesystem::remove_all(package) > 0,
+           "Temporary session invalid-loop-region schema settings-isolation package deleted");
+    expect(std::filesystem::remove(settingsPath),
+           "Temporary session invalid-loop-region schema settings-isolation app settings file deleted");
+}
+
 void projectInvalidTracksSchemaLoadFailureLeavesAppSettingsUntouched()
 {
     projectname::AppSettings settings;
@@ -13887,6 +13968,7 @@ int main()
     projectUnsupportedManifestVersionLoadFailureLeavesAppSettingsUntouched();
     appSessionUnsupportedManifestVersionLoadFailureLeavesAppSettingsUntouched();
     projectInvalidLoopRegionSchemaLoadFailureLeavesAppSettingsUntouched();
+    appSessionInvalidLoopRegionSchemaLoadFailureLeavesAppSettingsUntouched();
     projectInvalidTracksSchemaLoadFailureLeavesAppSettingsUntouched();
     appSessionInvalidTracksSchemaLoadFailureLeavesAppSettingsUntouched();
     projectLoadPackagePathFileFailureLeavesOccupiedPathUntouched();
