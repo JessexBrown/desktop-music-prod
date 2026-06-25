@@ -276,9 +276,9 @@ Third-party dependencies remain under their own licenses as recorded in
   before parsing them; session coverage keeps the active project unchanged for
   linked/broken direct package symlink and linked/broken package-parent failures
   and verifies project and AppSession direct package symlink failures,
-  including broken links, linked/broken package-parent failures, and
-  manifest-link failures do not rewrite isolated app settings or create
-  `manifest.json.tmp`.
+  including broken links, project linked/broken package-parent failures,
+  AppSession linked package-parent failures, and manifest-link failures do not
+  rewrite isolated app settings or create `manifest.json.tmp`.
 - Shared app session that keeps UI playback state tied to the project-backed
   transport and preserves the current in-memory project when package saves or
   loads fail, including final manifest and linked/broken asset-folder symlink
